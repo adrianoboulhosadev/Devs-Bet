@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- auth ----------------------------------------------------------------------
+
+// Identity/credential. `role` drives authorization (the owner is `admin`); the
+// rich domain `User` maps email/password/role to value objects. Money lives in
+// the wallet context, never here.
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String
+  role        String    @default("user")
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastLoginAt DateTime? @map("last_login_at")
+
+  @@map("users")
+}
+
+// Stateful refresh session: one row per login/device. Stores only the HASH of
+// the opaque refresh; rotation + reuse detection sustain logout. userId is a
+// LOGICAL FK to User (no relation, to avoid coupling contexts).
+model AuthSession {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  verifierHash String   @map("verifier_hash")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+// --- wallet --------------------------------------------------------------------
+
+// The user's money at rest. All amounts are INTEGER CENTS. `available` (a domain
+// concept) = balance − held; `held` is the sum reserved by open bets. One wallet
+// per user (userId is a LOGICAL FK, @unique). The ledger is part of the aggregate.
+model Wallet {
+  id        String        @id @default(uuid())
+  userId    String        @unique @map("user_id")
+  balance   Int           @default(0)
+  held      Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  entries   LedgerEntry[]
+
+  @@map("wallets")
+}
+
+// Append-only audit of every balance change (deposit, bet_hold, bet_won,
+// bet_lost, refund, withdrawal). Never edited or deleted. `referenceId` links to
+// the originating bet/payment (logical). `amount` is signed-by-`type` in cents.
+model LedgerEntry {
+  id          String   @id @default(uuid())
+  walletId    String   @map("wallet_id")
+  type        String
+  amount      Int
+  referenceId String?  @map("reference_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("ledger_entries")
+}
+
+// Money in transit through the owner's bank account (manual Pix model).
+// direction: deposit | withdrawal. status: pending | confirmed | rejected | paid.
+// `referenceCode` lets the admin match an incoming Pix to a pending deposit.
+// userId/confirmedBy are LOGICAL FKs to User.
+model Payment {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  direction     String
+  amount        Int
+  status        String    @default("pending")
+  referenceCode String    @unique @map("reference_code")
+  confirmedBy   String?   @map("confirmed_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  confirmedAt   DateTime? @map("confirmed_at")
+
+  @@index([userId])
+  @@map("payments")
+}
+
+// --- match ---------------------------------------------------------------------
+
+// A contest between 2+ participants. status: open → locked → settled | cancelled.
+// `winnerParticipantId` is set on settle. `rakeBasisPoints` is the house fee for
+// this match (0 = none). creatorId is a LOGICAL FK to User. Participants are part
+// of the aggregate (cascade).
+model Match {
+  id                  String             @id @default(uuid())
+  creatorId           String             @map("creator_id")
+  title               String
+  gameType            String?            @map("game_type")
+  status              String             @default("open")
+  rakeBasisPoints     Int                @default(0) @map("rake_basis_points")
+  winnerParticipantId String?            @map("winner_participant_id")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  lockedAt            DateTime?          @map("locked_at")
+  settledAt           DateTime?          @map("settled_at")
+  participants        MatchParticipant[]
+
+  @@index([creatorId])
+  @@map("matches")
+}
+
+// A player in a match. May reference a registered friend (userId, logical FK) or
+// just carry a displayName for someone off-platform. Bets pick a participant by id.
+model MatchParticipant {
+  id          String  @id @default(uuid())
+  matchId     String  @map("match_id")
+  userId      String? @map("user_id")
+  displayName String  @map("display_name")
+  match       Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId])
+  @@map("match_participants")
+}
+
+// --- betting -------------------------------------------------------------------
+
+// One bet by one bettor on one participant of a match. status: open | won | lost |
+// refunded. `stake`/`payout` in cents; `payout` is filled at settlement by the
+// parimutuel PayoutCalculator. matchId/bettorId/participantId are LOGICAL FKs
+// (cross-context — no Prisma relation).
+model Bet {
+  id            String    @id @default(uuid())
+  matchId       String    @map("match_id")
+  bettorId      String    @map("bettor_id")
+  participantId String    @map("participant_id")
+  stake         Int
+  status        String    @default("open")
+  payout        Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  settledAt     DateTime? @map("settled_at")
+
+  @@index([matchId])
+  @@index([bettorId])
+  @@map("bets")
+}
