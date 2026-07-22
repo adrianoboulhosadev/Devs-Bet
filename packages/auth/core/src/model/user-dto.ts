@@ -1,0 +1,16 @@
+import { Role } from 'shared'
+
+/**
+ * READ projection (CQRS) of the user — what the database query brings, minus the
+ * secret. NEVER includes `password`. Carries `role` (needed for authorization at
+ * the edge) and the infra/audit fields (createdAt, lastLoginAt) that live only
+ * on the read side. Plain interface — no entity, no value objects.
+ */
+export interface UserDTO {
+  id: string
+  email: string
+  role: Role
+  active: boolean
+  createdAt: Date
+  lastLoginAt: Date | null
+}
