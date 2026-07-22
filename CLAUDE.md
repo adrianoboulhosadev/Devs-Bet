@@ -105,6 +105,13 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **Domain services**: regras puras que cruzam entidades (ex.: `PayoutCalculator` do parimutuel,
   agregações de stats) → classe em `core/src/domain-services/` com métodos **estáticos**, sem portas
   e sem efeito. Reexportada como **valor** pelo `@ctx/adapters`.
+- **Autorização por caso de uso (role)**: casos de uso restritos a admin **estendem** a base
+  `AdminUseCase<INPUT, OUTPUT>` (do `shared`) em vez de implementar `UseCase` direto. É um Template
+  Method: o `execute` público checa `actor.role === 'admin'` (senão `AccessDeniedError`/`NOT_ADMIN`)
+  e delega pro `executeAsAdmin`. O `actor` (`AuthenticatedActor { id, role }`, também no `shared`) é
+  resolvido do JWT pelo backend e passado ao use-case. Autorização fica em **duas camadas**: guard de
+  role no backend (borda) + a base no domínio. O `shared` **não** importa nenhum contexto — por isso
+  a base usa `AuthenticatedActor` (id+role), não a entidade `User`.
 - **Fronteiras**: contextos se tocam **só por portas**, nunca import direto entre cores. Orquestração
   cross-context (ex.: `PlaceBet` toca `wallet` + `match` + `betting`) fica na camada de app (backend).
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
