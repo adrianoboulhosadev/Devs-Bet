@@ -102,6 +102,7 @@ model Match {
   creatorId           String             @map("creator_id")
   title               String
   gameType            String?            @map("game_type")
+  imageUrl            String?            @map("image_url")
   status              String             @default("open")
   rakeBasisPoints     Int                @default(0) @map("rake_basis_points")
   winnerParticipantId String?            @map("winner_participant_id")
