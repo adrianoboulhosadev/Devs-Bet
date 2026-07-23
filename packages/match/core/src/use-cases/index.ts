@@ -1,0 +1,6 @@
+export { default as CreateMatch } from './create-match'
+export { default as LockMatch } from './lock-match'
+export { default as DeclareMatchResult } from './declare-match-result'
+export { default as CancelMatch } from './cancel-match'
+export { default as GetMatchQuery } from './get-match-query'
+export { default as ListMatchesQuery } from './list-matches-query'
