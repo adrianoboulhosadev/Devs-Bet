@@ -11,6 +11,7 @@ import { PrismaMatchRepository } from './prisma-match-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
 import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
+import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 
 // Protected by the AuthMiddleware (see match.module). Reading (list/detail) is
 // open to any authenticated user; creating a match and every lifecycle
@@ -21,10 +22,11 @@ export class MatchController {
   constructor(
     private readonly matchRepository: PrismaMatchRepository,
     private readonly settlementQueue: BullMqMatchSettlementQueue,
+    private readonly lockQueue: BullMqMatchLockQueue,
   ) {}
 
   private facade(): MatchFacade {
-    return new MatchFacade(this.matchRepository, this.matchRepository)
+    return new MatchFacade(this.matchRepository, this.matchRepository, this.lockQueue)
   }
 
   private actor(user: UserDTO): AuthenticatedActor {
