@@ -11,12 +11,21 @@ import { useAuth } from '@/contexts/auth-context'
 const MATCHES_KEY = ['matches']
 
 // The form mirrors CreateMatchInput but the userId of a participant is not set here.
-// scheduledAt comes from a <input type="datetime-local"> (local time, no zone).
+// scheduledAt comes from a <input type="datetime-local"> (local time, no zone);
+// image is an optional FileList from a <input type="file">.
 interface MatchForm {
   title: string
   gameType: string
   scheduledAt: string
+  image?: FileList
   participants: { displayName: string }[]
+}
+
+const emptyForm: MatchForm = {
+  title: '',
+  gameType: '',
+  scheduledAt: '',
+  participants: [{ displayName: '' }, { displayName: '' }],
 }
 
 export function useMatches() {
@@ -29,25 +38,35 @@ export function useMatches() {
     queryFn: async (): Promise<MatchDTO[]> => (await api.get<MatchDTO[]>('/match')).data,
   })
 
-  const form = useForm<MatchForm>({
-    defaultValues: {
-      title: '',
-      gameType: '',
-      scheduledAt: '',
-      participants: [{ displayName: '' }, { displayName: '' }],
-    },
-  })
+  const form = useForm<MatchForm>({ defaultValues: emptyForm })
   const participants = useFieldArray({ control: form.control, name: 'participants' })
 
   const creation = useMutation({
-    mutationFn: (input: CreateMatchInput) => api.post('/match', input),
+    mutationFn: async (data: MatchForm) => {
+      // Optional image: upload the file first (multipart), then create the match
+      // with the returned URL. No cloud — the backend stores it under uploads/matchs.
+      let imageUrl: string | null = null
+      const file = data.image?.[0]
+      if (file) {
+        const upload = new FormData()
+        upload.append('image', file)
+        imageUrl = (await api.post<{ url: string }>('/upload/matchs', upload)).data.url
+      }
+
+      const input: CreateMatchInput = {
+        title: data.title,
+        gameType: data.gameType.trim() || null,
+        imageUrl,
+        // datetime-local is local time; toISOString normalizes to UTC for the API.
+        scheduledAt: new Date(data.scheduledAt).toISOString(),
+        participants: data.participants
+          .map((participant) => ({ displayName: participant.displayName.trim() }))
+          .filter((participant) => participant.displayName),
+      }
+      await api.post('/match', input)
+    },
     onSuccess: () => {
-      form.reset({
-        title: '',
-        gameType: '',
-        scheduledAt: '',
-        participants: [{ displayName: '' }, { displayName: '' }],
-      })
+      form.reset(emptyForm)
       queryClient.invalidateQueries({ queryKey: MATCHES_KEY })
     },
     onError: (failure) => setError(errorMessage(failure, 'Não foi possível criar a partida.')),
@@ -55,15 +74,7 @@ export function useMatches() {
 
   const onSubmit = form.handleSubmit((data) => {
     setError(null)
-    creation.mutate({
-      title: data.title,
-      gameType: data.gameType.trim() || null,
-      // datetime-local is local time; toISOString normalizes to UTC for the API.
-      scheduledAt: new Date(data.scheduledAt).toISOString(),
-      participants: data.participants
-        .map((participant) => ({ displayName: participant.displayName.trim() }))
-        .filter((participant) => participant.displayName),
-    })
+    creation.mutate(data)
   })
 
   return {
