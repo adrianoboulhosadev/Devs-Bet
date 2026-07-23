@@ -1,8 +1,9 @@
-import { MatchRepository, MatchQueryRepository, MatchDTO } from '@match/core'
+import { MatchRepository, MatchQueryRepository, MatchLockQueue, MatchDTO } from '@match/core'
 import { AuthenticatedActor } from 'shared'
 import {
   CreateMatchController,
   LockMatchController,
+  AutoLockMatchController,
   DeclareMatchResultController,
   CancelMatchController,
   GetMatchController,
@@ -19,14 +20,20 @@ export default class MatchFacade {
   constructor(
     private readonly matchRepository?: MatchRepository,
     private readonly matchQueryRepository?: MatchQueryRepository,
+    private readonly lockQueue?: MatchLockQueue,
   ) {}
 
   async createMatch(input: CreateMatchInput, actor: AuthenticatedActor): Promise<void> {
-    await new CreateMatchController(this.matchRepository!).execute(input, actor)
+    await new CreateMatchController(this.matchRepository!, this.lockQueue).execute(input, actor)
   }
 
   async lockMatch(matchId: string, actor: AuthenticatedActor): Promise<void> {
     await new LockMatchController(this.matchRepository!).execute(matchId, actor)
+  }
+
+  /** System path (worker): the scheduled auto-lock when the match's time arrives. */
+  async autoLockMatch(matchId: string): Promise<void> {
+    await new AutoLockMatchController(this.matchRepository!).execute(matchId)
   }
 
   async declareResult(
