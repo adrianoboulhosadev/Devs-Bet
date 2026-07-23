@@ -12,8 +12,8 @@ import { CreateMatchInput, DeclareResultInput } from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
- * constructor; each method builds its controller. creatorId comes from the JWT;
- * the admin actor (id + role) too — the role is re-checked inside the use case.
+ * constructor; each method builds its controller. The admin actor (id + role)
+ * comes from the JWT — the role is re-checked inside each admin use case.
  */
 export default class MatchFacade {
   constructor(
@@ -21,8 +21,8 @@ export default class MatchFacade {
     private readonly matchQueryRepository?: MatchQueryRepository,
   ) {}
 
-  async createMatch(input: CreateMatchInput, creatorId: string): Promise<void> {
-    await new CreateMatchController(this.matchRepository!).execute(input, creatorId)
+  async createMatch(input: CreateMatchInput, actor: AuthenticatedActor): Promise<void> {
+    await new CreateMatchController(this.matchRepository!).execute(input, actor)
   }
 
   async lockMatch(matchId: string, actor: AuthenticatedActor): Promise<void> {
