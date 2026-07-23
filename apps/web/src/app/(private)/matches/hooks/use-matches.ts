@@ -11,9 +11,11 @@ import { useAuth } from '@/contexts/auth-context'
 const MATCHES_KEY = ['matches']
 
 // The form mirrors CreateMatchInput but the userId of a participant is not set here.
+// scheduledAt comes from a <input type="datetime-local"> (local time, no zone).
 interface MatchForm {
   title: string
   gameType: string
+  scheduledAt: string
   participants: { displayName: string }[]
 }
 
@@ -28,14 +30,24 @@ export function useMatches() {
   })
 
   const form = useForm<MatchForm>({
-    defaultValues: { title: '', gameType: '', participants: [{ displayName: '' }, { displayName: '' }] },
+    defaultValues: {
+      title: '',
+      gameType: '',
+      scheduledAt: '',
+      participants: [{ displayName: '' }, { displayName: '' }],
+    },
   })
   const participants = useFieldArray({ control: form.control, name: 'participants' })
 
   const creation = useMutation({
     mutationFn: (input: CreateMatchInput) => api.post('/match', input),
     onSuccess: () => {
-      form.reset({ title: '', gameType: '', participants: [{ displayName: '' }, { displayName: '' }] })
+      form.reset({
+        title: '',
+        gameType: '',
+        scheduledAt: '',
+        participants: [{ displayName: '' }, { displayName: '' }],
+      })
       queryClient.invalidateQueries({ queryKey: MATCHES_KEY })
     },
     onError: (failure) => setError(errorMessage(failure, 'Não foi possível criar a partida.')),
@@ -46,6 +58,8 @@ export function useMatches() {
     creation.mutate({
       title: data.title,
       gameType: data.gameType.trim() || null,
+      // datetime-local is local time; toISOString normalizes to UTC for the API.
+      scheduledAt: new Date(data.scheduledAt).toISOString(),
       participants: data.participants
         .map((participant) => ({ displayName: participant.displayName.trim() }))
         .filter((participant) => participant.displayName),

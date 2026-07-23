@@ -5,6 +5,7 @@ import { Field } from '@/components/field'
 import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
+import { formatDateTime } from '@/lib/date'
 import { useMatches } from '../hooks/use-matches'
 
 export function Matches() {
@@ -21,6 +22,7 @@ export function Matches() {
 
           <Field label="Título" required {...form.register('title')} />
           <Field label="Tipo (ex.: luta, FIFA)" {...form.register('gameType')} />
+          <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
 
           <div className="space-y-2">
             <span className="text-sm font-medium">Participantes</span>
@@ -68,6 +70,7 @@ export function Matches() {
                     <p className="text-sm text-slate-500">
                       {match.participants.map((participant) => participant.displayName).join(' × ')}
                     </p>
+                    <p className="text-xs text-slate-400">{formatDateTime(match.scheduledAt)}</p>
                   </div>
                   <StatusBadge status={match.status} />
                 </Link>

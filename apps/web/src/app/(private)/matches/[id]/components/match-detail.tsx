@@ -5,6 +5,7 @@ import { Field } from '@/components/field'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { formatDateTime } from '@/lib/date'
 import { useMatchDetail } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
@@ -36,6 +37,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         <div>
           <h1 className="text-2xl font-semibold">{match.title}</h1>
           {match.gameType && <p className="text-sm text-slate-500">{match.gameType}</p>}
+          <p className="text-sm text-slate-500">{formatDateTime(match.scheduledAt)}</p>
         </div>
         <StatusBadge status={match.status} />
       </div>
