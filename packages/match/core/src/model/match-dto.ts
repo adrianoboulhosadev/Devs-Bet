@@ -15,6 +15,7 @@ export interface MatchDTO {
   status: MatchStatus
   rakeBasisPoints: number
   winnerParticipantId: string | null
+  scheduledAt: Date
   participants: MatchParticipantDTO[]
   createdAt: Date
   lockedAt: Date | null

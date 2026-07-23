@@ -7,6 +7,7 @@ export interface MatchProps extends EntityProps {
   creatorId: string
   title?: string
   gameType?: string | null
+  scheduledAt?: Date
   status?: MatchStatus
   rakeBasisPoints?: number
   winnerParticipantId?: string | null
@@ -28,6 +29,7 @@ export class Match extends Entity<Match, MatchProps> {
   readonly creatorId: string
   readonly title: string
   readonly gameType: string | null
+  readonly scheduledAt: Date
   readonly rakeBasisPoints: number
   readonly participants: MatchParticipant[]
   status: MatchStatus
@@ -39,6 +41,17 @@ export class Match extends Entity<Match, MatchProps> {
     super(props)
     const title = props.title?.trim() ?? ''
     if (!title) ValidationError.throwError(Errors.REQUIRED_FIELD, 'title')
+
+    // Required: when the match will happen. `!props.id` means a brand-new match
+    // (reconstitution from the DB always carries an id) — only then do we reject
+    // a past date; a match that already started must still reconstitute.
+    const scheduledAt = props.scheduledAt
+    if (!(scheduledAt instanceof Date) || Number.isNaN(scheduledAt.getTime())) {
+      ValidationError.throwError(Errors.REQUIRED_FIELD, 'scheduledAt')
+    }
+    if (!props.id && scheduledAt.getTime() <= Date.now()) {
+      ValidationError.throwError(Errors.SCHEDULED_IN_PAST, scheduledAt.toISOString())
+    }
 
     const participants = (props.participants ?? []).map(
       (participant) => new MatchParticipant(participant),
@@ -55,6 +68,7 @@ export class Match extends Entity<Match, MatchProps> {
     this.creatorId = props.creatorId
     this.title = title
     this.gameType = props.gameType ?? null
+    this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
     this.participants = participants
     this.status = props.status ?? 'open'
