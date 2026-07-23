@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import type { MatchDTO, CreateMatchInput } from '@match/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
+import { useAuth } from '@/contexts/auth-context'
 
 const MATCHES_KEY = ['matches']
 
@@ -18,6 +19,7 @@ interface MatchForm {
 
 export function useMatches() {
   const queryClient = useQueryClient()
+  const { isAdmin } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
@@ -51,6 +53,7 @@ export function useMatches() {
   })
 
   return {
+    isAdmin,
     matches: query.data ?? [],
     loading: query.isLoading,
     form,

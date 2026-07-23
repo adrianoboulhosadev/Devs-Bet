@@ -8,44 +8,46 @@ import { Loading } from '@/components/loading'
 import { useMatches } from '../hooks/use-matches'
 
 export function Matches() {
-  const { matches, loading, form, participants, onSubmit, submitting, error } = useMatches()
+  const { isAdmin, matches, loading, form, participants, onSubmit, submitting, error } = useMatches()
 
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">Partidas</h1>
 
-      <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="font-medium">Criar partida</h2>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {isAdmin && (
+        <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+          <h2 className="font-medium">Criar partida</h2>
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-        <Field label="Título" required {...form.register('title')} />
-        <Field label="Tipo (ex.: luta, FIFA)" {...form.register('gameType')} />
+          <Field label="Título" required {...form.register('title')} />
+          <Field label="Tipo (ex.: luta, FIFA)" {...form.register('gameType')} />
 
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Participantes</span>
-          {participants.fields.map((fieldItem, index) => (
-            <div key={fieldItem.id} className="flex items-center gap-2">
-              <input
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-                placeholder={`Jogador ${index + 1}`}
-                {...form.register(`participants.${index}.displayName` as const)}
-              />
-              {participants.fields.length > 2 && (
-                <Button variant="secondary" onClick={() => participants.remove(index)}>
-                  Remover
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button variant="secondary" onClick={() => participants.append({ displayName: '' })}>
-            + Participante
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Participantes</span>
+            {participants.fields.map((fieldItem, index) => (
+              <div key={fieldItem.id} className="flex items-center gap-2">
+                <input
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                  placeholder={`Jogador ${index + 1}`}
+                  {...form.register(`participants.${index}.displayName` as const)}
+                />
+                {participants.fields.length > 2 && (
+                  <Button variant="secondary" onClick={() => participants.remove(index)}>
+                    Remover
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button variant="secondary" onClick={() => participants.append({ displayName: '' })}>
+              + Participante
+            </Button>
+          </div>
+
+          <Button type="submit" disabled={submitting}>
+            {submitting ? 'Criando…' : 'Criar partida'}
           </Button>
-        </div>
-
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Criando…' : 'Criar partida'}
-        </Button>
-      </form>
+        </form>
+      )}
 
       <div className="space-y-3">
         <h2 className="font-medium">Lobby</h2>
