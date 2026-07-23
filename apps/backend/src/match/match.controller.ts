@@ -12,9 +12,10 @@ import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
 import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
 
-// Protected by the AuthMiddleware (see match.module). Creating/reading is open to
-// any authenticated user; the lifecycle transitions (lock/settle/cancel) are
-// admin-only (AdminGuard at the edge + AdminUseCase in the domain).
+// Protected by the AuthMiddleware (see match.module). Reading (list/detail) is
+// open to any authenticated user; creating a match and every lifecycle
+// transition (lock/settle/cancel) are admin-only (AdminGuard at the edge +
+// AdminUseCase in the domain).
 @Controller('match')
 export class MatchController {
   constructor(
@@ -42,8 +43,9 @@ export class MatchController {
 
   @Post()
   @HttpCode(201)
+  @UseGuards(AdminGuard)
   async create(@Body() input: CreateMatchInput, @authenticatedUser() user: UserDTO) {
-    await this.facade().createMatch(input, user.id)
+    await this.facade().createMatch(input, this.actor(user))
   }
 
   @Post(':id/lock')
