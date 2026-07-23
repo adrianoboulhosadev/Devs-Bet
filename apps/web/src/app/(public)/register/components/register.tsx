@@ -1,0 +1,51 @@
+'use client'
+
+import Link from 'next/link'
+import { Field } from '@/components/field'
+import { Button } from '@/components/button'
+import { useRegister } from '../hooks/use-register'
+
+export function Register() {
+  const { form, error, onSubmit, submitting } = useRegister()
+  const {
+    register,
+    getValues,
+    formState: { errors },
+  } = form
+
+  return (
+    <main className="grid min-h-screen place-items-center px-6">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <h1 className="text-xl font-semibold">Criar conta</h1>
+
+        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+        <Field label="E-mail" type="email" required {...register('email')} />
+        <Field label="Senha" type="password" required {...register('password')} />
+        <Field
+          label="Confirmar senha"
+          type="password"
+          required
+          error={errors.confirmation?.message}
+          {...register('confirmation', {
+            validate: (value) => value === getValues('password') || 'As senhas não conferem.',
+          })}
+        />
+
+        <Button type="submit" disabled={submitting} className="w-full">
+          {submitting ? 'Criando…' : 'Criar conta'}
+        </Button>
+
+        <p className="text-center text-sm text-slate-500">
+          Já tem conta?{' '}
+          <Link href="/login" className="font-medium text-slate-900 underline">
+            Entrar
+          </Link>
+        </p>
+      </form>
+    </main>
+  )
+}
