@@ -4,8 +4,16 @@ import { DbModule } from './db/db.module'
 import { AuthModule } from './auth/auth.module'
 import { UserModule } from './user/user.module'
 import { WalletModule } from './wallet/wallet.module'
+import { MatchModule } from './match/match.module'
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), DbModule, AuthModule, UserModule, WalletModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    DbModule,
+    AuthModule,
+    UserModule,
+    WalletModule,
+    MatchModule,
+  ],
 })
 export class AppModule {}
