@@ -18,6 +18,18 @@ test('a new match starts open with its participants', () => {
   expect(match.participants).toHaveLength(2)
 })
 
+test('imageUrl is optional (defaults to null) and kept when provided', () => {
+  expect(newMatch().imageUrl).toBeNull()
+  const withImage = new Match({
+    creatorId: 'c',
+    title: 'Fabio vs Bruno',
+    scheduledAt: inOneHour(),
+    imageUrl: '/uploads/matchs/x.png',
+    participants: [{ displayName: 'A' }, { displayName: 'B' }],
+  })
+  expect(withImage.imageUrl).toBe('/uploads/matchs/x.png')
+})
+
 test('requires a title', () => {
   expect(
     () =>
