@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "types": ["node", "jest"],
+    "paths": {
+      "shared": ["../../packages/shared/src"],
+      "@wallet/adapters": ["../../packages/wallet/adapters/src"],
+      "@wallet/core": ["../../packages/wallet/core/src"],
+      "@betting/adapters": ["../../packages/betting/adapters/src"],
+      "@betting/core": ["../../packages/betting/core/src"]
+    }
+  },
+  "include": ["src", "test"]
+}
