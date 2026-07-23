@@ -12,6 +12,7 @@ interface MatchRow {
   creatorId: string
   title: string
   gameType: string | null
+  imageUrl: string | null
   scheduledAt: Date
   status: MatchStatus
   rakeBasisPoints: number
@@ -31,6 +32,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       creatorId: row.creatorId,
       title: row.title,
       gameType: row.gameType,
+      imageUrl: row.imageUrl,
       scheduledAt: row.scheduledAt,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
@@ -59,6 +61,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       creatorId: match.creatorId,
       title: match.title,
       gameType: match.gameType,
+      imageUrl: match.imageUrl,
       scheduledAt: match.scheduledAt,
       status: match.status,
       rakeBasisPoints: match.rakeBasisPoints,
@@ -104,6 +107,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       creatorId: row.creatorId,
       title: row.title,
       gameType: row.gameType,
+      imageUrl: row.imageUrl,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
       winnerParticipantId: row.winnerParticipantId,

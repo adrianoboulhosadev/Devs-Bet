@@ -7,6 +7,7 @@ export interface MatchProps extends EntityProps {
   creatorId: string
   title?: string
   gameType?: string | null
+  imageUrl?: string | null
   scheduledAt?: Date
   status?: MatchStatus
   rakeBasisPoints?: number
@@ -29,6 +30,7 @@ export class Match extends Entity<Match, MatchProps> {
   readonly creatorId: string
   readonly title: string
   readonly gameType: string | null
+  readonly imageUrl: string | null
   readonly scheduledAt: Date
   readonly rakeBasisPoints: number
   readonly participants: MatchParticipant[]
@@ -68,6 +70,7 @@ export class Match extends Entity<Match, MatchProps> {
     this.creatorId = props.creatorId
     this.title = title
     this.gameType = props.gameType ?? null
+    this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
     this.participants = participants

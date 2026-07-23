@@ -10,6 +10,7 @@ interface ParticipantInput {
 interface Input {
   title: string
   gameType?: string | null
+  imageUrl?: string | null
   scheduledAt: Date
   rakeBasisPoints?: number
   participants: ParticipantInput[]
@@ -35,6 +36,7 @@ export default class CreateMatch extends AdminUseCase<Input, void> {
       creatorId: actor.id,
       title: input.title,
       gameType: input.gameType,
+      imageUrl: input.imageUrl,
       scheduledAt: input.scheduledAt,
       rakeBasisPoints: input.rakeBasisPoints,
       participants: input.participants,
