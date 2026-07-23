@@ -158,7 +158,7 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar conforme necessário):
 `INSUFFICIENT_BALANCE`, `INVALID_AMOUNT`, `INVALID_STAKE`, `BETTING_CLOSED`, `MATCH_NOT_OPEN`,
 `MATCH_ALREADY_SETTLED`, `NOT_A_PARTICIPANT`, `MATCH_NOT_FOUND`, `BET_NOT_FOUND`, `WITHDRAWAL_TOO_LARGE`,
-`PAYMENT_NOT_FOUND`, `NOT_ADMIN`.
+`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`.
 
 ## Contextos
 
@@ -167,8 +167,12 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
   `Payment` (depósito/saque). Porta `PaymentGateway` (adapter manual/admin-confirmado). Endpoints admin
   para confirmar depósito e efetivar saque.
-- **match** — `Match` (2+ participantes; status `open → locked → settled` / `cancelled`), `MatchParticipant`.
-  Métodos: `lockBetting()`, `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo).
+- **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; status
+  `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
+  `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). **Criar partida é
+  admin-only** (`CreateMatch` estende `AdminUseCase`). O **auto-lock** trava as apostas sozinho quando
+  chega o `scheduledAt`: `CreateMatch` agenda via porta `MatchLockQueue` (job BullMQ **atrasado**) e o
+  worker roda `AutoLockMatch` (system, não-admin, idempotente).
 - **betting** — `Bet` (`open/won/lost/refunded`), `PayoutCalculator` (parimutuel), `SettleMatch`
   (enfileirado → worker), stats.
 
@@ -218,6 +222,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   facade do `betting`, aplicando o `PayoutCalculator` e persistindo tudo numa transação.
 - Os literais da fila precisam bater entre backend (produtor) e worker (consumidor). O worker **não** usa
   Groq/Playwright.
+- Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
+  (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
+  `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
 
 ## apps/web (Next.js SPA)
 
