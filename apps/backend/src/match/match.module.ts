@@ -4,9 +4,10 @@ import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { MatchController } from './match.controller'
 import { PrismaMatchRepository } from './prisma-match-repository'
+import { QueueModule } from '../betting/queue.module'
 
 @Module({
-  imports: [DbModule, AuthModule],
+  imports: [DbModule, AuthModule, QueueModule],
   controllers: [MatchController],
   providers: [PrismaMatchRepository],
 })

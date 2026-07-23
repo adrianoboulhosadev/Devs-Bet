@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module'
 import { UserModule } from './user/user.module'
 import { WalletModule } from './wallet/wallet.module'
 import { MatchModule } from './match/match.module'
+import { BettingModule } from './betting/betting.module'
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { MatchModule } from './match/match.module'
     UserModule,
     WalletModule,
     MatchModule,
+    BettingModule,
   ],
 })
 export class AppModule {}

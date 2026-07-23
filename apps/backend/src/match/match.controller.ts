@@ -10,13 +10,17 @@ import { AuthenticatedActor } from 'shared'
 import { PrismaMatchRepository } from './prisma-match-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
+import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
 
 // Protected by the AuthMiddleware (see match.module). Creating/reading is open to
 // any authenticated user; the lifecycle transitions (lock/settle/cancel) are
 // admin-only (AdminGuard at the edge + AdminUseCase in the domain).
 @Controller('match')
 export class MatchController {
-  constructor(private readonly matchRepository: PrismaMatchRepository) {}
+  constructor(
+    private readonly matchRepository: PrismaMatchRepository,
+    private readonly settlementQueue: BullMqMatchSettlementQueue,
+  ) {}
 
   private facade(): MatchFacade {
     return new MatchFacade(this.matchRepository, this.matchRepository)
@@ -58,6 +62,13 @@ export class MatchController {
     @authenticatedUser() user: UserDTO,
   ) {
     await this.facade().declareResult(id, input, this.actor(user))
+    // Cross-context: enqueue the parimutuel payout of the bets (worker settles).
+    const match = await this.facade().getMatch(id)
+    await this.settlementQueue.enqueue({
+      matchId: id,
+      winnerParticipantId: match.winnerParticipantId,
+      rakeBasisPoints: match.rakeBasisPoints,
+    })
   }
 
   @Post(':id/cancel')
@@ -65,5 +76,12 @@ export class MatchController {
   @UseGuards(AdminGuard)
   async cancel(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
     await this.facade().cancelMatch(id, this.actor(user))
+    // Cross-context: enqueue a refund of every open bet (worker refunds).
+    await this.settlementQueue.enqueue({
+      matchId: id,
+      winnerParticipantId: null,
+      rakeBasisPoints: 0,
+      cancelled: true,
+    })
   }
 }
