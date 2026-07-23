@@ -14,21 +14,36 @@ const user: AuthenticatedActor = { id: 'user-1', role: 'user' }
 
 async function setupWithMatch() {
   const repository = new MatchRepositoryInMemory()
-  await new CreateMatch(repository).execute({
-    creatorId: 'user-1',
-    title: 'Fabio vs Bruno',
-    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
-  })
+  await new CreateMatch(repository).execute(
+    {
+      title: 'Fabio vs Bruno',
+      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    },
+    admin,
+  )
   const matchId = repository.matches[0].id
   return { repository, matchId }
 }
 
-test('any user can create a match; it lands in the lobby', async () => {
+test('admin creates a match; it lands in the lobby', async () => {
   const { repository } = await setupWithMatch()
   const matches = await new ListMatchesQuery(repository).execute()
   expect(matches).toHaveLength(1)
   expect(matches[0].status).toBe('open')
   expect(matches[0].participants).toHaveLength(2)
+})
+
+test('a non-admin cannot create a match (NOT_ADMIN)', async () => {
+  const repository = new MatchRepositoryInMemory()
+  const create = new CreateMatch(repository).execute(
+    {
+      title: 'Fabio vs Bruno',
+      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    },
+    user,
+  )
+  await expect(create).rejects.toBeInstanceOf(AccessDeniedError)
+  await expect(create).rejects.toMatchObject({ code: Errors.NOT_ADMIN })
 })
 
 test('admin locks, declares the winner; the flow reaches settled', async () => {

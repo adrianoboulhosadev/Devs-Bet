@@ -1,4 +1,4 @@
-import { UseCase } from 'shared'
+import { AdminUseCase, AuthenticatedActor } from 'shared'
 import { Match } from '../model'
 import { MatchRepository } from '../providers'
 
@@ -8,7 +8,6 @@ interface ParticipantInput {
 }
 
 interface Input {
-  creatorId: string
   title: string
   gameType?: string | null
   rakeBasisPoints?: number
@@ -16,16 +15,19 @@ interface Input {
 }
 
 /**
- * Creates a match. All the rules (title required, at least two participants,
- * valid rake) live in the Match/MatchParticipant constructors — the use case
- * only builds the aggregate and persists it.
+ * Admin creates a match. All the rules (title required, at least two
+ * participants, valid rake) live in the Match/MatchParticipant constructors —
+ * the use case only builds the aggregate (creator = the admin actor) and
+ * persists it. Admin-only (AdminUseCase).
  */
-export default class CreateMatch implements UseCase<Input, void> {
-  constructor(private readonly matchRepository: MatchRepository) {}
+export default class CreateMatch extends AdminUseCase<Input, void> {
+  constructor(private readonly matchRepository: MatchRepository) {
+    super()
+  }
 
-  async execute(input: Input): Promise<void> {
+  protected async executeAsAdmin(input: Input, actor: AuthenticatedActor): Promise<void> {
     const match = new Match({
-      creatorId: input.creatorId,
+      creatorId: actor.id,
       title: input.title,
       gameType: input.gameType,
       rakeBasisPoints: input.rakeBasisPoints,
