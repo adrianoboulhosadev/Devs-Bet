@@ -8,6 +8,8 @@ export interface CreateMatchParticipantInput {
 export interface CreateMatchInput {
   title: string
   gameType?: string | null
+  // Optional; the URL returned by the upload endpoint (e.g. /uploads/matchs/x.png).
+  imageUrl?: string | null
   scheduledAt: string
   rakeBasisPoints?: number
   participants: CreateMatchParticipantInput[]
