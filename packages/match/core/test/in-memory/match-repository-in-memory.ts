@@ -12,6 +12,7 @@ interface MatchRow {
   creatorId: string
   title: string
   gameType: string | null
+  scheduledAt: Date
   status: MatchStatus
   rakeBasisPoints: number
   winnerParticipantId: string | null
@@ -30,6 +31,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       creatorId: row.creatorId,
       title: row.title,
       gameType: row.gameType,
+      scheduledAt: row.scheduledAt,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
       winnerParticipantId: row.winnerParticipantId,
@@ -57,6 +59,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       creatorId: match.creatorId,
       title: match.title,
       gameType: match.gameType,
+      scheduledAt: match.scheduledAt,
       status: match.status,
       rakeBasisPoints: match.rakeBasisPoints,
       winnerParticipantId: match.winnerParticipantId,
@@ -104,6 +107,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
       winnerParticipantId: row.winnerParticipantId,
+      scheduledAt: row.scheduledAt,
       participants: this.participants
         .filter((participant) => participant.matchId === row.id)
         .map((participant) => ({
