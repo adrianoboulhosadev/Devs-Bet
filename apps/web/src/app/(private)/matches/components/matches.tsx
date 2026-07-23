@@ -6,6 +6,7 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatDateTime } from '@/lib/date'
+import { mediaUrl } from '@/lib/media'
 import { useMatches } from '../hooks/use-matches'
 
 export function Matches() {
@@ -23,6 +24,7 @@ export function Matches() {
           <Field label="Título" required {...form.register('title')} />
           <Field label="Tipo (ex.: luta, FIFA)" {...form.register('gameType')} />
           <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
+          <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
           <div className="space-y-2">
             <span className="text-sm font-medium">Participantes</span>
@@ -63,14 +65,24 @@ export function Matches() {
               <li key={match.id}>
                 <Link
                   href={`/matches/${match.id}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400"
                 >
-                  <div>
-                    <p className="font-medium">{match.title}</p>
-                    <p className="text-sm text-slate-500">
-                      {match.participants.map((participant) => participant.displayName).join(' × ')}
-                    </p>
-                    <p className="text-xs text-slate-400">{formatDateTime(match.scheduledAt)}</p>
+                  <div className="flex items-center gap-3">
+                    {match.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={mediaUrl(match.imageUrl)}
+                        alt={match.title}
+                        className="h-12 w-12 rounded-md object-cover"
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium">{match.title}</p>
+                      <p className="text-sm text-slate-500">
+                        {match.participants.map((participant) => participant.displayName).join(' × ')}
+                      </p>
+                      <p className="text-xs text-slate-400">{formatDateTime(match.scheduledAt)}</p>
+                    </div>
                   </div>
                   <StatusBadge status={match.status} />
                 </Link>

@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
+import { mediaUrl } from '@/lib/media'
 import { useMatchDetail } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
@@ -41,6 +42,15 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         </div>
         <StatusBadge status={match.status} />
       </div>
+
+      {match.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mediaUrl(match.imageUrl)}
+          alt={match.title}
+          className="max-h-64 w-full rounded-lg object-cover"
+        />
+      )}
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
