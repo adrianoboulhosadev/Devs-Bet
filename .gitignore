@@ -8,3 +8,6 @@ generated/
 .env.*
 !.env.example
 *.tsbuildinfo
+
+# uploaded files (local static storage)
+apps/backend/uploads/
