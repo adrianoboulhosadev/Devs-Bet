@@ -17,6 +17,7 @@ export default class CreateMatchController {
       {
         title: input.title,
         gameType: input.gameType,
+        imageUrl: input.imageUrl,
         scheduledAt: new Date(input.scheduledAt),
         rakeBasisPoints: input.rakeBasisPoints,
         participants: input.participants,
