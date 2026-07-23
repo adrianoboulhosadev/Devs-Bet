@@ -167,7 +167,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
   `Payment` (depósito/saque). Porta `PaymentGateway` (adapter manual/admin-confirmado). Endpoints admin
   para confirmar depósito e efetivar saque.
-- **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; status
+- **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
+  opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
   `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). **Criar partida é
   admin-only** (`CreateMatch` estende `AdminUseCase`). O **auto-lock** trava as apostas sozinho quando
@@ -225,6 +226,16 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
+
+## Uploads (armazenamento local, sem nuvem)
+
+- Arquivos ficam em **`apps/backend/uploads/<tema>/`** (ex.: `uploads/matchs`), servidos estáticos em
+  **`/uploads/**`** via `app.useStaticAssets` (o `main.ts` cria as subpastas no boot). A pasta é gitignored.
+- Upload é **admin-only**: `UploadController` (`POST /upload/matchs`, `AuthMiddleware` + `AdminGuard`,
+  `FileInterceptor` do multer com `diskStorage`, só `image/*`, limite de 5 MB) salva o arquivo com nome
+  `uuid.ext` e devolve `{ url: '/uploads/matchs/<arquivo>' }`. A entidade guarda esse caminho relativo
+  (`Match.imageUrl`); o front monta a URL absoluta com `lib/media.ts` (`mediaUrl`). Novo tema = nova
+  subpasta em `UPLOADS_SUBDIRS` + rota no controller.
 
 ## apps/web (Next.js SPA)
 
