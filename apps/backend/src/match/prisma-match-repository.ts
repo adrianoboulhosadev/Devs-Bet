@@ -76,6 +76,9 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
     await this.prisma.match.update({
       where: { id: match.id.value },
       data: {
+        title: match.title,
+        gameType: match.gameType,
+        scheduledAt: match.scheduledAt,
         status: match.status,
         winnerParticipantId: match.winnerParticipantId,
         lockedAt: match.lockedAt,

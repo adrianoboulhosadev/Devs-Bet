@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import {
   CreateMatchInput,
+  UpdateMatchInput,
   DeclareResultInput,
   MatchDTO,
   MatchFacade,
@@ -48,6 +49,17 @@ export class MatchController {
   @UseGuards(AdminGuard)
   async create(@Body() input: CreateMatchInput, @authenticatedUser() user: UserDTO) {
     await this.facade().createMatch(input, this.actor(user))
+  }
+
+  @Patch(':id')
+  @HttpCode(204)
+  @UseGuards(AdminGuard)
+  async update(
+    @Param('id') id: string,
+    @Body() input: UpdateMatchInput,
+    @authenticatedUser() user: UserDTO,
+  ) {
+    await this.facade().updateMatch(id, input, this.actor(user))
   }
 
   @Post(':id/lock')
