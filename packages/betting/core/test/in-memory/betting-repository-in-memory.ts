@@ -28,6 +28,10 @@ export default class BettingRepositoryInMemory
     return this.bets.filter((bet) => bet.marketId === marketId && bet.status === 'open')
   }
 
+  async findSettledBets(): Promise<Bet[]> {
+    return this.bets.filter((bet) => bet.status !== 'open')
+  }
+
   async applySettlement(_bets: Bet[]): Promise<void> {
     // no-op: the entities are already mutated in place (same references).
   }

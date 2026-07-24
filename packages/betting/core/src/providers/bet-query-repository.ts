@@ -6,4 +6,7 @@ export interface BetQueryRepository {
   listByBettorQuery(bettorId: string): Promise<BetDTO[]>
   // Open bets as entities, for the live-odds read model (OddsCalculator).
   findOpenBetsByMarket(marketId: string): Promise<Bet[]>
+  // Settled bets (won/lost/refunded) across every market, for the leaderboard
+  // read model (LeaderboardCalculator).
+  findSettledBets(): Promise<Bet[]>
 }
