@@ -31,20 +31,26 @@ export class PrismaBetQueryRepository implements BetQueryRepository {
 
   async findOpenBetsByMarket(marketId: string): Promise<Bet[]> {
     const rows = await this.prisma.bet.findMany({ where: { marketId, status: 'open' } })
-    return rows.map(
-      (row) =>
-        new Bet({
-          id: row.id,
-          marketType: row.marketType as BetMarketType,
-          marketId: row.marketId,
-          bettorId: row.bettorId,
-          selectionId: row.selectionId,
-          stake: row.stake,
-          status: row.status as BetStatus,
-          payout: row.payout,
-          settledAt: row.settledAt,
-        }),
-    )
+    return rows.map((row) => this.toEntity(row))
+  }
+
+  async findSettledBets(): Promise<Bet[]> {
+    const rows = await this.prisma.bet.findMany({ where: { status: { not: 'open' } } })
+    return rows.map((row) => this.toEntity(row))
+  }
+
+  private toEntity(row: BetRow): Bet {
+    return new Bet({
+      id: row.id,
+      marketType: row.marketType as BetMarketType,
+      marketId: row.marketId,
+      bettorId: row.bettorId,
+      selectionId: row.selectionId,
+      stake: row.stake,
+      status: row.status as BetStatus,
+      payout: row.payout,
+      settledAt: row.settledAt,
+    })
   }
 
   private toDTO(row: BetRow): BetDTO {

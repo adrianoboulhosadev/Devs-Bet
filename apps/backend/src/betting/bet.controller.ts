@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common'
-import { PlaceBetInput, BetDTO, MarketOddsDTO, BettingFacade } from '@betting/adapters'
+import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common'
+import { PlaceBetInput, BetDTO, MarketOddsDTO, LeaderboardEntryDTO, BettingFacade } from '@betting/adapters'
 import { UserDTO } from '@auth/adapters'
 import { MATCH_DRAW_SELECTION_ID } from '@match/adapters'
 import { NotFoundError, Errors } from 'shared'
@@ -60,6 +60,12 @@ export class BetController {
   @Get('mine')
   mine(@authenticatedUser() user: UserDTO): Promise<BetDTO[]> {
     return this.facade().listMyBets(user.id)
+  }
+
+  @Get('leaderboard')
+  leaderboard(@Query('limit') limit?: string): Promise<LeaderboardEntryDTO[]> {
+    const parsed = Number(limit)
+    return this.facade().getLeaderboard(Number.isInteger(parsed) && parsed > 0 ? parsed : 10)
   }
 
   @Get('match/:id')
