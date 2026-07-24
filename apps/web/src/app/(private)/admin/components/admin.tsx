@@ -4,6 +4,7 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { mediaUrl } from '@/lib/media'
 import { useAdmin } from '../hooks/use-admin'
 
 export function Admin() {
@@ -35,6 +36,16 @@ export function Admin() {
                 <p className="text-slate-500">
                   ref {payment.referenceCode} · usuário {payment.userId.slice(0, 8)}
                 </p>
+                {payment.receiptUrl && (
+                  <a
+                    href={mediaUrl(payment.receiptUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 underline"
+                  >
+                    Ver comprovante
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={payment.status} />

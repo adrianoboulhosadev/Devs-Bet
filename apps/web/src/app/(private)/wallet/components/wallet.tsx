@@ -14,9 +14,15 @@ export function Wallet() {
     instructions,
     loading,
     error,
+    depositStep,
+    depositAmountCents,
+    qrDataUrl,
     depositForm,
+    receiptForm,
     withdrawForm,
-    onDeposit,
+    onChooseAmount,
+    onBackToAmount,
+    onConfirmDeposit,
     onWithdraw,
     depositing,
     withdrawing,
@@ -46,32 +52,69 @@ export function Wallet() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
-        <form onSubmit={onDeposit} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Depositar via Pix</h2>
-          <Field
-            label="Valor (R$)"
-            type="number"
-            step="0.01"
-            min="0"
-            required
-            {...depositForm.register('amount')}
-          />
-          <Button type="submit" disabled={depositing} className="w-full">
-            {depositing ? 'Abrindo…' : 'Gerar depósito'}
-          </Button>
-          {instructions && (
-            <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">
-              <p className="font-medium text-slate-900">Pague o Pix para:</p>
-              <p>
-                {instructions.beneficiaryName} — {instructions.pixKeyType}: {instructions.pixKey}
+
+          {depositStep === 'amount' ? (
+            <form onSubmit={onChooseAmount} className="space-y-3">
+              <p className="text-sm text-slate-500">Quanto você deseja adicionar à carteira?</p>
+              <Field
+                label="Valor (R$)"
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                {...depositForm.register('amount')}
+              />
+              <Button type="submit" className="w-full">
+                Continuar para pagamento
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={onConfirmDeposit} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-600">Valor: {formatBRL(depositAmountCents)}</p>
+                <button
+                  type="button"
+                  onClick={onBackToAmount}
+                  className="text-sm text-slate-500 underline"
+                >
+                  Voltar
+                </button>
+              </div>
+
+              {qrDataUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={qrDataUrl} alt="QR Code Pix" className="mx-auto h-48 w-48" />
+              )}
+
+              {instructions && (
+                <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+                  <p className="font-medium text-slate-900">Ou copie a chave:</p>
+                  <p>
+                    {instructions.beneficiaryName} — {instructions.pixKeyType}: {instructions.pixKey}
+                  </p>
+                </div>
+              )}
+
+              <Field
+                label="Comprovante de pagamento (imagem ou PDF)"
+                type="file"
+                accept="image/*,application/pdf"
+                required
+                {...receiptForm.register('receipt')}
+              />
+              <p className="text-xs text-slate-500">
+                O envio do comprovante é obrigatório para concluir o depósito. O saldo entra após o
+                administrador conferir o recebimento.
               </p>
-              <p className="mt-1 text-xs">
-                Use o código de referência do depósito pendente abaixo. O saldo entra após o
-                administrador confirmar o recebimento.
-              </p>
-            </div>
+
+              <Button type="submit" disabled={depositing} className="w-full">
+                {depositing ? 'Enviando…' : 'Confirmar e enviar comprovante'}
+              </Button>
+            </form>
           )}
-        </form>
+        </div>
 
         <form onSubmit={onWithdraw} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Solicitar saque</h2>
