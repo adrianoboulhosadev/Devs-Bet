@@ -29,6 +29,9 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // betting
   [Errors.BETTING_CLOSED]: 'As apostas para esta partida estão encerradas.',
   [Errors.BET_NOT_FOUND]: 'Aposta não encontrada.',
+  [Errors.INVALID_COMBO_LEGS]: 'O bilhete precisa de pelo menos 2 seleções.',
+  [Errors.DUPLICATE_COMBO_MARKET]: 'Você já tem uma seleção desta partida/torneio no bilhete.',
+  [Errors.INVALID_COMBO_ODD]: 'Não foi possível calcular a odd desta seleção.',
   // tournament
   [Errors.TOURNAMENT_NOT_FOUND]: 'Torneio não encontrado.',
   [Errors.INVALID_TOURNAMENT_SIZE]: 'O tamanho do torneio deve ser 2, 4, 8, 16 ou 32.',

@@ -12,6 +12,7 @@ const STYLES: Record<string, string> = {
   won: 'bg-emerald-100 text-emerald-800',
   lost: 'bg-red-100 text-red-700',
   refunded: 'bg-slate-200 text-slate-700',
+  void: 'bg-slate-200 text-slate-700',
 }
 
 const LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ const LABELS: Record<string, string> = {
   won: 'Ganhou',
   lost: 'Perdeu',
   refunded: 'Estornada',
+  void: 'Anulada',
 }
 
 /** Small colored pill for a match/payment/bet status. */
