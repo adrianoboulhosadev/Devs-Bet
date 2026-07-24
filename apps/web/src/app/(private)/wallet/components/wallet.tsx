@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
 import { useWallet } from '../hooks/use-wallet'
+import { DepositLimits } from './deposit-limits'
 
 export function Wallet() {
   const {
@@ -134,6 +135,8 @@ export function Wallet() {
           </p>
         </form>
       </div>
+
+      <DepositLimits />
 
       <div className="rounded-lg border border-slate-200 bg-white">
         <h2 className="border-b border-slate-100 px-5 py-3 font-medium">Histórico</h2>

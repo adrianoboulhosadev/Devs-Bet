@@ -19,6 +19,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.WITHDRAWAL_TOO_LARGE]: 'Valor de saque acima do disponível.',
   [Errors.PAYMENT_NOT_FOUND]: 'Pagamento não encontrado.',
   [Errors.PAYMENT_ALREADY_SETTLED]: 'Este pagamento já foi processado.',
+  [Errors.DEPOSIT_LIMIT_EXCEEDED]: 'Esse depósito ultrapassa o limite que você definiu.',
   // match
   [Errors.MATCH_NOT_FOUND]: 'Partida não encontrada.',
   [Errors.MATCH_NOT_OPEN]: 'A partida não está aberta.',
