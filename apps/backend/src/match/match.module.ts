@@ -12,6 +12,9 @@ import { CategoryModule } from '../category/category.module'
   imports: [DbModule, AuthModule, QueueModule, CategoryModule],
   controllers: [MatchController],
   providers: [PrismaMatchRepository, BullMqMatchLockQueue],
+  // Exported so the tournament module can create/settle its bracket matches
+  // (cross-context orchestration, via the app layer).
+  exports: [PrismaMatchRepository, BullMqMatchLockQueue],
 })
 export class MatchModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

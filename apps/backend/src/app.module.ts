@@ -7,6 +7,7 @@ import { WalletModule } from './wallet/wallet.module'
 import { MatchModule } from './match/match.module'
 import { BettingModule } from './betting/betting.module'
 import { CategoryModule } from './category/category.module'
+import { TournamentModule } from './tournament/tournament.module'
 import { UploadModule } from './upload/upload.module'
 
 @Module({
@@ -19,6 +20,7 @@ import { UploadModule } from './upload/upload.module'
     MatchModule,
     BettingModule,
     CategoryModule,
+    TournamentModule,
     UploadModule,
   ],
 })
