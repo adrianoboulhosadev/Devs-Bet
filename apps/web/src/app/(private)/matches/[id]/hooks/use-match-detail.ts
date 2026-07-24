@@ -12,6 +12,10 @@ import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
 
+// Betting selection id for "the match ends in a draw" (must match the sentinel
+// in packages/match/core's Match model and the backend's bet.controller).
+export const MATCH_DRAW_SELECTION_ID = 'draw'
+
 interface BetFields {
   participantId: string
   amount: string // reais

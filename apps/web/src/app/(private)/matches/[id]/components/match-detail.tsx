@@ -8,7 +8,7 @@ import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { CategoryPicker } from '@/components/category-picker'
-import { useMatchDetail } from '../hooks/use-match-detail'
+import { useMatchDetail, MATCH_DRAW_SELECTION_ID } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
   const {
@@ -37,8 +37,15 @@ export function MatchDetail({ matchId }: { matchId: string }) {
 
   if (loading || !match) return <Loading />
 
-  const poolOf = (participantId: string) =>
-    odds?.entries.find((entry) => entry.selectionId === participantId)
+  // Betting selections for a match: its participants plus the draw pseudo-selection.
+  const selections = [
+    ...match.participants.map((participant) => ({ id: participant.id, label: participant.displayName })),
+    { id: MATCH_DRAW_SELECTION_ID, label: 'Empate' },
+  ]
+  const selectionLabel = (selectionId: string) =>
+    selections.find((selection) => selection.id === selectionId)?.label ?? '—'
+  const poolOf = (selectionId: string) =>
+    odds?.entries.find((entry) => entry.selectionId === selectionId)
   const winnerName = match.participants.find((p) => p.id === match.winnerParticipantId)?.displayName
 
   return (
@@ -81,11 +88,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
           <span className="text-sm text-slate-500">Pool total: {formatBRL(odds?.totalPool ?? 0)}</span>
         </div>
         <ul className="divide-y divide-slate-100">
-          {match.participants.map((participant) => {
-            const line = poolOf(participant.id)
+          {selections.map((selection) => {
+            const line = poolOf(selection.id)
             return (
-              <li key={participant.id} className="flex items-center justify-between px-5 py-3">
-                <span className="font-medium">{participant.displayName}</span>
+              <li key={selection.id} className="flex items-center justify-between px-5 py-3">
+                <span className="font-medium">{selection.label}</span>
                 <span className="text-sm text-slate-500">
                   {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
                 </span>
@@ -99,16 +106,16 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         <form onSubmit={onPlaceBet} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Apostar</h2>
           <label className="block space-y-1">
-            <span className="text-sm font-medium">Participante</span>
+            <span className="text-sm font-medium">Resultado</span>
             <select
               required
               className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
               {...betForm.register('participantId')}
             >
               <option value="">Selecione…</option>
-              {match.participants.map((participant) => (
-                <option key={participant.id} value={participant.id}>
-                  {participant.displayName}
+              {selections.map((selection) => (
+                <option key={selection.id} value={selection.id}>
+                  {selection.label}
                 </option>
               ))}
             </select>
@@ -179,11 +186,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         ) : (
           <ul className="divide-y divide-slate-100">
             {book.map((bet) => {
-              const on = match.participants.find((p) => p.id === bet.selectionId)?.displayName
+              const on = selectionLabel(bet.selectionId)
               return (
                 <li key={bet.id} className="flex items-center justify-between px-5 py-3 text-sm">
                   <span>
-                    {formatBRL(bet.stake)} em <span className="font-medium">{on ?? '—'}</span>
+                    {formatBRL(bet.stake)} em <span className="font-medium">{on}</span>
                   </span>
                   <div className="flex items-center gap-3">
                     {bet.status !== 'open' && <span>{formatBRL(bet.payout)}</span>}
