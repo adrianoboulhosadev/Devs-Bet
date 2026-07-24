@@ -2,9 +2,11 @@ import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common'
 import {
   DepositInput,
   WithdrawalInput,
+  SetDepositLimitInput,
   WalletDTO,
   PaymentDTO,
   DepositInstructions,
+  DepositLimitDTO,
   WalletFacade,
 } from '@wallet/adapters'
 import { UserDTO } from '@auth/adapters'
@@ -21,13 +23,14 @@ export class WalletController {
     private readonly paymentGateway: ManualPaymentGateway,
   ) {}
 
-  // PrismaWalletRepository serves write + both query ports.
+  // PrismaWalletRepository serves write + every query port (payments + deposit limits).
   private facade(): WalletFacade {
     return new WalletFacade(
       this.walletRepository,
       this.walletRepository,
       this.walletRepository,
       this.paymentGateway,
+      this.walletRepository,
     )
   }
 
@@ -56,5 +59,16 @@ export class WalletController {
   @HttpCode(201)
   async withdraw(@Body() input: WithdrawalInput, @authenticatedUser() user: UserDTO) {
     await this.facade().requestWithdrawal(input, user.id)
+  }
+
+  @Get('deposit-limits')
+  depositLimits(@authenticatedUser() user: UserDTO): Promise<DepositLimitDTO[]> {
+    return this.facade().listMyDepositLimits(user.id)
+  }
+
+  @Post('deposit-limits')
+  @HttpCode(201)
+  async setDepositLimit(@Body() input: SetDepositLimitInput, @authenticatedUser() user: UserDTO) {
+    await this.facade().setDepositLimit(input, user.id)
   }
 }

@@ -3,9 +3,13 @@ import {
   WalletRepository,
   WalletQueryRepository,
   PaymentQueryRepository,
+  DepositLimitQueryRepository,
   Wallet,
   LedgerEntry,
   Payment,
+  DepositLimit,
+  DepositLimitPeriod,
+  DepositLimitDTO,
   WalletDTO,
   PaymentDTO,
   PaymentDirection,
@@ -15,7 +19,7 @@ import { PrismaService } from '../db/prisma.service'
 
 @Injectable()
 export class PrismaWalletRepository
-  implements WalletRepository, WalletQueryRepository, PaymentQueryRepository
+  implements WalletRepository, WalletQueryRepository, PaymentQueryRepository, DepositLimitQueryRepository
 {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -150,6 +154,77 @@ export class PrismaWalletRepository
       ? [this.prisma.wallet.upsert(this.walletUpsert(wallet)), this.prisma.payment.update(this.paymentUpdate(payment))]
       : [this.prisma.payment.update(this.paymentUpdate(payment))]
     await this.prisma.$transaction(operations)
+  }
+
+  private reconstituteDepositLimit(row: {
+    id: string
+    userId: string
+    period: string
+    amount: number
+    pendingAmount: number | null
+    effectiveAt: Date | null
+  }): DepositLimit {
+    return new DepositLimit({
+      id: row.id,
+      userId: row.userId,
+      period: row.period as DepositLimitPeriod,
+      amount: row.amount,
+      pendingAmount: row.pendingAmount,
+      effectiveAt: row.effectiveAt,
+    })
+  }
+
+  async findDepositLimits(userId: string): Promise<DepositLimit[]> {
+    const rows = await this.prisma.depositLimit.findMany({ where: { userId } })
+    return rows.map((row) => this.reconstituteDepositLimit(row))
+  }
+
+  async findDepositLimit(userId: string, period: DepositLimitPeriod): Promise<DepositLimit | null> {
+    const row = await this.prisma.depositLimit.findUnique({ where: { userId_period: { userId, period } } })
+    return row ? this.reconstituteDepositLimit(row) : null
+  }
+
+  async saveDepositLimit(limit: DepositLimit): Promise<void> {
+    await this.prisma.depositLimit.upsert({
+      where: { userId_period: { userId: limit.userId, period: limit.period } },
+      create: {
+        id: limit.id.value,
+        userId: limit.userId,
+        period: limit.period,
+        amount: limit.amount,
+        pendingAmount: limit.pendingAmount,
+        effectiveAt: limit.effectiveAt,
+      },
+      update: {
+        amount: limit.amount,
+        pendingAmount: limit.pendingAmount,
+        effectiveAt: limit.effectiveAt,
+      },
+    })
+  }
+
+  async sumDepositsSince(userId: string, since: Date): Promise<number> {
+    const result = await this.prisma.payment.aggregate({
+      where: { userId, direction: 'deposit', status: { not: 'rejected' }, createdAt: { gte: since } },
+      _sum: { amount: true },
+    })
+    return result._sum.amount ?? 0
+  }
+
+  async listDepositLimitsByUserQuery(userId: string): Promise<DepositLimitDTO[]> {
+    const rows = await this.prisma.depositLimit.findMany({ where: { userId } })
+    const now = Date.now()
+    return rows.map((row) => {
+      // Read-side resolves a due pending increase inline — no domain logic
+      // needed here, same numbers DepositLimit.effectiveAmount() would produce.
+      const due = row.pendingAmount !== null && row.effectiveAt !== null && row.effectiveAt.getTime() <= now
+      return {
+        period: row.period as DepositLimitPeriod,
+        amount: due ? row.pendingAmount! : row.amount,
+        pendingAmount: due ? null : row.pendingAmount,
+        effectiveAt: due ? null : row.effectiveAt,
+      }
+    })
   }
 
   async findByUserIdQuery(userId: string): Promise<WalletDTO | null> {
