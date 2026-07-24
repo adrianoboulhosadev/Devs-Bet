@@ -1,39 +1,44 @@
 import { UseCase, ConflictError, ValidationError, Errors } from 'shared'
-import { Bet } from '../model'
+import { Bet, BetMarketType } from '../model'
 import { BettingPlacementRepository } from '../providers'
 
 interface Input {
-  matchId: string
+  marketType: BetMarketType
+  marketId: string
   bettorId: string
-  participantId: string
+  selectionId: string
   stake: number // cents
-  // Resolved from the match context by the caller (backend) — kept as plain data
-  // so betting does not import the match context.
-  matchStatus: string
-  participantIds: string[]
+  // Resolved from the owning context by the caller (backend) — kept as plain data
+  // so betting does not import the match/tournament contexts. `marketOpen` says
+  // whether the market currently accepts bets (match open / outright before the
+  // tournament starts); `selectionIds` are its valid selections.
+  marketOpen: boolean
+  selectionIds: string[]
 }
 
 /**
- * Places a bet on a participant. Betting is only allowed while the match is open
- * and on a real participant; the stake must be positive (Bet guards it). The
- * atomic reservation of the stake (wallet.hold) happens in the placement repo's
- * adapter, which also raises INSUFFICIENT_BALANCE.
+ * Places a bet on a selection of a market (a match participant or a tournament's
+ * champion). Betting is only allowed while the market is open and on a real
+ * selection; the stake must be positive (Bet guards it). The atomic reservation of
+ * the stake (wallet.hold) happens in the placement repo's adapter, which also
+ * raises INSUFFICIENT_BALANCE.
  */
 export default class PlaceBet implements UseCase<Input, void> {
   constructor(private readonly placementRepository: BettingPlacementRepository) {}
 
   async execute(input: Input): Promise<void> {
-    if (input.matchStatus !== 'open') {
-      ConflictError.throwError(Errors.BETTING_CLOSED, input.matchStatus)
+    if (!input.marketOpen) {
+      ConflictError.throwError(Errors.BETTING_CLOSED, input.marketId)
     }
-    if (!input.participantIds.includes(input.participantId)) {
-      ValidationError.throwError(Errors.NOT_A_PARTICIPANT, input.participantId)
+    if (!input.selectionIds.includes(input.selectionId)) {
+      ValidationError.throwError(Errors.NOT_A_PARTICIPANT, input.selectionId)
     }
 
     const bet = new Bet({
-      matchId: input.matchId,
+      marketType: input.marketType,
+      marketId: input.marketId,
       bettorId: input.bettorId,
-      participantId: input.participantId,
+      selectionId: input.selectionId,
       stake: input.stake,
     })
 

@@ -10,8 +10,9 @@ export interface BetOutcome {
 
 /**
  * Parimutuel payout (pure, static). The odds come from the distribution of the
- * money, not from a bookmaker:
- *  - pool(participant) = Σ stakes on that participant; total = Σ all stakes.
+ * money, not from a bookmaker — the same math for any market (match winner or
+ * tournament champion), grouping by the bet's SELECTION:
+ *  - pool(selection) = Σ stakes on that selection; total = Σ all stakes.
  *  - distributable = total − rake (rake = total × rakeBasisPoints / 10000).
  *  - a winning bet `i` gets floor(stake_i / pool(winner) × distributable) — so the
  *    winner's implied odd is distributable / pool(winner): the smaller the pool,
@@ -22,20 +23,20 @@ export interface BetOutcome {
 export class PayoutCalculator {
   static calculate(
     bets: Bet[],
-    winnerParticipantId: string | null,
+    winningSelectionId: string | null,
     rakeBasisPoints = 0,
   ): BetOutcome[] {
     if (bets.length === 0) return []
 
     const total = bets.reduce((sum, bet) => sum + bet.stake.cents, 0)
-    const winnerPool = winnerParticipantId
+    const winnerPool = winningSelectionId
       ? bets
-          .filter((bet) => bet.participantId === winnerParticipantId)
+          .filter((bet) => bet.selectionId === winningSelectionId)
           .reduce((sum, bet) => sum + bet.stake.cents, 0)
       : 0
 
     // No winner declared, or nobody backed the winner: refund everyone.
-    if (!winnerParticipantId || winnerPool === 0) {
+    if (!winningSelectionId || winnerPool === 0) {
       return bets.map((bet) => ({ betId: bet.id.value, outcome: 'refunded', payout: bet.stake.cents }))
     }
 
@@ -43,7 +44,7 @@ export class PayoutCalculator {
     const distributable = total - rake
 
     return bets.map((bet) => {
-      if (bet.participantId !== winnerParticipantId) {
+      if (bet.selectionId !== winningSelectionId) {
         return { betId: bet.id.value, outcome: 'lost', payout: 0 }
       }
       const payout = Math.floor((bet.stake.cents * distributable) / winnerPool)

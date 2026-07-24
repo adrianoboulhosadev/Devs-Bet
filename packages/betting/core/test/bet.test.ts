@@ -2,12 +2,13 @@ import { Money, Errors, ValidationError, ConflictError } from 'shared'
 import { Bet } from '../src'
 
 function openBet(stake = 1000): Bet {
-  return new Bet({ matchId: 'm1', bettorId: 'u1', participantId: 'A', stake })
+  return new Bet({ marketId: 'm1', bettorId: 'u1', selectionId: 'A', stake })
 }
 
-test('a new bet is open with a positive stake', () => {
+test('a new bet is open with a positive stake (match market by default)', () => {
   const bet = openBet()
   expect(bet.status).toBe('open')
+  expect(bet.marketType).toBe('match')
   expect(bet.stake.cents).toBe(1000)
   expect(bet.payout.cents).toBe(0)
 })
@@ -20,6 +21,17 @@ test('rejects a zero stake with INVALID_STAKE', () => {
     expect(error).toBeInstanceOf(ValidationError)
     expect((error as ValidationError).code).toBe(Errors.INVALID_STAKE)
   }
+})
+
+test('carries the outright market type when set', () => {
+  const bet = new Bet({
+    marketType: 'tournament_outright',
+    marketId: 't1',
+    bettorId: 'u1',
+    selectionId: 'p1',
+    stake: 500,
+  })
+  expect(bet.marketType).toBe('tournament_outright')
 })
 
 test('settleAsWinner records the payout', () => {

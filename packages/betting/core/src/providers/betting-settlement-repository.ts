@@ -6,9 +6,9 @@ import { Bet } from '../model'
  * one `$transaction`, updates every bet and applies the matching wallet effect
  * (winner → release stake + credit winnings; loser → settle the hold; refunded →
  * release the hold) plus the ledger entries. The core computed the outcomes; the
- * adapter owns the atomicity and the wallet arithmetic.
+ * adapter owns the atomicity and the wallet arithmetic. Works for any market.
  */
 export interface BettingSettlementRepository {
-  findOpenBetsByMatch(matchId: string): Promise<Bet[]>
+  findOpenBetsByMarket(marketId: string): Promise<Bet[]>
   applySettlement(bets: Bet[]): Promise<void>
 }

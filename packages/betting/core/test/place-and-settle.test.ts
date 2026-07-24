@@ -1,51 +1,56 @@
-import { Errors, ConflictError, ValidationError } from 'shared'
-import { PlaceBet, SettleMatch, RefundMatch, ListBetsByMatchQuery } from '../src'
+import { ConflictError, Errors } from 'shared'
+import { PlaceBet, SettleMarket, RefundMarket, ListBetsByMarketQuery } from '../src'
 import { BettingRepositoryInMemory } from './in-memory'
 
-const OPEN = { matchStatus: 'open', participantIds: ['A', 'B'] }
+const OPEN_MATCH = {
+  marketType: 'match' as const,
+  marketOpen: true,
+  selectionIds: ['A', 'B'],
+}
 
 async function placeSome(repository: BettingRepositoryInMemory) {
   const place = new PlaceBet(repository)
-  await place.execute({ matchId: 'm1', bettorId: 'u1', participantId: 'A', stake: 1000, ...OPEN })
-  await place.execute({ matchId: 'm1', bettorId: 'u2', participantId: 'A', stake: 1000, ...OPEN })
-  await place.execute({ matchId: 'm1', bettorId: 'u3', participantId: 'B', stake: 1000, ...OPEN })
+  await place.execute({ marketId: 'm1', bettorId: 'u1', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
+  await place.execute({ marketId: 'm1', bettorId: 'u2', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
+  await place.execute({ marketId: 'm1', bettorId: 'u3', selectionId: 'B', stake: 1000, ...OPEN_MATCH })
 }
 
-test('places a bet on an open match', async () => {
+test('places a bet on an open market', async () => {
   const repository = new BettingRepositoryInMemory()
   await new PlaceBet(repository).execute({
-    matchId: 'm1',
+    marketId: 'm1',
     bettorId: 'u1',
-    participantId: 'A',
+    selectionId: 'A',
     stake: 1000,
-    ...OPEN,
+    ...OPEN_MATCH,
   })
   expect(repository.bets).toHaveLength(1)
 })
 
-test('cannot bet on a non-open match (BETTING_CLOSED)', async () => {
+test('cannot bet on a closed market (BETTING_CLOSED)', async () => {
   const repository = new BettingRepositoryInMemory()
   await expect(
     new PlaceBet(repository).execute({
-      matchId: 'm1',
+      marketType: 'match',
+      marketId: 'm1',
       bettorId: 'u1',
-      participantId: 'A',
+      selectionId: 'A',
       stake: 1000,
-      matchStatus: 'locked',
-      participantIds: ['A', 'B'],
+      marketOpen: false,
+      selectionIds: ['A', 'B'],
     }),
   ).rejects.toBeInstanceOf(ConflictError)
 })
 
-test('cannot bet on a non-participant (NOT_A_PARTICIPANT)', async () => {
+test('cannot bet on an invalid selection (NOT_A_PARTICIPANT)', async () => {
   const repository = new BettingRepositoryInMemory()
   await expect(
     new PlaceBet(repository).execute({
-      matchId: 'm1',
+      marketId: 'm1',
       bettorId: 'u1',
-      participantId: 'Z',
+      selectionId: 'Z',
       stake: 1000,
-      ...OPEN,
+      ...OPEN_MATCH,
     }),
   ).rejects.toMatchObject({ code: Errors.NOT_A_PARTICIPANT })
 })
@@ -54,11 +59,11 @@ test('settlement resolves winners and losers by the parimutuel share', async () 
   const repository = new BettingRepositoryInMemory()
   await placeSome(repository)
 
-  await new SettleMatch(repository).execute({ matchId: 'm1', winnerParticipantId: 'B', rakeBasisPoints: 0 })
+  await new SettleMarket(repository).execute({ marketId: 'm1', winningSelectionId: 'B', rakeBasisPoints: 0 })
 
-  const book = await new ListBetsByMatchQuery(repository).execute('m1')
-  const onB = book.find((bet) => bet.participantId === 'B')!
-  const onA = book.filter((bet) => bet.participantId === 'A')
+  const book = await new ListBetsByMarketQuery(repository).execute('m1')
+  const onB = book.find((bet) => bet.selectionId === 'B')!
+  const onA = book.filter((bet) => bet.selectionId === 'A')
   expect(onB.status).toBe('won')
   // single B backer takes the whole distributable pool of 3000
   expect(onB.payout).toBe(3000)
@@ -69,9 +74,31 @@ test('refund settles every open bet back to its stake', async () => {
   const repository = new BettingRepositoryInMemory()
   await placeSome(repository)
 
-  await new RefundMatch(repository).execute({ matchId: 'm1' })
+  await new RefundMarket(repository).execute({ marketId: 'm1' })
 
-  const book = await new ListBetsByMatchQuery(repository).execute('m1')
+  const book = await new ListBetsByMarketQuery(repository).execute('m1')
   expect(book.every((bet) => bet.status === 'refunded')).toBe(true)
   expect(book.every((bet) => bet.payout === 1000)).toBe(true)
+})
+
+test('an outright (tournament champion) market settles like any other market', async () => {
+  const repository = new BettingRepositoryInMemory()
+  const place = new PlaceBet(repository)
+  const OPEN_OUTRIGHT = {
+    marketType: 'tournament_outright' as const,
+    marketOpen: true,
+    selectionIds: ['p1', 'p2', 'p3'],
+  }
+  await place.execute({ marketId: 't1', bettorId: 'u1', selectionId: 'p1', stake: 1000, ...OPEN_OUTRIGHT })
+  await place.execute({ marketId: 't1', bettorId: 'u2', selectionId: 'p2', stake: 1000, ...OPEN_OUTRIGHT })
+  await place.execute({ marketId: 't1', bettorId: 'u3', selectionId: 'p2', stake: 1000, ...OPEN_OUTRIGHT })
+
+  // p1 is the champion (the underdog: single backer takes the whole pool).
+  await new SettleMarket(repository).execute({ marketId: 't1', winningSelectionId: 'p1', rakeBasisPoints: 0 })
+
+  const book = await new ListBetsByMarketQuery(repository).execute('t1')
+  const champion = book.find((bet) => bet.selectionId === 'p1')!
+  expect(champion.status).toBe('won')
+  expect(champion.payout).toBe(3000)
+  expect(book.filter((bet) => bet.selectionId === 'p2').every((bet) => bet.status === 'lost')).toBe(true)
 })

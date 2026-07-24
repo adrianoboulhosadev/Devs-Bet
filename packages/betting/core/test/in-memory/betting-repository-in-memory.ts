@@ -8,7 +8,7 @@ import {
 
 /**
  * Single in-memory store for the three betting ports. Stores the Bet ENTITIES, so
- * SettleMatch mutations (settleAsWinner/Loser/refund) are visible via the same
+ * SettleMarket mutations (settleAsWinner/Loser/refund) are visible via the same
  * references — `applySettlement` is then a no-op here (the real adapter persists
  * + moves wallets). Wallet effects are not modeled in this fake (that is the
  * worker adapter's job).
@@ -24,16 +24,16 @@ export default class BettingRepositoryInMemory
     this.createdAt.set(bet.id.value, new Date())
   }
 
-  async findOpenBetsByMatch(matchId: string): Promise<Bet[]> {
-    return this.bets.filter((bet) => bet.matchId === matchId && bet.status === 'open')
+  async findOpenBetsByMarket(marketId: string): Promise<Bet[]> {
+    return this.bets.filter((bet) => bet.marketId === marketId && bet.status === 'open')
   }
 
   async applySettlement(_bets: Bet[]): Promise<void> {
     // no-op: the entities are already mutated in place (same references).
   }
 
-  async listByMatchQuery(matchId: string): Promise<BetDTO[]> {
-    return this.bets.filter((bet) => bet.matchId === matchId).map((bet) => this.toDTO(bet))
+  async listByMarketQuery(marketId: string): Promise<BetDTO[]> {
+    return this.bets.filter((bet) => bet.marketId === marketId).map((bet) => this.toDTO(bet))
   }
 
   async listByBettorQuery(bettorId: string): Promise<BetDTO[]> {
@@ -43,9 +43,10 @@ export default class BettingRepositoryInMemory
   private toDTO(bet: Bet): BetDTO {
     return {
       id: bet.id.value,
-      matchId: bet.matchId,
+      marketType: bet.marketType,
+      marketId: bet.marketId,
       bettorId: bet.bettorId,
-      participantId: bet.participantId,
+      selectionId: bet.selectionId,
       stake: bet.stake.cents,
       status: bet.status,
       payout: bet.payout.cents,
