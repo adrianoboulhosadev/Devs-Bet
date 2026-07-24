@@ -24,6 +24,12 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     lock,
     settle,
     cancel,
+    isEditing,
+    startEdit,
+    cancelEdit,
+    editForm,
+    onEditSubmit,
+    saving,
   } = useMatchDetail(matchId)
 
   if (loading || !match) return <Loading />
@@ -110,6 +116,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
           <h2 className="font-medium">Admin</h2>
           <div className="flex flex-wrap gap-2">
             {match.status === 'open' && <Button onClick={lock}>Travar apostas</Button>}
+            {match.status === 'open' && !isEditing && (
+              <Button variant="secondary" onClick={startEdit}>
+                Editar
+              </Button>
+            )}
             {match.status === 'locked' &&
               match.participants.map((participant) => (
                 <Button key={participant.id} onClick={() => settle(participant.id)}>
@@ -120,6 +131,23 @@ export function MatchDetail({ matchId }: { matchId: string }) {
               Cancelar partida
             </Button>
           </div>
+
+          {match.status === 'open' && isEditing && (
+            <form onSubmit={onEditSubmit} className="space-y-3 rounded-lg border border-amber-300 bg-white p-4">
+              <h3 className="text-sm font-medium">Editar partida</h3>
+              <Field label="Título" required {...editForm.register('title')} />
+              <Field label="Tipo (ex.: luta, FIFA)" {...editForm.register('gameType')} />
+              <Field label="Data e hora" type="datetime-local" required {...editForm.register('scheduledAt')} />
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Salvando…' : 'Salvar'}
+                </Button>
+                <Button type="button" variant="secondary" onClick={cancelEdit}>
+                  Cancelar edição
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       )}
 

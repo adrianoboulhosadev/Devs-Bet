@@ -8,6 +8,7 @@ import type { MatchOddsDTO, BetDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { toCents } from '@/lib/money'
+import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
 
 interface BetFields {
@@ -15,10 +16,17 @@ interface BetFields {
   amount: string // reais
 }
 
+interface EditFields {
+  title: string
+  gameType: string
+  scheduledAt: string
+}
+
 export function useMatchDetail(matchId: string) {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   const matchKey = ['match', matchId]
   const oddsKey = ['odds', matchId]
@@ -87,6 +95,39 @@ export function useMatchDetail(matchId: string) {
     onError: (failure) => setError(errorMessage(failure)),
   })
 
+  // Edit (admin, only while open): title / gameType / scheduledAt.
+  const editForm = useForm<EditFields>({ defaultValues: { title: '', gameType: '', scheduledAt: '' } })
+
+  const startEdit = () => {
+    if (!match.data) return
+    editForm.reset({
+      title: match.data.title,
+      gameType: match.data.gameType ?? '',
+      scheduledAt: toDateTimeLocalValue(match.data.scheduledAt),
+    })
+    setError(null)
+    setIsEditing(true)
+  }
+
+  const update = useMutation({
+    mutationFn: (fields: EditFields) =>
+      api.patch(`/match/${matchId}`, {
+        title: fields.title,
+        gameType: fields.gameType.trim() || null,
+        scheduledAt: new Date(fields.scheduledAt).toISOString(),
+      }),
+    onSuccess: () => {
+      setIsEditing(false)
+      invalidate()
+    },
+    onError: (failure) => setError(errorMessage(failure, 'Não foi possível salvar a partida.')),
+  })
+
+  const onEditSubmit = editForm.handleSubmit((fields) => {
+    setError(null)
+    update.mutate(fields)
+  })
+
   return {
     match: match.data,
     odds: odds.data,
@@ -101,5 +142,11 @@ export function useMatchDetail(matchId: string) {
     lock: () => lock.mutate(),
     settle: (winnerParticipantId: string) => settle.mutate(winnerParticipantId),
     cancel: () => cancel.mutate(),
+    isEditing,
+    startEdit,
+    cancelEdit: () => setIsEditing(false),
+    editForm,
+    onEditSubmit,
+    saving: update.isPending,
   }
 }
