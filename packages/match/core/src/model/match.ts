@@ -3,6 +3,13 @@ import { MatchParticipant, MatchParticipantProps } from './match-participant'
 
 export type MatchStatus = 'open' | 'locked' | 'settled' | 'cancelled'
 
+// Betting selection id for "the match ends in a draw" — a match-only pseudo
+// selection alongside the participants (a tournament confrontation can never
+// draw, so it never offers this selection). Bettors can back a draw just like
+// any participant; if the match actually draws, this is the winning selection
+// of the parimutuel payout (nobody backing it means everyone else loses).
+export const MATCH_DRAW_SELECTION_ID = 'draw'
+
 export interface MatchProps extends EntityProps {
   creatorId: string
   title?: string
