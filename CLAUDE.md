@@ -183,15 +183,17 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
   `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). `settle` aceita
-  `winnerParticipantId: string | null` — `null` declara **empate** (só existe em `match`; torneio
-  nunca empata, `RecordBracketResultInput` exige um vencedor real). **Empate é uma seleção de aposta
-  como qualquer outra**: `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por `@match/core`/`@match/adapters`)
-  é incluído nas `selectionIds` válidas de todo mercado `match` (o backend, em `bet.controller`,
-  soma esse id aos participantes) — tem pool/odd própria e pode ser apostado como A ou B. Ao
-  liquidar um empate, o backend enfileira `winningSelectionId: MATCH_DRAW_SELECTION_ID` (traduzindo o
-  `winnerParticipantId: null` da entidade); o `PayoutCalculator` trata como qualquer seleção
-  vencedora — se ninguém apostou no empate, todo mundo perde (ver seção "Payout parimutuel"), não
-  há estorno. **Criar partida é
+  `winnerParticipantId: string | null` — `null` declara **empate**, só permitido quando o `Match`
+  foi criado com **`allowsDraw: true`** (padrão da criação avulsa; joga `DRAW_NOT_ALLOWED` senão).
+  Confronto de torneio é sempre criado com `allowsDraw: false` (`RecordBracketResultInput` também
+  exige um vencedor real — dupla trava, domínio + tipo). **Empate é uma seleção de aposta como
+  qualquer outra**: quando `allowsDraw`, `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por
+  `@match/core`/`@match/adapters`) entra nas `selectionIds` válidas do mercado (o backend, em
+  `bet.controller`, só soma esse id se `match.allowsDraw`) — tem pool/odd própria e pode ser
+  apostado como A ou B. Ao liquidar um empate, o backend enfileira `winningSelectionId:
+  MATCH_DRAW_SELECTION_ID` (traduzindo o `winnerParticipantId: null` da entidade); o
+  `PayoutCalculator` trata como qualquer seleção vencedora — se ninguém apostou no empate, todo
+  mundo perde (ver seção "Payout parimutuel"), não há estorno. **Criar partida é
   admin-only** (`CreateMatch` estende `AdminUseCase`). **Editar** (`UpdateMatch`, admin) muda
   título/tipo/data **só enquanto `open`** (`Match.edit`); participantes e imagem não são editáveis
   após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
