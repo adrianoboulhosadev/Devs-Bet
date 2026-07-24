@@ -14,8 +14,10 @@ export interface CreateTournamentInput {
   imageUrl?: string | null
   scheduledAt: string
   rakeBasisPoints?: number
-  // How many units decide each bracket confrontation — 1, 3 or 5 (defaults to 1).
-  bestOf?: number
+  // How many units decide each round's confrontations, one entry per round —
+  // its length must equal log2(size) (defaults to all 1s). E.g. every round
+  // MD3 except an MD5 final: [3, 3, ..., 5].
+  bestOfByRound?: number[]
   size: number
   participants: CreateTournamentParticipantInput[]
 }
