@@ -211,7 +211,9 @@ model Tournament {
   status                String                  @default("in_progress")
   size                  Int
   rakeBasisPoints       Int                     @default(0) @map("rake_basis_points")
-  bestOf                Int                     @default(1) @map("best_of")
+  // One entry per bracket round (index 0 = fullest round, last = the final) —
+  // lets e.g. every round be MD3 except an MD5 final.
+  bestOfByRound         Int[]                   @default([1]) @map("best_of_by_round")
   championParticipantId String?                 @map("champion_participant_id")
   scheduledAt           DateTime                @map("scheduled_at")
   createdAt             DateTime                @default(now()) @map("created_at")
