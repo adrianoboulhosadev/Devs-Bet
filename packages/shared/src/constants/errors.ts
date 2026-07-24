@@ -44,6 +44,12 @@ export const Errors = {
   // betting
   BETTING_CLOSED: 'BETTING_CLOSED',
   BET_NOT_FOUND: 'BET_NOT_FOUND',
+
+  // category
+  CATEGORY_NOT_FOUND: 'CATEGORY_NOT_FOUND',
+  CATEGORY_NOT_LEAF: 'CATEGORY_NOT_LEAF',
+  CATEGORY_HAS_CHILDREN: 'CATEGORY_HAS_CHILDREN',
+  CATEGORY_ALREADY_EXISTS: 'CATEGORY_ALREADY_EXISTS',
 } as const
 
 export type ErrorCode = (typeof Errors)[keyof typeof Errors]
