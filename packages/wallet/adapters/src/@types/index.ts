@@ -1,3 +1,3 @@
-import { DepositInput, WithdrawalInput } from './inputs'
+import { DepositInput, WithdrawalInput, SetDepositLimitInput } from './inputs'
 
-export type { DepositInput, WithdrawalInput }
+export type { DepositInput, WithdrawalInput, SetDepositLimitInput }

@@ -4,6 +4,7 @@ import type {
   PaymentQueryRepository,
   PaymentGateway,
   DepositInstructions,
+  DepositLimitQueryRepository,
 } from '@wallet/core'
 
 export type {
@@ -12,4 +13,5 @@ export type {
   PaymentQueryRepository,
   PaymentGateway,
   DepositInstructions,
+  DepositLimitQueryRepository,
 }

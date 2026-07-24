@@ -3,9 +3,11 @@ import {
   WalletQueryRepository,
   PaymentQueryRepository,
   PaymentGateway,
+  DepositLimitQueryRepository,
   WalletDTO,
   PaymentDTO,
   DepositInstructions,
+  DepositLimitDTO,
 } from '@wallet/core'
 import { AuthenticatedActor } from 'shared'
 import {
@@ -18,8 +20,10 @@ import {
   ListMyPaymentsController,
   ListPendingPaymentsController,
   DepositInstructionsController,
+  SetDepositLimitController,
+  ListMyDepositLimitsController,
 } from '../controllers'
-import { DepositInput, WithdrawalInput } from '../@types'
+import { DepositInput, WithdrawalInput, SetDepositLimitInput } from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -32,6 +36,7 @@ export default class WalletFacade {
     private readonly walletQueryRepository?: WalletQueryRepository,
     private readonly paymentQueryRepository?: PaymentQueryRepository,
     private readonly paymentGateway?: PaymentGateway,
+    private readonly depositLimitQueryRepository?: DepositLimitQueryRepository,
   ) {}
 
   async requestDeposit(input: DepositInput, userId: string): Promise<void> {
@@ -68,5 +73,13 @@ export default class WalletFacade {
 
   depositInstructions(): DepositInstructions {
     return new DepositInstructionsController(this.paymentGateway!).execute()
+  }
+
+  async setDepositLimit(input: SetDepositLimitInput, userId: string): Promise<void> {
+    await new SetDepositLimitController(this.walletRepository!).execute(input, userId)
+  }
+
+  async listMyDepositLimits(userId: string): Promise<DepositLimitDTO[]> {
+    return new ListMyDepositLimitsController(this.depositLimitQueryRepository!).execute(userId)
   }
 }

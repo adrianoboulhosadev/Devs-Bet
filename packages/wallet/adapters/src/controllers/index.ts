@@ -7,6 +7,8 @@ import GetMyWalletController from './get-my-wallet-controller'
 import ListMyPaymentsController from './list-my-payments-controller'
 import ListPendingPaymentsController from './list-pending-payments-controller'
 import DepositInstructionsController from './deposit-instructions-controller'
+import SetDepositLimitController from './set-deposit-limit-controller'
+import ListMyDepositLimitsController from './list-my-deposit-limits-controller'
 
 export {
   RequestDepositController,
@@ -18,4 +20,6 @@ export {
   ListMyPaymentsController,
   ListPendingPaymentsController,
   DepositInstructionsController,
+  SetDepositLimitController,
+  ListMyDepositLimitsController,
 }

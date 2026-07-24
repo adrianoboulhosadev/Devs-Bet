@@ -1,3 +1,5 @@
+import type { DepositLimitPeriod } from '@wallet/core'
+
 /** Amounts are in CENTS (integer). The userId comes from the JWT, never the body. */
 export interface DepositInput {
   amount: number
@@ -7,4 +9,10 @@ export interface DepositInput {
 
 export interface WithdrawalInput {
   amount: number
+}
+
+/** Self-service deposit cap. userId comes from the JWT, never the body. */
+export interface SetDepositLimitInput {
+  period: DepositLimitPeriod
+  amount: number // cents
 }
