@@ -11,3 +11,13 @@ export function formatDateTime(value: Date | string): string {
     minute: '2-digit',
   })
 }
+
+/**
+ * Converts a date (Date or ISO string) into the value a
+ * <input type="datetime-local"> expects: local "YYYY-MM-DDTHH:mm".
+ */
+export function toDateTimeLocalValue(value: Date | string): string {
+  const date = new Date(value)
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
