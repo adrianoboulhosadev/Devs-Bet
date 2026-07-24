@@ -7,12 +7,13 @@ import {
   MatchFacade,
 } from '@match/adapters'
 import { UserDTO } from '@auth/adapters'
-import { AuthenticatedActor } from 'shared'
+import { AuthenticatedActor, NotFoundError, Errors } from 'shared'
 import { PrismaMatchRepository } from './prisma-match-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
 import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
+import { PrismaCategoryRepository } from '../category/prisma-category-repository'
 
 // Protected by the AuthMiddleware (see match.module). Reading (list/detail) is
 // open to any authenticated user; creating a match and every lifecycle
@@ -24,6 +25,7 @@ export class MatchController {
     private readonly matchRepository: PrismaMatchRepository,
     private readonly settlementQueue: BullMqMatchSettlementQueue,
     private readonly lockQueue: BullMqMatchLockQueue,
+    private readonly categoryRepository: PrismaCategoryRepository,
   ) {}
 
   private facade(): MatchFacade {
@@ -32,6 +34,14 @@ export class MatchController {
 
   private actor(user: UserDTO): AuthenticatedActor {
     return { id: user.id, role: user.role }
+  }
+
+  // Cross-context: resolve the category (must exist) and whether it is a leaf, to
+  // pass as plain data to the match use case (match never imports the category ctx).
+  private async resolveCategoryIsLeaf(categoryId: string): Promise<boolean> {
+    const category = await this.categoryRepository.findByIdQuery(categoryId)
+    if (!category) NotFoundError.throwError(Errors.CATEGORY_NOT_FOUND, categoryId)
+    return category.isLeaf
   }
 
   @Get()
@@ -48,7 +58,8 @@ export class MatchController {
   @HttpCode(201)
   @UseGuards(AdminGuard)
   async create(@Body() input: CreateMatchInput, @authenticatedUser() user: UserDTO) {
-    await this.facade().createMatch(input, this.actor(user))
+    const categoryIsLeaf = await this.resolveCategoryIsLeaf(input.categoryId)
+    await this.facade().createMatch(input, this.actor(user), categoryIsLeaf)
   }
 
   @Patch(':id')
@@ -59,7 +70,12 @@ export class MatchController {
     @Body() input: UpdateMatchInput,
     @authenticatedUser() user: UserDTO,
   ) {
-    await this.facade().updateMatch(id, input, this.actor(user))
+    // Only resolve the category when the edit actually changes it.
+    const categoryIsLeaf =
+      input.categoryId !== undefined
+        ? await this.resolveCategoryIsLeaf(input.categoryId)
+        : undefined
+    await this.facade().updateMatch(id, input, this.actor(user), categoryIsLeaf)
   }
 
   @Post(':id/lock')

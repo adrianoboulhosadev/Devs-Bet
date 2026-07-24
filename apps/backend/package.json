@@ -13,6 +13,7 @@
     "@wallet/adapters": "*",
     "@match/adapters": "*",
     "@betting/adapters": "*",
+    "@category/adapters": "*",
     "shared": "*",
     "database": "*",
     "@nestjs/common": "^11.0.1",
