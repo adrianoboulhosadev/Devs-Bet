@@ -6,9 +6,10 @@ import { MatchController } from './match.controller'
 import { PrismaMatchRepository } from './prisma-match-repository'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 import { QueueModule } from '../betting/queue.module'
+import { CategoryModule } from '../category/category.module'
 
 @Module({
-  imports: [DbModule, AuthModule, QueueModule],
+  imports: [DbModule, AuthModule, QueueModule, CategoryModule],
   controllers: [MatchController],
   providers: [PrismaMatchRepository, BullMqMatchLockQueue],
 })
