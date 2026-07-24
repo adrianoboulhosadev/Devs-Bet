@@ -1,3 +1,3 @@
-import type { BetDTO, BetStatus, MatchOddsDTO, ParticipantOdds } from '@betting/core'
+import type { BetDTO, BetStatus, BetMarketType, MarketOddsDTO, SelectionOdds } from '@betting/core'
 
-export type { BetDTO, BetStatus, MatchOddsDTO, ParticipantOdds }
+export type { BetDTO, BetStatus, BetMarketType, MarketOddsDTO, SelectionOdds }

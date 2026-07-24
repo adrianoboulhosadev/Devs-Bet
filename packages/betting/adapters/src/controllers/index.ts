@@ -1,13 +1,13 @@
 import PlaceBetController from './place-bet-controller'
-import SettleMatchController from './settle-match-controller'
-import GetMatchOddsController from './get-match-odds-controller'
-import ListBetsByMatchController from './list-bets-by-match-controller'
+import SettleMarketController from './settle-market-controller'
+import GetMarketOddsController from './get-market-odds-controller'
+import ListBetsByMarketController from './list-bets-by-market-controller'
 import ListMyBetsController from './list-my-bets-controller'
 
 export {
   PlaceBetController,
-  SettleMatchController,
-  GetMatchOddsController,
-  ListBetsByMatchController,
+  SettleMarketController,
+  GetMarketOddsController,
+  ListBetsByMarketController,
   ListMyBetsController,
 }

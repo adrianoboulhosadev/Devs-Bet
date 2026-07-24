@@ -3,14 +3,14 @@ import {
   BettingSettlementRepository,
   BetQueryRepository,
   BetDTO,
-  MatchOddsDTO,
-  MatchSettlementJob,
+  MarketOddsDTO,
+  SettlementJob,
 } from '@betting/core'
 import {
   PlaceBetController,
-  SettleMatchController,
-  GetMatchOddsController,
-  ListBetsByMatchController,
+  SettleMarketController,
+  GetMarketOddsController,
+  ListBetsByMarketController,
   ListMyBetsController,
 } from '../controllers'
 import { PlaceBetInput } from '../@types'
@@ -18,7 +18,8 @@ import { PlaceBetInput } from '../@types'
 /**
  * Single entry point the apps call. Optional ports in the constructor. The
  * backend uses placeBet + the read methods (producing the settlement job to the
- * queue itself); the worker uses settleMatch off the queue.
+ * queue itself); the worker uses settleMarket off the queue. Works for any market
+ * (a match or a tournament's champion).
  */
 export default class BettingFacade {
   constructor(
@@ -30,27 +31,27 @@ export default class BettingFacade {
   async placeBet(
     input: PlaceBetInput,
     bettorId: string,
-    matchStatus: string,
-    participantIds: string[],
+    marketOpen: boolean,
+    selectionIds: string[],
   ): Promise<void> {
     await new PlaceBetController(this.placementRepository!).execute(
       input,
       bettorId,
-      matchStatus,
-      participantIds,
+      marketOpen,
+      selectionIds,
     )
   }
 
-  async settleMatch(job: MatchSettlementJob): Promise<void> {
-    await new SettleMatchController(this.settlementRepository!).execute(job)
+  async settleMarket(job: SettlementJob): Promise<void> {
+    await new SettleMarketController(this.settlementRepository!).execute(job)
   }
 
-  async getMatchOdds(matchId: string): Promise<MatchOddsDTO> {
-    return new GetMatchOddsController(this.betQueryRepository!).execute(matchId)
+  async getMarketOdds(marketId: string): Promise<MarketOddsDTO> {
+    return new GetMarketOddsController(this.betQueryRepository!).execute(marketId)
   }
 
-  async listBetsByMatch(matchId: string): Promise<BetDTO[]> {
-    return new ListBetsByMatchController(this.betQueryRepository!).execute(matchId)
+  async listBetsByMarket(marketId: string): Promise<BetDTO[]> {
+    return new ListBetsByMarketController(this.betQueryRepository!).execute(marketId)
   }
 
   async listMyBets(bettorId: string): Promise<BetDTO[]> {

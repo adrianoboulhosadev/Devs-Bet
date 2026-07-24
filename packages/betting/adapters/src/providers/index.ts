@@ -2,14 +2,14 @@ import type {
   BettingPlacementRepository,
   BettingSettlementRepository,
   BetQueryRepository,
-  MatchSettlementQueue,
-  MatchSettlementJob,
+  SettlementQueue,
+  SettlementJob,
 } from '@betting/core'
 
 export type {
   BettingPlacementRepository,
   BettingSettlementRepository,
   BetQueryRepository,
-  MatchSettlementQueue,
-  MatchSettlementJob,
+  SettlementQueue,
+  SettlementJob,
 }
