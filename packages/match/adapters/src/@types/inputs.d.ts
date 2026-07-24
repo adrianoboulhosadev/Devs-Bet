@@ -25,5 +25,7 @@ export interface UpdateMatchInput {
 }
 
 export interface DeclareResultInput {
-  winnerParticipantId: string
+  // null declares a draw (match only — a tournament confrontation always
+  // requires a real winner, enforced by RecordBracketResultInput).
+  winnerParticipantId: string | null
 }
