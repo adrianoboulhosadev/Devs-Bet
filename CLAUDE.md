@@ -27,7 +27,7 @@ Monorepo **Turborepo + npm workspaces** em TypeScript. Arquitetura **hexagonal (
 por bounded context**, com **modelagem RICA** (entidades com comportamento e invariantes + value
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
-Contextos de domínio: `auth`, `wallet`, `match`, `betting`. O `auth` é a **referência canônica**
+Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -51,7 +51,7 @@ apps/
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
 
-Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`. `core` e `adapters` são
+Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`. `core` e `adapters` são
 **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
@@ -115,7 +115,12 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **Fronteiras**: contextos se tocam **só por portas**, nunca import direto entre cores. Orquestração
   cross-context (ex.: `PlaceBet` toca `wallet` + `match` + `betting`) fica na camada de app (backend).
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
-  `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats.
+  `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats;
+  `category`=árvore de categorias das partidas.
+- **Categoria da partida (cross-context)**: o `match` guarda `categoryId` (folha da árvore) como
+  dado puro; a validação "existe + é folha" segue o padrão do `PlaceBet` — o **backend resolve** via
+  `category` (`findByIdQuery` → `isLeaf`) e passa `categoryIsLeaf` pro use-case do match (que lança
+  `CATEGORY_NOT_LEAF`). O match **não** importa o `category`.
 
 ## Dinheiro, transações e atomicidade
 
@@ -158,7 +163,8 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar conforme necessário):
 `INSUFFICIENT_BALANCE`, `INVALID_AMOUNT`, `INVALID_STAKE`, `BETTING_CLOSED`, `MATCH_NOT_OPEN`,
 `MATCH_ALREADY_SETTLED`, `NOT_A_PARTICIPANT`, `MATCH_NOT_FOUND`, `BET_NOT_FOUND`, `WITHDRAWAL_TOO_LARGE`,
-`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`.
+`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
+`CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`.
 
 ## Contextos
 
@@ -178,13 +184,18 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   worker roda `AutoLockMatch` (system, não-admin, idempotente).
 - **betting** — `Bet` (`open/won/lost/refunded`), `PayoutCalculator` (parimutuel), `SettleMatch`
   (enfileirado → worker), stats.
+- **category** — árvore auto-referente de categorias (`Category` com `parentId` opcional; ex.:
+  games → e-sports → Counter Strike). CRUD **admin-only** (`Create/Update/Delete` estendem
+  `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
+  em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
+  match aponta pra uma **folha**.
 
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`, `bet` (`/`, `/:id`),
-  `admin/{deposits,withdrawals}`.
+  `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]), `admin/{deposits,withdrawals}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
@@ -215,8 +226,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `Match`(matches), `MatchParticipant`(match_participants),
-  `Bet`(bets). FKs entre contextos são **lógicas** (sem relation Prisma cruzando contexto). Dinheiro em `Int`
-  (centavos). Colunas snake_case via `@map`.
+  `Bet`(bets), `Category`(categories, self-relation `parent_id`). FKs entre contextos são **lógicas**
+  (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
+  intra-contexto, então tem relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
 - **Greenfield**: schema do zero; cada contexto adiciona seu(s) `model`. `npm run db:sync` = `prisma db push`.
 
 ## Worker e fila (settlement assíncrono)
