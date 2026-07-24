@@ -90,7 +90,7 @@ export function useMatchDetail(matchId: string) {
   })
 
   const settle = useMutation({
-    mutationFn: (winnerParticipantId: string) =>
+    mutationFn: (winnerParticipantId: string | null) =>
       api.post(`/match/${matchId}/settle`, { winnerParticipantId }),
     onSuccess: invalidate,
     onError: (failure) => setError(errorMessage(failure)),
@@ -147,7 +147,7 @@ export function useMatchDetail(matchId: string) {
     onPlaceBet,
     placing: placeBet.isPending,
     lock: () => lock.mutate(),
-    settle: (winnerParticipantId: string) => settle.mutate(winnerParticipantId),
+    settle: (winnerParticipantId: string | null) => settle.mutate(winnerParticipantId),
     cancel: () => cancel.mutate(),
     isEditing,
     startEdit,

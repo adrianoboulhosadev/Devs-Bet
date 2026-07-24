@@ -65,7 +65,13 @@ export function MatchDetail({ matchId }: { matchId: string }) {
 
       {match.status === 'settled' && (
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          Vencedor: <span className="font-medium">{winnerName ?? '—'}</span>
+          {match.winnerParticipantId === null ? (
+            <span className="font-medium">Empate</span>
+          ) : (
+            <>
+              Vencedor: <span className="font-medium">{winnerName ?? '—'}</span>
+            </>
+          )}
         </p>
       )}
 
@@ -130,6 +136,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
                   Vencedor: {participant.displayName}
                 </Button>
               ))}
+            {match.status === 'locked' && (
+              <Button variant="secondary" onClick={() => settle(null)}>
+                Empate
+              </Button>
+            )}
             <Button variant="danger" onClick={cancel}>
               Cancelar partida
             </Button>
