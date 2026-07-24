@@ -4,7 +4,7 @@ import {
   UpdateMatch,
   LockMatch,
   AutoLockMatch,
-  DeclareMatchResult,
+  RecordMatchUnitResult,
   CancelMatch,
   GetMatchQuery,
   ListMatchesQuery,
@@ -136,27 +136,58 @@ test('auto-lock on an unknown match does not throw', async () => {
   await expect(new AutoLockMatch(repository).execute({ matchId: 'ghost' })).resolves.toBeUndefined()
 })
 
-test('admin locks, declares the winner; the flow reaches settled', async () => {
+test('admin locks, records the unit result; the flow reaches settled', async () => {
   const { repository, matchId } = await setupWithMatch()
   const winner = repository.participants[0].id
 
   await new LockMatch(repository).execute({ matchId }, admin)
-  await new DeclareMatchResult(repository).execute({ matchId, winnerParticipantId: winner }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner }, admin)
 
   const match = await new GetMatchQuery(repository).execute(matchId)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBe(winner)
 })
 
-test('admin declares a draw (null winner) via DeclareMatchResult', async () => {
+test('admin declares a draw (null winner) via RecordMatchUnitResult', async () => {
   const { repository, matchId } = await setupWithMatch()
 
   await new LockMatch(repository).execute({ matchId }, admin)
-  await new DeclareMatchResult(repository).execute({ matchId, winnerParticipantId: null }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: null }, admin)
 
   const match = await new GetMatchQuery(repository).execute(matchId)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBeNull()
+})
+
+test('a bestOf-3 match reaches settled only after the deciding unit', async () => {
+  const repository = new MatchRepositoryInMemory()
+  await new CreateMatch(repository).execute(
+    {
+      title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
+      categoryIsLeaf: true,
+      scheduledAt: inOneHour(),
+      bestOf: 3,
+      allowsDraw: false,
+      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    },
+    admin,
+  )
+  const matchId = repository.matches[0].id
+  const [fabio, bruno] = repository.participants.map((participant) => participant.id)
+  await new LockMatch(repository).execute({ matchId }, admin)
+
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio }, admin)
+  expect((await new GetMatchQuery(repository).execute(matchId)).status).toBe('locked')
+
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: bruno }, admin)
+  expect((await new GetMatchQuery(repository).execute(matchId)).status).toBe('locked')
+
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio }, admin)
+  const match = await new GetMatchQuery(repository).execute(matchId)
+  expect(match.status).toBe('settled')
+  expect(match.winnerParticipantId).toBe(fabio)
+  expect(match.units).toHaveLength(3)
 })
 
 test('a non-admin cannot lock a match (NOT_ADMIN)', async () => {
@@ -173,7 +204,7 @@ test('declaring a result before locking fails (INVALID_MATCH_STATUS)', async () 
   const { repository, matchId } = await setupWithMatch()
   const winner = repository.participants[0].id
   await expect(
-    new DeclareMatchResult(repository).execute({ matchId, winnerParticipantId: winner }, admin),
+    new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner }, admin),
   ).rejects.toBeInstanceOf(ConflictError)
 })
 

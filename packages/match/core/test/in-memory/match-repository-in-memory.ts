@@ -7,6 +7,12 @@ interface ParticipantRow {
   displayName: string
 }
 
+interface UnitRow {
+  matchId: string
+  unitNumber: number
+  winnerParticipantId: string | null
+}
+
 interface MatchRow {
   id: string
   creatorId: string
@@ -16,6 +22,7 @@ interface MatchRow {
   scheduledAt: Date
   status: MatchStatus
   rakeBasisPoints: number
+  bestOf: number
   allowsDraw: boolean
   winnerParticipantId: string | null
   createdAt: Date
@@ -26,6 +33,7 @@ interface MatchRow {
 export default class MatchRepositoryInMemory implements MatchRepository, MatchQueryRepository {
   readonly matches: MatchRow[] = []
   readonly participants: ParticipantRow[] = []
+  readonly units: UnitRow[] = []
 
   private reconstitute(row: MatchRow): Match {
     return new Match({
@@ -37,6 +45,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       scheduledAt: row.scheduledAt,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       lockedAt: row.lockedAt,
@@ -49,7 +58,19 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
           userId: participant.userId,
           displayName: participant.displayName,
         })),
+      units: this.unitsOf(row.id),
     })
+  }
+
+  private unitsOf(matchId: string) {
+    return this.units
+      .filter((unit) => unit.matchId === matchId)
+      .sort((first, second) => first.unitNumber - second.unitNumber)
+      .map((unit) => ({
+        matchId: unit.matchId,
+        unitNumber: unit.unitNumber,
+        winnerParticipantId: unit.winnerParticipantId,
+      }))
   }
 
   async findById(id: string): Promise<Match | null> {
@@ -67,6 +88,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       scheduledAt: match.scheduledAt,
       status: match.status,
       rakeBasisPoints: match.rakeBasisPoints,
+      bestOf: match.bestOf,
       allowsDraw: match.allowsDraw,
       winnerParticipantId: match.winnerParticipantId,
       createdAt: new Date(),
@@ -94,6 +116,18 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       row.lockedAt = match.lockedAt
       row.settledAt = match.settledAt
     }
+    // Units only ever grow — replace this match's units with the current snapshot.
+    const remaining = this.units.filter((unit) => unit.matchId !== match.id.value)
+    this.units.splice(
+      0,
+      this.units.length,
+      ...remaining,
+      ...match.units.map((unit) => ({
+        matchId: match.id.value,
+        unitNumber: unit.unitNumber,
+        winnerParticipantId: unit.winnerParticipantId,
+      })),
+    )
   }
 
   async findByIdQuery(id: string): Promise<MatchDTO | null> {
@@ -116,6 +150,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       imageUrl: row.imageUrl,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
@@ -126,6 +161,10 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
           userId: participant.userId,
           displayName: participant.displayName,
         })),
+      units: this.unitsOf(row.id).map((unit) => ({
+        unitNumber: unit.unitNumber,
+        winnerParticipantId: unit.winnerParticipantId,
+      })),
       createdAt: row.createdAt,
       lockedAt: row.lockedAt,
       settledAt: row.settledAt,

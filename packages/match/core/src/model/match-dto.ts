@@ -6,6 +6,11 @@ export interface MatchParticipantDTO {
   displayName: string
 }
 
+export interface MatchUnitDTO {
+  unitNumber: number
+  winnerParticipantId: string | null
+}
+
 /** READ projection (CQRS) of a match, with its participants, for the lobby/detail. */
 export interface MatchDTO {
   id: string
@@ -15,10 +20,12 @@ export interface MatchDTO {
   imageUrl: string | null
   status: MatchStatus
   rakeBasisPoints: number
+  bestOf: number
   allowsDraw: boolean
   winnerParticipantId: string | null
   scheduledAt: Date
   participants: MatchParticipantDTO[]
+  units: MatchUnitDTO[]
   createdAt: Date
   lockedAt: Date | null
   settledAt: Date | null

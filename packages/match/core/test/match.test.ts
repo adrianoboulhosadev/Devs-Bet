@@ -129,19 +129,20 @@ test('locking a non-open match raises MATCH_NOT_OPEN', () => {
   }
 })
 
-test('settle declares the winner from locked', () => {
+test('recordUnitResult(1, winner) settles a bestOf-1 match outright', () => {
   const match = newMatch()
   const winner = match.participants[0].id.value
   match.lockBetting()
-  match.settle(winner)
+  match.recordUnitResult(1, winner)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBe(winner)
+  expect(match.units).toHaveLength(1)
 })
 
-test('cannot settle before locking (INVALID_MATCH_STATUS)', () => {
+test('cannot record a result before locking (INVALID_MATCH_STATUS)', () => {
   const match = newMatch()
   try {
-    match.settle(match.participants[0].id.value)
+    match.recordUnitResult(1, match.participants[0].id.value)
     fail('should have thrown')
   } catch (error) {
     expect((error as ConflictError).code).toBe(Errors.INVALID_MATCH_STATUS)
@@ -152,23 +153,23 @@ test('the winner must be a participant (NOT_A_PARTICIPANT)', () => {
   const match = newMatch()
   match.lockBetting()
   try {
-    match.settle('not-a-participant')
+    match.recordUnitResult(1, 'not-a-participant')
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.NOT_A_PARTICIPANT)
   }
 })
 
-test('settle(null) declares a draw (allowsDraw defaults to true)', () => {
+test('recordUnitResult(1, null) declares a draw (allowsDraw defaults to true)', () => {
   const match = newMatch()
   expect(match.allowsDraw).toBe(true)
   match.lockBetting()
-  match.settle(null)
+  match.recordUnitResult(1, null)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBeNull()
 })
 
-test('settle(null) is rejected when the match does not allow a draw (DRAW_NOT_ALLOWED)', () => {
+test('a draw is rejected when the match does not allow one (DRAW_NOT_ALLOWED)', () => {
   const match = new Match({
     creatorId: 'creator-1',
     title: 'Fabio vs Bruno',
@@ -179,20 +180,20 @@ test('settle(null) is rejected when the match does not allow a draw (DRAW_NOT_AL
   })
   match.lockBetting()
   try {
-    match.settle(null)
+    match.recordUnitResult(1, null)
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.DRAW_NOT_ALLOWED)
   }
 })
 
-test('cannot settle twice (MATCH_ALREADY_SETTLED)', () => {
+test('cannot record a result once the match is already settled (MATCH_ALREADY_SETTLED)', () => {
   const match = newMatch()
   const winner = match.participants[0].id.value
   match.lockBetting()
-  match.settle(winner)
+  match.recordUnitResult(1, winner)
   try {
-    match.settle(winner)
+    match.recordUnitResult(2, winner)
     fail('should have thrown')
   } catch (error) {
     expect((error as ConflictError).code).toBe(Errors.MATCH_ALREADY_SETTLED)
@@ -206,6 +207,83 @@ test('cancel from open marks cancelled; cancelling a settled match fails', () =>
 
   const settled = newMatch()
   settled.lockBetting()
-  settled.settle(settled.participants[0].id.value)
+  settled.recordUnitResult(1, settled.participants[0].id.value)
   expect(() => settled.cancel()).toThrow(ConflictError)
+})
+
+test('rejects an invalid bestOf (INVALID_BEST_OF)', () => {
+  try {
+    new Match({
+      creatorId: 'c',
+      title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
+      scheduledAt: inOneHour(),
+      bestOf: 2,
+      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+    })
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.INVALID_BEST_OF)
+  }
+})
+
+test('a multi-unit match cannot allow a draw (DRAW_NOT_ALLOWED)', () => {
+  try {
+    new Match({
+      creatorId: 'c',
+      title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
+      scheduledAt: inOneHour(),
+      bestOf: 3,
+      allowsDraw: true,
+      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+    })
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.DRAW_NOT_ALLOWED)
+  }
+})
+
+test('a bestOf-3 match settles once a participant reaches the majority (2 units)', () => {
+  const match = new Match({
+    creatorId: 'c',
+    title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
+    scheduledAt: inOneHour(),
+    bestOf: 3,
+    allowsDraw: false,
+    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+  })
+  const [fabio, bruno] = match.participants.map((participant) => participant.id.value)
+  match.lockBetting()
+
+  match.recordUnitResult(1, fabio)
+  expect(match.status).toBe('locked')
+
+  match.recordUnitResult(2, bruno)
+  expect(match.status).toBe('locked')
+
+  match.recordUnitResult(3, fabio)
+  expect(match.status).toBe('settled')
+  expect(match.winnerParticipantId).toBe(fabio)
+  expect(match.units).toHaveLength(3)
+})
+
+test('unit results must be recorded in order (INVALID_UNIT_NUMBER)', () => {
+  const match = new Match({
+    creatorId: 'c',
+    title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
+    scheduledAt: inOneHour(),
+    bestOf: 3,
+    allowsDraw: false,
+    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+  })
+  match.lockBetting()
+  try {
+    match.recordUnitResult(2, match.participants[0].id.value)
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.INVALID_UNIT_NUMBER)
+  }
 })

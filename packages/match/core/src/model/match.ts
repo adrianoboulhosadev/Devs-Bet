@@ -1,5 +1,6 @@
 import { Entity, EntityProps, ValidationError, ConflictError, Errors } from 'shared'
 import { MatchParticipant, MatchParticipantProps } from './match-participant'
+import { MatchUnit, MatchUnitProps } from './match-unit'
 
 export type MatchStatus = 'open' | 'locked' | 'settled' | 'cancelled'
 
@@ -10,6 +11,12 @@ export type MatchStatus = 'open' | 'locked' | 'settled' | 'cancelled'
 // of the parimutuel payout (nobody backing it means everyone else loses).
 export const MATCH_DRAW_SELECTION_ID = 'draw'
 
+// A match is decided over an odd number of units (map/leg/round/fight — a
+// sport-agnostic "bestOf"): first to the majority wins. Even bestOf is
+// rejected — it could tie without a decisive unit left.
+export const VALID_BEST_OF = [1, 3, 5] as const
+export type BestOf = (typeof VALID_BEST_OF)[number]
+
 export interface MatchProps extends EntityProps {
   creatorId: string
   title?: string
@@ -19,13 +26,19 @@ export interface MatchProps extends EntityProps {
   scheduledAt?: Date
   status?: MatchStatus
   rakeBasisPoints?: number
+  // How many units decide the match (1, 3 or 5 — first to the majority wins).
+  // Defaults to 1 (a single unit, decided outright).
+  bestOf?: number
   // Whether this match can end in a draw (and therefore offers the draw
   // betting selection). Decided at creation, immutable — e.g. a tournament
   // confrontation is created with this false, since it must always advance
-  // the bracket with a real winner. Defaults to true for a standalone match.
+  // the bracket with a real winner. Only legal when bestOf is 1 (a multi-unit
+  // series always has a majority winner, so it can never draw). Defaults to
+  // true for a standalone bestOf-1 match.
   allowsDraw?: boolean
   winnerParticipantId?: string | null
   participants?: MatchParticipantProps[]
+  units?: MatchUnitProps[]
   lockedAt?: Date | null
   settledAt?: Date | null
 }
@@ -43,8 +56,10 @@ export class Match extends Entity<Match, MatchProps> {
   readonly creatorId: string
   readonly imageUrl: string | null
   readonly rakeBasisPoints: number
+  readonly bestOf: number
   readonly allowsDraw: boolean
   readonly participants: MatchParticipant[]
+  units: MatchUnit[]
   title: string
   categoryId: string
   scheduledAt: Date
@@ -80,14 +95,27 @@ export class Match extends Entity<Match, MatchProps> {
       ValidationError.throwError(Errors.INVALID_AMOUNT, rakeBasisPoints)
     }
 
+    const bestOf = props.bestOf ?? 1
+    if (!VALID_BEST_OF.includes(bestOf as BestOf)) {
+      ValidationError.throwError(Errors.INVALID_BEST_OF, bestOf)
+    }
+
+    // A multi-unit series always has a majority winner, so it can never draw.
+    const allowsDraw = props.allowsDraw ?? true
+    if (allowsDraw && bestOf !== 1) {
+      ValidationError.throwError(Errors.DRAW_NOT_ALLOWED, bestOf)
+    }
+
     this.creatorId = props.creatorId
     this.title = title
     this.categoryId = categoryId
     this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
-    this.allowsDraw = props.allowsDraw ?? true
+    this.bestOf = bestOf
+    this.allowsDraw = allowsDraw
     this.participants = participants
+    this.units = (props.units ?? []).map((unit) => new MatchUnit(unit))
     this.status = props.status ?? 'open'
     this.winnerParticipantId = props.winnerParticipantId ?? null
     this.lockedAt = props.lockedAt ?? null
@@ -146,26 +174,52 @@ export class Match extends Entity<Match, MatchProps> {
     this.lockedAt = new Date()
   }
 
+  get isDecided(): boolean {
+    return this.status === 'settled' || this.status === 'cancelled'
+  }
+
   /**
-   * Declares the result. Only from `locked`. `winnerParticipantId` must be a
-   * participant; `null` declares a draw (nobody won) — only allowed when this
-   * match `allowsDraw` (e.g. a tournament confrontation never does, since it
-   * must always produce a winner to advance the bracket). Betting-wise a draw
-   * is just another selection (`MATCH_DRAW_SELECTION_ID`) that the parimutuel
-   * payout settles like any other.
+   * Records the winner of the next unit (map/leg/round/fight — sport-agnostic
+   * name, since not every category is "a game") of this bestOf series. Only
+   * from `locked`, and only the next unit in order (1, 2, 3…).
+   * `winnerParticipantId` must be a participant; `null` declares a draw for
+   * that unit — only legal for a bestOf-1 match that `allowsDraw` (a
+   * multi-unit series always has a majority winner, so it can never draw).
+   * Once a participant reaches the majority of units (`ceil(bestOf / 2)`),
+   * the match auto-settles with that participant as the winner — betting-wise
+   * a draw is just another selection (`MATCH_DRAW_SELECTION_ID`) that the
+   * parimutuel payout settles like any other.
    */
-  settle(winnerParticipantId: string | null): void {
-    if (this.status === 'settled' || this.status === 'cancelled') {
-      ConflictError.throwError(Errors.MATCH_ALREADY_SETTLED, this.status)
+  recordUnitResult(unitNumber: number, winnerParticipantId: string | null): void {
+    if (this.isDecided) ConflictError.throwError(Errors.MATCH_ALREADY_SETTLED, this.status)
+    if (this.status !== 'locked') ConflictError.throwError(Errors.INVALID_MATCH_STATUS, this.status)
+
+    const expectedUnitNumber = this.units.length + 1
+    if (unitNumber !== expectedUnitNumber) {
+      ValidationError.throwError(Errors.INVALID_UNIT_NUMBER, unitNumber)
     }
-    if (this.status !== 'locked') {
-      ConflictError.throwError(Errors.INVALID_MATCH_STATUS, this.status)
-    }
+
     if (winnerParticipantId === null) {
       if (!this.allowsDraw) ValidationError.throwError(Errors.DRAW_NOT_ALLOWED, this.id.value)
     } else if (!this.hasParticipant(winnerParticipantId)) {
       ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerParticipantId)
     }
+
+    this.units.push(new MatchUnit({ matchId: this.id.value, unitNumber, winnerParticipantId }))
+
+    if (winnerParticipantId === null) {
+      // Only reachable for a bestOf-1 match (allowsDraw already checked above).
+      this.applyResult(null)
+      return
+    }
+
+    const majority = Math.ceil(this.bestOf / 2)
+    const unitsWon = this.units.filter((unit) => unit.winnerParticipantId === winnerParticipantId).length
+    if (unitsWon >= majority) this.applyResult(winnerParticipantId)
+  }
+
+  /** Applies the final result once the bestOf series is decided (won or drawn). */
+  private applyResult(winnerParticipantId: string | null): void {
     this.status = 'settled'
     this.winnerParticipantId = winnerParticipantId
     this.settledAt = new Date()
