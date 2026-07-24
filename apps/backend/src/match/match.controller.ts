@@ -5,6 +5,7 @@ import {
   DeclareResultInput,
   MatchDTO,
   MatchFacade,
+  MATCH_DRAW_SELECTION_ID,
 } from '@match/adapters'
 import { UserDTO } from '@auth/adapters'
 import { AuthenticatedActor, NotFoundError, Errors } from 'shared'
@@ -95,10 +96,12 @@ export class MatchController {
   ) {
     await this.facade().declareResult(id, input, this.actor(user))
     // Cross-context: enqueue the parimutuel payout of the bets (worker settles).
+    // A draw (winnerParticipantId null) settles as its own selection, so bets
+    // placed on the draw are paid like any other winning selection.
     const match = await this.facade().getMatch(id)
     await this.settlementQueue.enqueue({
       marketId: id,
-      winningSelectionId: match.winnerParticipantId,
+      winningSelectionId: match.winnerParticipantId ?? MATCH_DRAW_SELECTION_ID,
       rakeBasisPoints: match.rakeBasisPoints,
     })
   }

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common'
 import { PlaceBetInput, BetDTO, MarketOddsDTO, BettingFacade } from '@betting/adapters'
 import { UserDTO } from '@auth/adapters'
+import { MATCH_DRAW_SELECTION_ID } from '@match/adapters'
 import { NotFoundError, Errors } from 'shared'
 import { PrismaBettingPlacementRepository } from './prisma-betting-placement-repository'
 import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
@@ -41,7 +42,11 @@ export class BetController {
 
     const match = await this.matchRepository.findByIdQuery(input.marketId)
     if (!match) NotFoundError.throwError(Errors.MATCH_NOT_FOUND, input.marketId)
-    return { marketOpen: match.status === 'open', selectionIds: match.participants.map((p) => p.id) }
+    // A match can also draw: bettors may back that pseudo-selection too.
+    return {
+      marketOpen: match.status === 'open',
+      selectionIds: [...match.participants.map((p) => p.id), MATCH_DRAW_SELECTION_ID],
+    }
   }
 
   @Post()
