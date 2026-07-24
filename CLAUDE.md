@@ -171,7 +171,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
   `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). **Criar partida é
-  admin-only** (`CreateMatch` estende `AdminUseCase`). O **auto-lock** trava as apostas sozinho quando
+  admin-only** (`CreateMatch` estende `AdminUseCase`). **Editar** (`UpdateMatch`, admin) muda
+  título/tipo/data **só enquanto `open`** (`Match.edit`); participantes e imagem não são editáveis
+  após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
   chega o `scheduledAt`: `CreateMatch` agenda via porta `MatchLockQueue` (job BullMQ **atrasado**) e o
   worker roda `AutoLockMatch` (system, não-admin, idempotente).
 - **betting** — `Bet` (`open/won/lost/refunded`), `PayoutCalculator` (parimutuel), `SettleMatch`
@@ -180,8 +182,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
-  `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`,
-  `/:id/lock`, `/:id/settle`), `bet` (`/`, `/:id`), `admin/{deposits,withdrawals}`.
+  `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
+  [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`, `bet` (`/`, `/:id`),
+  `admin/{deposits,withdrawals}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
