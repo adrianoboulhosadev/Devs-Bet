@@ -177,6 +177,45 @@ model Bet {
   @@map("bets")
 }
 
+// A combo (parlay/accumulator) ticket: FIXED odds locked at placement, unlike
+// Bet's parimutuel payout — the same calculation real bookmakers use. `totalOdd`
+// is the product of every leg's odd; `payout` (0 until settled) is `stake *
+// totalOdd` only if every leg wins. status mirrors Bet (open/won/lost/refunded).
+model ComboBet {
+  id         String     @id @default(uuid())
+  bettorId   String     @map("bettor_id")
+  stake      Int
+  totalOdd   Float      @map("total_odd")
+  status     String     @default("open")
+  payout     Int        @default(0)
+  createdAt  DateTime   @default(now()) @map("created_at")
+  settledAt  DateTime?  @map("settled_at")
+  legs       ComboLeg[]
+
+  @@index([bettorId])
+  @@map("combo_bets")
+}
+
+// One leg of a ComboBet: a market + selection at the odd locked when the ticket
+// was placed. marketId/selectionId are LOGICAL FKs (cross-context, same as
+// Bet); comboBetId is INTRA-context (the aggregate's own child), so it has a
+// Prisma relation, mirroring MatchUnit -> Match. result: pending until the
+// underlying market settles, then won/lost/void (a cancelled market).
+model ComboLeg {
+  id          String   @id @default(uuid())
+  comboBetId  String   @map("combo_bet_id")
+  comboBet    ComboBet @relation(fields: [comboBetId], references: [id], onDelete: Cascade)
+  marketType  String   @default("match") @map("market_type")
+  marketId    String   @map("market_id")
+  selectionId String   @map("selection_id")
+  odd         Float
+  result      String   @default("pending")
+
+  @@index([comboBetId])
+  @@index([marketId])
+  @@map("combo_legs")
+}
+
 // --- category ------------------------------------------------------------------
 
 // Self-referential category tree (e.g. games -> e-sports -> Counter Strike).
