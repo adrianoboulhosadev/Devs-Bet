@@ -93,9 +93,11 @@ export function useMatchDetail(matchId: string) {
     onError: (failure) => setError(errorMessage(failure)),
   })
 
-  const settle = useMutation({
+  // Records the winner of the match's next unit (map/leg/round/fight). A bestOf-1
+  // match settles right away; a bestOf-3/5 one may need this called again.
+  const recordUnitResult = useMutation({
     mutationFn: (winnerParticipantId: string | null) =>
-      api.post(`/match/${matchId}/settle`, { winnerParticipantId }),
+      api.post(`/match/${matchId}/units`, { winnerParticipantId }),
     onSuccess: invalidate,
     onError: (failure) => setError(errorMessage(failure)),
   })
@@ -151,7 +153,7 @@ export function useMatchDetail(matchId: string) {
     onPlaceBet,
     placing: placeBet.isPending,
     lock: () => lock.mutate(),
-    settle: (winnerParticipantId: string | null) => settle.mutate(winnerParticipantId),
+    recordUnitResult: (winnerParticipantId: string | null) => recordUnitResult.mutate(winnerParticipantId),
     cancel: () => cancel.mutate(),
     isEditing,
     startEdit,

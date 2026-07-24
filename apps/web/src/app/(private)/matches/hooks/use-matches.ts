@@ -11,6 +11,10 @@ import { useCategories } from '@/hooks/use-categories'
 
 const MATCHES_KEY = ['matches']
 
+// bestOf a match can be played over — first to the majority wins (odd, so it's
+// always decisive). Must match Match.VALID_BEST_OF in packages/match/core.
+export const MATCH_BEST_OF_OPTIONS = [1, 3, 5] as const
+
 // The form mirrors CreateMatchInput but the userId of a participant is not set
 // here. scheduledAt comes from <input type="datetime-local">; categoryId is the
 // chosen LEAF (set by the CategoryPicker); image is an optional FileList.
@@ -19,6 +23,7 @@ interface MatchForm {
   categoryId: string
   scheduledAt: string
   image?: FileList
+  bestOf: number
   allowsDraw: boolean
   participants: { displayName: string }[]
 }
@@ -27,6 +32,7 @@ const emptyForm: MatchForm = {
   title: '',
   categoryId: '',
   scheduledAt: '',
+  bestOf: 1,
   allowsDraw: true,
   participants: [{ displayName: '' }, { displayName: '' }],
 }
@@ -63,7 +69,10 @@ export function useMatches() {
         imageUrl,
         // datetime-local is local time; toISOString normalizes to UTC for the API.
         scheduledAt: new Date(data.scheduledAt).toISOString(),
-        allowsDraw: data.allowsDraw,
+        bestOf: data.bestOf,
+        // A draw is only possible in a single-unit match (an odd bestOf > 1
+        // always has a majority winner).
+        allowsDraw: data.bestOf === 1 && data.allowsDraw,
         participants: data.participants
           .map((participant) => ({ displayName: participant.displayName.trim() }))
           .filter((participant) => participant.displayName),

@@ -23,7 +23,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     onPlaceBet,
     placing,
     lock,
-    settle,
+    recordUnitResult,
     cancel,
     isEditing,
     startEdit,
@@ -48,6 +48,12 @@ export function MatchDetail({ matchId }: { matchId: string }) {
   const poolOf = (selectionId: string) =>
     odds?.entries.find((entry) => entry.selectionId === selectionId)
   const winnerName = match.participants.find((p) => p.id === match.winnerParticipantId)?.displayName
+
+  // bestOf > 1: how many units each participant has already won, and the next
+  // unit's number (1-based) — the admin declares one unit at a time.
+  const unitWinsOf = (participantId: string) =>
+    match.units.filter((unit) => unit.winnerParticipantId === participantId).length
+  const nextUnitNumber = match.units.length + 1
 
   return (
     <div className="space-y-6">
@@ -81,6 +87,29 @@ export function MatchDetail({ matchId }: { matchId: string }) {
             </>
           )}
         </p>
+      )}
+
+      {match.bestOf > 1 && (
+        <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+            <h2 className="font-medium">Melhor de {match.bestOf}</h2>
+            <span className="text-sm text-slate-500">
+              Placar: {match.participants.map((participant) => unitWinsOf(participant.id)).join('-')}
+            </span>
+          </div>
+          {match.units.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-slate-500">Nenhum game disputado ainda.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {match.units.map((unit) => (
+                <li key={unit.unitNumber} className="flex items-center justify-between px-5 py-3 text-sm">
+                  <span>Game {unit.unitNumber}</span>
+                  <span className="font-medium">{selectionLabel(unit.winnerParticipantId ?? '')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="rounded-lg border border-slate-200 bg-white">
@@ -138,14 +167,19 @@ export function MatchDetail({ matchId }: { matchId: string }) {
                 Editar
               </Button>
             )}
+            {match.status === 'locked' && match.bestOf > 1 && (
+              <span className="w-full text-sm text-slate-500">
+                Vencedor do game {nextUnitNumber}:
+              </span>
+            )}
             {match.status === 'locked' &&
               match.participants.map((participant) => (
-                <Button key={participant.id} onClick={() => settle(participant.id)}>
-                  Vencedor: {participant.displayName}
+                <Button key={participant.id} onClick={() => recordUnitResult(participant.id)}>
+                  {match.bestOf > 1 ? participant.displayName : `Vencedor: ${participant.displayName}`}
                 </Button>
               ))}
             {match.status === 'locked' && match.allowsDraw && (
-              <Button variant="secondary" onClick={() => settle(null)}>
+              <Button variant="secondary" onClick={() => recordUnitResult(null)}>
                 Empate
               </Button>
             )}

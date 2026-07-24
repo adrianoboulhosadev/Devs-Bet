@@ -8,7 +8,7 @@ import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
-import { useTournaments, TOURNAMENT_SIZES } from '../hooks/use-tournaments'
+import { useTournaments, TOURNAMENT_SIZES, TOURNAMENT_BEST_OF_OPTIONS } from '../hooks/use-tournaments'
 
 export function Tournaments() {
   const {
@@ -53,6 +53,20 @@ export function Tournaments() {
               {TOURNAMENT_SIZES.map((size) => (
                 <option key={size} value={size}>
                   {size} participantes
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">Melhor de (cada confronto)</span>
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              {...form.register('bestOf', { valueAsNumber: true })}
+            >
+              {TOURNAMENT_BEST_OF_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === 1 ? 'Jogo único (MD1)' : `${option} (MD${option})`}
                 </option>
               ))}
             </select>

@@ -64,6 +64,19 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
             <p className="text-xs text-emerald-700">Vencedor: {winnerName ?? '—'}</p>
           )}
 
+          {match.data && match.data.bestOf > 1 && (
+            <p className="text-xs text-slate-500">
+              Melhor de {match.data.bestOf} · placar:{' '}
+              {match.data.participants
+                .map(
+                  (participant) =>
+                    match.data!.units.filter((unit) => unit.winnerParticipantId === participant.id)
+                      .length,
+                )
+                .join('-')}
+            </p>
+          )}
+
           {canDeclare && match.data && (
             <div className="flex flex-wrap gap-2">
               {match.data.participants.map((participant) => (
@@ -72,7 +85,7 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
                   disabled={declaring}
                   onClick={() => onDeclare(slot.matchId!, participant.id)}
                 >
-                  {participant.displayName} venceu
+                  {participant.displayName} venceu{match.data!.bestOf > 1 ? ' o game' : ''}
                 </Button>
               ))}
             </div>

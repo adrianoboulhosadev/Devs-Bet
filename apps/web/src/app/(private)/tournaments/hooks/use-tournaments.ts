@@ -13,6 +13,8 @@ import { useCategories } from '@/hooks/use-categories'
 const TOURNAMENTS_KEY = ['tournaments']
 
 export const TOURNAMENT_SIZES = [2, 4, 8, 16, 32]
+// bestOf applied to EVERY bracket confrontation. Must match Match.VALID_BEST_OF.
+export const TOURNAMENT_BEST_OF_OPTIONS = [1, 3, 5] as const
 
 // Mirrors CreateTournamentInput minus the wire concerns: image is an optional
 // FileList; size drives how many participant fields are shown; categoryId is the
@@ -22,6 +24,7 @@ interface TournamentForm {
   categoryId: string
   scheduledAt: string
   size: number
+  bestOf: number
   image?: FileList
   participants: { displayName: string }[]
 }
@@ -33,6 +36,7 @@ const emptyForm = (): TournamentForm => ({
   categoryId: '',
   scheduledAt: '',
   size: DEFAULT_SIZE,
+  bestOf: 1,
   participants: Array.from({ length: DEFAULT_SIZE }, () => ({ displayName: '' })),
 })
 
@@ -82,6 +86,7 @@ export function useTournaments() {
         imageUrl,
         scheduledAt: new Date(data.scheduledAt).toISOString(),
         size: Number(data.size),
+        bestOf: Number(data.bestOf),
         participants: data.participants
           .map((participant) => ({ displayName: participant.displayName.trim() }))
           .filter((participant) => participant.displayName),

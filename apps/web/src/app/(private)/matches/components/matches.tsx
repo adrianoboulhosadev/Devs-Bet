@@ -8,11 +8,12 @@ import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
-import { useMatches } from '../hooks/use-matches'
+import { useMatches, MATCH_BEST_OF_OPTIONS } from '../hooks/use-matches'
 
 export function Matches() {
   const { isAdmin, matches, loading, categories, pathOf, form, participants, onSubmit, submitting, error } =
     useMatches()
+  const bestOf = form.watch('bestOf')
 
   return (
     <div className="space-y-8">
@@ -35,9 +36,24 @@ export function Matches() {
           <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
           <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
+          <label className="block space-y-1">
+            <span className="text-sm font-medium">Melhor de</span>
+            <select
+              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              {...form.register('bestOf', { valueAsNumber: true })}
+            >
+              {MATCH_BEST_OF_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === 1 ? 'Jogo único (MD1)' : `${option} (MD${option})`}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" {...form.register('allowsDraw')} />
-            Permite empate (a partida pode terminar empatada e o empate vira uma seleção de aposta)
+            <input type="checkbox" disabled={bestOf !== 1} {...form.register('allowsDraw')} />
+            Permite empate (a partida pode terminar empatada e o empate vira uma seleção de aposta —
+            só disponível em MD1)
           </label>
 
           <div className="space-y-2">
