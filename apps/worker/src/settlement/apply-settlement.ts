@@ -1,6 +1,6 @@
 import { Wallet } from '@wallet/adapters'
 import type { LedgerEntryType } from '@wallet/adapters'
-import { Bet } from '@betting/adapters'
+import { Bet, ComboBet } from '@betting/adapters'
 
 export interface LedgerLine {
   type: LedgerEntryType
@@ -36,4 +36,34 @@ export function applyBetToWallet(wallet: Wallet, bet: Bet): LedgerLine {
   return net >= 0
     ? { type: 'bet_won', amount: net, referenceId: bet.id.value }
     : { type: 'bet_lost', amount: -net, referenceId: bet.id.value }
+}
+
+/**
+ * Same as applyBetToWallet, for a combo (parlay) ticket. Returns null when the
+ * ticket is still `open` (one of its legs just resolved, but others are still
+ * pending) — no money movement yet, only the leg's result gets persisted by the
+ * caller.
+ */
+export function applyComboToWallet(wallet: Wallet, combo: ComboBet): LedgerLine | null {
+  if (combo.status === 'open') return null
+
+  const stake = combo.stake
+
+  if (combo.status === 'refunded') {
+    wallet.release(stake)
+    return { type: 'refund', amount: stake.cents, referenceId: combo.id.value }
+  }
+
+  if (combo.status === 'lost') {
+    wallet.settleHold(stake)
+    return { type: 'bet_lost', amount: stake.cents, referenceId: combo.id.value }
+  }
+
+  // won
+  wallet.settleHold(stake)
+  wallet.credit(combo.payout)
+  const net = combo.payout.cents - stake.cents
+  return net >= 0
+    ? { type: 'bet_won', amount: net, referenceId: combo.id.value }
+    : { type: 'bet_lost', amount: -net, referenceId: combo.id.value }
 }
