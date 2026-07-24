@@ -28,6 +28,7 @@ export default class CreateMatchController {
         imageUrl: input.imageUrl,
         scheduledAt: new Date(input.scheduledAt),
         rakeBasisPoints: input.rakeBasisPoints,
+        allowsDraw: input.allowsDraw,
         participants: input.participants,
       },
       actor,

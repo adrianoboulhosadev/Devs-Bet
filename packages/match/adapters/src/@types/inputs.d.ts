@@ -13,6 +13,10 @@ export interface CreateMatchInput {
   imageUrl?: string | null
   scheduledAt: string
   rakeBasisPoints?: number
+  // Whether this match can end in a draw (defaults to true). A tournament
+  // confrontation is created with this false — it must always advance the
+  // bracket with a real winner.
+  allowsDraw?: boolean
   participants: CreateMatchParticipantInput[]
 }
 
