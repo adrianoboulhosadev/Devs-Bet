@@ -13,6 +13,7 @@
     "@wallet/adapters": "*",
     "@match/adapters": "*",
     "@betting/adapters": "*",
+    "@category/adapters": "*",
     "@tanstack/react-query": "^5.62.0",
     "axios": "^1.7.9",
     "next": "14.2.20",
