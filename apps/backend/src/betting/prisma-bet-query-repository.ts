@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import { BetQueryRepository, Bet, BetDTO, BetStatus, BetMarketType } from '@betting/adapters'
+import {
+  BetQueryRepository,
+  Bet,
+  BetDTO,
+  BetStatus,
+  BetMarketType,
+  ComboBetDTO,
+  ComboLegResult,
+} from '@betting/adapters'
 import { PrismaService } from '../db/prisma.service'
 
 type BetRow = {
@@ -13,6 +21,26 @@ type BetRow = {
   payout: number
   createdAt: Date
   settledAt: Date | null
+}
+
+type ComboLegRow = {
+  marketType: string
+  marketId: string
+  selectionId: string
+  odd: number
+  result: string
+}
+
+type ComboBetRow = {
+  id: string
+  bettorId: string
+  stake: number
+  totalOdd: number
+  status: string
+  payout: number
+  createdAt: Date
+  settledAt: Date | null
+  legs: ComboLegRow[]
 }
 
 @Injectable()
@@ -37,6 +65,35 @@ export class PrismaBetQueryRepository implements BetQueryRepository {
   async findSettledBets(): Promise<Bet[]> {
     const rows = await this.prisma.bet.findMany({ where: { status: { not: 'open' } } })
     return rows.map((row) => this.toEntity(row))
+  }
+
+  async listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]> {
+    const rows = await this.prisma.comboBet.findMany({
+      where: { bettorId },
+      include: { legs: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    return rows.map((row) => this.toComboDTO(row))
+  }
+
+  private toComboDTO(row: ComboBetRow): ComboBetDTO {
+    return {
+      id: row.id,
+      bettorId: row.bettorId,
+      legs: row.legs.map((leg) => ({
+        marketType: leg.marketType as BetMarketType,
+        marketId: leg.marketId,
+        selectionId: leg.selectionId,
+        odd: leg.odd,
+        result: leg.result as ComboLegResult,
+      })),
+      stake: row.stake,
+      totalOdd: row.totalOdd,
+      status: row.status as BetStatus,
+      payout: row.payout,
+      createdAt: row.createdAt,
+      settledAt: row.settledAt,
+    }
   }
 
   private toEntity(row: BetRow): Bet {

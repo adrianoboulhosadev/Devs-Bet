@@ -1,5 +1,15 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common'
-import { PlaceBetInput, BetDTO, MarketOddsDTO, LeaderboardEntryDTO, BettingFacade } from '@betting/adapters'
+import {
+  PlaceBetInput,
+  PlaceComboBetInput,
+  PlaceComboBetLegInput,
+  BetDTO,
+  ComboBetDTO,
+  MarketOddsDTO,
+  LeaderboardEntryDTO,
+  BetMarketType,
+  BettingFacade,
+} from '@betting/adapters'
 import { UserDTO } from '@auth/adapters'
 import { MATCH_DRAW_SELECTION_ID } from '@match/adapters'
 import { NotFoundError, Errors } from 'shared'
@@ -8,6 +18,11 @@ import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
+
+// A combo leg's fixed odd, when nobody has backed that selection yet (so there
+// is no pool to derive an indicative odd from) — a neutral "evens" starting
+// price, just so a freshly-created market isn't uncomboable.
+const DEFAULT_COMBO_ODD = 2
 
 // Protected by the AuthMiddleware (see betting.module). bettorId always comes from
 // the token. Placing a bet is cross-context: the owning market (a match or a
@@ -23,12 +38,17 @@ export class BetController {
   ) {}
 
   private facade(): BettingFacade {
-    return new BettingFacade(this.placementRepository, undefined, this.betQueryRepository)
+    return new BettingFacade(
+      this.placementRepository,
+      undefined,
+      this.betQueryRepository,
+      this.placementRepository,
+    )
   }
 
   // Resolve whether the market accepts bets right now and its valid selections.
   private async resolveMarket(
-    input: PlaceBetInput,
+    input: { marketType: BetMarketType; marketId: string },
   ): Promise<{ marketOpen: boolean; selectionIds: string[] }> {
     if (input.marketType === 'tournament_outright') {
       const tournament = await this.tournamentRepository.findByIdQuery(input.marketId)
@@ -50,6 +70,14 @@ export class BetController {
     return { marketOpen: match.status === 'open', selectionIds }
   }
 
+  // A combo leg's fixed odd is the market's current indicative price (the same
+  // live odds shown on the match/tournament page), locked in at this moment.
+  private async resolveLegOdd(marketId: string, selectionId: string): Promise<number> {
+    const odds = await this.facade().getMarketOdds(marketId)
+    const entry = odds.entries.find((candidate) => candidate.selectionId === selectionId)
+    return entry?.impliedOdd || DEFAULT_COMBO_ODD
+  }
+
   @Post()
   @HttpCode(201)
   async place(@Body() input: PlaceBetInput, @authenticatedUser() user: UserDTO) {
@@ -57,9 +85,27 @@ export class BetController {
     await this.facade().placeBet(input, user.id, marketOpen, selectionIds)
   }
 
+  @Post('combo')
+  @HttpCode(201)
+  async placeCombo(@Body() input: PlaceComboBetInput, @authenticatedUser() user: UserDTO) {
+    const legs: PlaceComboBetLegInput[] = await Promise.all(
+      input.legs.map(async (leg) => {
+        const { marketOpen, selectionIds } = await this.resolveMarket(leg)
+        const odd = await this.resolveLegOdd(leg.marketId, leg.selectionId)
+        return { ...leg, marketOpen, selectionIds, odd }
+      }),
+    )
+    await this.facade().placeComboBet(input.stake, legs, user.id)
+  }
+
   @Get('mine')
   mine(@authenticatedUser() user: UserDTO): Promise<BetDTO[]> {
     return this.facade().listMyBets(user.id)
+  }
+
+  @Get('combo/mine')
+  myCombos(@authenticatedUser() user: UserDTO): Promise<ComboBetDTO[]> {
+    return this.facade().listMyComboBets(user.id)
   }
 
   @Get('leaderboard')
