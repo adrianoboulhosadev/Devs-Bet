@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 dotenv.config()
 
 import { PrismaClient } from 'database'
-import { BettingFacade, MatchSettlementJob } from '@betting/adapters'
+import { BettingFacade, SettlementJob } from '@betting/adapters'
 import { MatchFacade } from '@match/adapters'
 import { Worker } from 'bullmq'
 import IORedis from 'ioredis'
@@ -10,7 +10,7 @@ import { PrismaBettingSettlementRepository } from './persistence/prisma-betting-
 import { PrismaMatchRepository } from './persistence/prisma-match-repository'
 
 // Queue names: MUST match the producers in apps/backend.
-const MATCH_SETTLEMENT_QUEUE = 'match-settlement'
+const SETTLEMENT_QUEUE = 'settlement'
 const MATCH_LOCK_QUEUE = 'match-lock'
 
 interface MatchLockJob {
@@ -27,21 +27,22 @@ const bettingFacade = new BettingFacade(undefined, settlementRepository, undefin
 const matchRepository = new PrismaMatchRepository(prisma)
 const matchFacade = new MatchFacade(matchRepository)
 
-const settlementWorker = new Worker<MatchSettlementJob>(
-  MATCH_SETTLEMENT_QUEUE,
+const settlementWorker = new Worker<SettlementJob>(
+  SETTLEMENT_QUEUE,
   async (job) => {
-    // Settle (or refund, when cancelled) all open bets of the match.
-    await bettingFacade.settleMatch(job.data)
+    // Settle (or refund, when cancelled) all open bets of the market — a match's
+    // winner or a tournament's champion (outright).
+    await bettingFacade.settleMarket(job.data)
   },
   { connection },
 )
 
 settlementWorker.on('failed', (job, error) => {
-  console.error(`[worker] settlement failed for match ${job?.data?.matchId}:`, error)
+  console.error(`[worker] settlement failed for market ${job?.data?.marketId}:`, error)
 })
 
 settlementWorker.on('completed', (job) => {
-  console.log(`[worker] settled match ${job.data.matchId}`)
+  console.log(`[worker] settled market ${job.data.marketId}`)
 })
 
 // Delayed job scheduled at match creation: auto-lock betting when the match's
@@ -62,4 +63,4 @@ lockWorker.on('completed', (job) => {
   console.log(`[worker] auto-locked match ${job.data.matchId}`)
 })
 
-console.log(`[worker] up — consuming "${MATCH_SETTLEMENT_QUEUE}" and "${MATCH_LOCK_QUEUE}"`)
+console.log(`[worker] up — consuming "${SETTLEMENT_QUEUE}" and "${MATCH_LOCK_QUEUE}"`)

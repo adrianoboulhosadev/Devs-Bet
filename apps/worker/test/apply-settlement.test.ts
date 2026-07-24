@@ -7,7 +7,7 @@ function wallet(balance: number, held: number): Wallet {
 }
 
 function bet(status: 'won' | 'lost' | 'refunded', stake: number, payout = 0): Bet {
-  return new Bet({ matchId: 'm1', bettorId: 'u1', participantId: 'A', stake, status, payout })
+  return new Bet({ marketId: 'm1', bettorId: 'u1', selectionId: 'A', stake, status, payout })
 }
 
 test('a winning bet settles the hold and credits the payout; ledger records the net', () => {
