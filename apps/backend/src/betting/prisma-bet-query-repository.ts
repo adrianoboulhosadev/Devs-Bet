@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import { BetQueryRepository, Bet, BetDTO, BetStatus } from '@betting/adapters'
+import { BetQueryRepository, Bet, BetDTO, BetStatus, BetMarketType } from '@betting/adapters'
 import { PrismaService } from '../db/prisma.service'
 
 type BetRow = {
   id: string
-  matchId: string
+  marketType: string
+  marketId: string
   bettorId: string
-  participantId: string
+  selectionId: string
   stake: number
   status: string
   payout: number
@@ -18,8 +19,8 @@ type BetRow = {
 export class PrismaBetQueryRepository implements BetQueryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listByMatchQuery(matchId: string): Promise<BetDTO[]> {
-    const rows = await this.prisma.bet.findMany({ where: { matchId }, orderBy: { createdAt: 'desc' } })
+  async listByMarketQuery(marketId: string): Promise<BetDTO[]> {
+    const rows = await this.prisma.bet.findMany({ where: { marketId }, orderBy: { createdAt: 'desc' } })
     return rows.map((row) => this.toDTO(row))
   }
 
@@ -28,15 +29,16 @@ export class PrismaBetQueryRepository implements BetQueryRepository {
     return rows.map((row) => this.toDTO(row))
   }
 
-  async findOpenBetsByMatch(matchId: string): Promise<Bet[]> {
-    const rows = await this.prisma.bet.findMany({ where: { matchId, status: 'open' } })
+  async findOpenBetsByMarket(marketId: string): Promise<Bet[]> {
+    const rows = await this.prisma.bet.findMany({ where: { marketId, status: 'open' } })
     return rows.map(
       (row) =>
         new Bet({
           id: row.id,
-          matchId: row.matchId,
+          marketType: row.marketType as BetMarketType,
+          marketId: row.marketId,
           bettorId: row.bettorId,
-          participantId: row.participantId,
+          selectionId: row.selectionId,
           stake: row.stake,
           status: row.status as BetStatus,
           payout: row.payout,
@@ -48,9 +50,10 @@ export class PrismaBetQueryRepository implements BetQueryRepository {
   private toDTO(row: BetRow): BetDTO {
     return {
       id: row.id,
-      matchId: row.matchId,
+      marketType: row.marketType as BetMarketType,
+      marketId: row.marketId,
       bettorId: row.bettorId,
-      participantId: row.participantId,
+      selectionId: row.selectionId,
       stake: row.stake,
       status: row.status as BetStatus,
       payout: row.payout,

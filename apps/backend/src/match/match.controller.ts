@@ -11,7 +11,7 @@ import { AuthenticatedActor, NotFoundError, Errors } from 'shared'
 import { PrismaMatchRepository } from './prisma-match-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
-import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
+import { BullMqSettlementQueue } from '../betting/bullmq-settlement-queue'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
 
@@ -23,7 +23,7 @@ import { PrismaCategoryRepository } from '../category/prisma-category-repository
 export class MatchController {
   constructor(
     private readonly matchRepository: PrismaMatchRepository,
-    private readonly settlementQueue: BullMqMatchSettlementQueue,
+    private readonly settlementQueue: BullMqSettlementQueue,
     private readonly lockQueue: BullMqMatchLockQueue,
     private readonly categoryRepository: PrismaCategoryRepository,
   ) {}
@@ -97,8 +97,8 @@ export class MatchController {
     // Cross-context: enqueue the parimutuel payout of the bets (worker settles).
     const match = await this.facade().getMatch(id)
     await this.settlementQueue.enqueue({
-      matchId: id,
-      winnerParticipantId: match.winnerParticipantId,
+      marketId: id,
+      winningSelectionId: match.winnerParticipantId,
       rakeBasisPoints: match.rakeBasisPoints,
     })
   }
@@ -110,8 +110,8 @@ export class MatchController {
     await this.facade().cancelMatch(id, this.actor(user))
     // Cross-context: enqueue a refund of every open bet (worker refunds).
     await this.settlementQueue.enqueue({
-      matchId: id,
-      winnerParticipantId: null,
+      marketId: id,
+      winningSelectionId: null,
       rakeBasisPoints: 0,
       cancelled: true,
     })

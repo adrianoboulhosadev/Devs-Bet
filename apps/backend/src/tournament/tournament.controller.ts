@@ -11,7 +11,7 @@ import { AuthenticatedActor, Id, NotFoundError, Errors } from 'shared'
 import { PrismaTournamentRepository } from './prisma-tournament-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { BullMqMatchLockQueue } from '../match/bullmq-match-lock-queue'
-import { BullMqMatchSettlementQueue } from '../betting/bullmq-match-settlement-queue'
+import { BullMqSettlementQueue } from '../betting/bullmq-settlement-queue'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
@@ -37,7 +37,7 @@ export class TournamentController {
     private readonly tournamentRepository: PrismaTournamentRepository,
     private readonly matchRepository: PrismaMatchRepository,
     private readonly lockQueue: BullMqMatchLockQueue,
-    private readonly settlementQueue: BullMqMatchSettlementQueue,
+    private readonly settlementQueue: BullMqSettlementQueue,
     private readonly categoryRepository: PrismaCategoryRepository,
   ) {}
 
@@ -129,6 +129,14 @@ export class TournamentController {
   @UseGuards(AdminGuard)
   async cancel(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
     await this.tournamentFacade().cancelTournament(id, this.actor(user))
+    // Refund the outright (champion) bets of the tournament (worker refunds). The
+    // per-confrontation bets live on their own matches and are unaffected here.
+    await this.settlementQueue.enqueue({
+      marketId: id,
+      winningSelectionId: null,
+      rakeBasisPoints: 0,
+      cancelled: true,
+    })
   }
 
   @Post(':id/matches/:matchId/result')
@@ -152,8 +160,8 @@ export class TournamentController {
     // 2. Enqueue the parimutuel payout of this confrontation's bets (worker).
     const match = await this.matchFacade().getMatch(matchId)
     await this.settlementQueue.enqueue({
-      matchId,
-      winnerParticipantId: match.winnerParticipantId,
+      marketId: matchId,
+      winningSelectionId: match.winnerParticipantId,
       rakeBasisPoints: match.rakeBasisPoints,
     })
     // 3. Advance the bracket by the winner's name (the tournament's natural key).
@@ -164,5 +172,14 @@ export class TournamentController {
     await this.tournamentFacade().recordResult(id, matchId, winnerName)
     // 4. Create the matches for whatever slots just became ready (next round).
     await this.createPendingMatches(id, actor)
+    // 5. If that was the final, settle the outright (champion) market too.
+    const tournament = await this.tournamentFacade().getTournament(id)
+    if (tournament.status === 'finished' && tournament.championParticipantId) {
+      await this.settlementQueue.enqueue({
+        marketId: id,
+        winningSelectionId: tournament.championParticipantId,
+        rakeBasisPoints: tournament.rakeBasisPoints,
+      })
+    }
   }
 }

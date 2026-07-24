@@ -41,9 +41,10 @@ export class PrismaBettingPlacementRepository implements BettingPlacementReposit
       await tx.bet.create({
         data: {
           id: bet.id.value,
-          matchId: bet.matchId,
+          marketType: bet.marketType,
+          marketId: bet.marketId,
           bettorId: bet.bettorId,
-          participantId: bet.participantId,
+          selectionId: bet.selectionId,
           stake: bet.stake.cents,
           status: bet.status,
           payout: bet.payout.cents,

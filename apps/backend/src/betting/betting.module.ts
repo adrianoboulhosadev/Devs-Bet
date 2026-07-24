@@ -6,11 +6,20 @@ import { BetController } from './bet.controller'
 import { PrismaBettingPlacementRepository } from './prisma-betting-placement-repository'
 import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
+import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
 
 @Module({
   imports: [DbModule, AuthModule],
   controllers: [BetController],
-  providers: [PrismaBettingPlacementRepository, PrismaBetQueryRepository, PrismaMatchRepository],
+  // The match/tournament repositories only need PrismaService, so betting
+  // registers them directly to resolve a bet's market (status + selections)
+  // without importing those modules.
+  providers: [
+    PrismaBettingPlacementRepository,
+    PrismaBetQueryRepository,
+    PrismaMatchRepository,
+    PrismaTournamentRepository,
+  ],
 })
 export class BettingModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

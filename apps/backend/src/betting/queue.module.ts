@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common'
-import { BullMqMatchSettlementQueue } from './bullmq-match-settlement-queue'
+import { BullMqSettlementQueue } from './bullmq-settlement-queue'
 
-// Owns the settlement queue producer so both the match module (which enqueues on
-// settle/cancel) and any other module can share a single Redis connection.
+// Owns the settlement queue producer so the match module (settle/cancel), the
+// tournament module (bracket results + outright settlement) and any other module
+// share a single Redis connection.
 @Module({
-  providers: [BullMqMatchSettlementQueue],
-  exports: [BullMqMatchSettlementQueue],
+  providers: [BullMqSettlementQueue],
+  exports: [BullMqSettlementQueue],
 })
 export class QueueModule {}
