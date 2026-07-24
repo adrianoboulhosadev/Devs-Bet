@@ -7,7 +7,8 @@ export interface CreateMatchParticipantInput {
 // string on the wire; the controller turns it into a Date for the domain.
 export interface CreateMatchInput {
   title: string
-  gameType?: string | null
+  // Leaf category the match belongs to (its id). Required.
+  categoryId: string
   // Optional; the URL returned by the upload endpoint (e.g. /uploads/matchs/x.png).
   imageUrl?: string | null
   scheduledAt: string
@@ -19,7 +20,7 @@ export interface CreateMatchInput {
 // Participants and image are not editable after creation.
 export interface UpdateMatchInput {
   title?: string
-  gameType?: string | null
+  categoryId?: string
   scheduledAt?: string
 }
 
