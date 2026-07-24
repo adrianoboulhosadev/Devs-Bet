@@ -33,6 +33,7 @@ interface TournamentRow {
   status: TournamentStatus
   size: number
   rakeBasisPoints: number
+  bestOf: number
   championParticipantId: string | null
   createdAt: Date
   participants: ParticipantRow[]
@@ -56,6 +57,7 @@ export default class TournamentRepositoryInMemory
       status: tournament.status,
       size: tournament.size,
       rakeBasisPoints: tournament.rakeBasisPoints,
+      bestOf: tournament.bestOf,
       championParticipantId: tournament.championParticipantId,
       createdAt: existing?.createdAt ?? tournament.scheduledAt,
       participants: tournament.participants.map((participant) => ({
@@ -87,6 +89,7 @@ export default class TournamentRepositoryInMemory
       status: row.status,
       size: row.size,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       championParticipantId: row.championParticipantId,
       participants: row.participants.map((participant) => ({
         id: participant.id,
@@ -148,6 +151,7 @@ export default class TournamentRepositoryInMemory
       status: row.status,
       size: row.size,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       championParticipantId: row.championParticipantId,
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({

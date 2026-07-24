@@ -23,6 +23,11 @@ export interface TournamentProps extends EntityProps {
   status?: TournamentStatus
   size?: number
   rakeBasisPoints?: number
+  // How many units decide EACH confrontation of the bracket — 1, 3 or 5
+  // (defaults to 1). Applied to every Match the backend creates for this
+  // tournament (see Match.bestOf); a bracket confrontation never allows a
+  // draw regardless, so this only matters for bestOf > 1.
+  bestOf?: number
   championParticipantId?: string | null
   participants?: TournamentParticipantProps[]
   // Present on reconstitution (from the DB); absent for a brand-new tournament,
@@ -31,6 +36,9 @@ export interface TournamentProps extends EntityProps {
 }
 
 const MAX_BASIS_POINTS = 10_000
+// Duplicated on purpose, like the rake bounds — Tournament doesn't import
+// @match/core (contexts touch only via ports); see Match.VALID_BEST_OF.
+const VALID_BEST_OF = [1, 3, 5]
 
 /**
  * Rich tournament aggregate: a single-elimination bracket over 2..32 competitors
@@ -47,6 +55,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
   readonly imageUrl: string | null
   readonly scheduledAt: Date
   readonly rakeBasisPoints: number
+  readonly bestOf: number
   readonly size: number
   readonly participants: TournamentParticipant[]
   readonly slots: BracketSlot[]
@@ -89,6 +98,11 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
       ValidationError.throwError(Errors.INVALID_AMOUNT, rakeBasisPoints)
     }
 
+    const bestOf = props.bestOf ?? 1
+    if (!VALID_BEST_OF.includes(bestOf)) {
+      ValidationError.throwError(Errors.INVALID_BEST_OF, bestOf)
+    }
+
     // Reconstitute the bracket from the DB, or lay it out fresh from the players.
     const slots = props.slots
       ? props.slots.map((slot) => new BracketSlot(slot))
@@ -103,6 +117,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
+    this.bestOf = bestOf
     this.size = size
     this.status = props.status ?? 'in_progress'
     this.championParticipantId = props.championParticipantId ?? null

@@ -20,6 +20,8 @@ interface Input {
   imageUrl?: string | null
   scheduledAt: Date
   rakeBasisPoints?: number
+  // How many units decide each bracket confrontation — 1, 3 or 5 (defaults to 1).
+  bestOf?: number
   size: number
   participants: ParticipantInput[]
 }
@@ -49,6 +51,7 @@ export default class CreateTournament extends AdminUseCase<Input, void> {
       imageUrl: input.imageUrl,
       scheduledAt: input.scheduledAt,
       rakeBasisPoints: input.rakeBasisPoints,
+      bestOf: input.bestOf,
       size: input.size,
       participants: input.participants,
     })
