@@ -9,6 +9,7 @@ import { Button } from './button'
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Início' },
   { href: '/matches', label: 'Partidas' },
+  { href: '/tournaments', label: 'Torneios' },
   { href: '/bets', label: 'Minhas apostas' },
   { href: '/wallet', label: 'Carteira' },
 ]
