@@ -171,7 +171,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `INVALID_UNIT_NUMBER`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
-`TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`.
+`TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
+`INVALID_COMBO_ODD`.
 
 ## Contextos
 
@@ -236,6 +237,32 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (não é admin-only, é vitrine pública do produto) — `GET /bet/leaderboard?limit=N` (default 10). O front
   (`app/(private)/leaderboard`) mostra o id do apostador **truncado** (8 chars, igual ao painel admin de
   pagamentos) — nunca o e-mail, pra não expor dado pessoal numa tela que qualquer usuário vê.
+  **Bilhete múltiplo (combo/parlay) — odds FIXAS**: `ComboBet` + `ComboLeg` (entidades ricas, `core/src/model`)
+  são um mecanismo **paralelo** ao parimutuel de cima — pedido explícito do usuário de reproduzir "o mesmo
+  cálculo que as casas de apostas usam" (multiplicar odds), o que é **incompatível** com o parimutuel (cujo
+  payout só existe no pool final). Por isso as pernas do combo **nunca entram nos pools** das apostas simples;
+  é uma aposta paralela, precificada pela odd indicativa do momento (mesmo `OddsCalculator` que já existe) e
+  **travada** (fixa) a partir daí. `ComboLeg.odd` é a odd travada na perna; `ComboBet.totalOdd` é o produto de
+  todas; `payout = stake × totalOdd` só se **todas** as pernas vencerem. Mínimo **2 pernas** (`INVALID_COMBO_LEGS`),
+  **sem mercado repetido** no mesmo bilhete (`DUPLICATE_COMBO_MARKET`), odd mínima 1.01 (`INVALID_COMBO_ODD`).
+  `ComboBet.resolveLeg(marketId, 'won'|'lost'|'void')` (chamado pelo settlement de cada mercado) reavalia o
+  bilhete: **uma perna perdida encerra o bilhete inteiro na hora** (`lost`, payout 0), mesmo com outras pernas
+  pendentes — igual a uma casa de apostas de verdade; quando todas as pernas resolvem, uma perna **anulada**
+  (mercado cancelado) **estorna o bilhete inteiro** (simplificação: não remove a perna nem recalcula a odd,
+  diferente de algumas casas reais); senão (todas venceram) paga `stake × totalOdd`. Idempotente (no-op se o
+  bilhete já liquidou). `SettleMarket`/`RefundMarket` foram estendidos para, além das apostas simples do
+  mercado, buscar (`BettingSettlementRepository.findComboBetsWithOpenLegByMarket`) e resolver qualquer perna
+  de combo daquele `marketId`, persistindo via `applyComboSettlement` (mesma responsabilidade da porta de
+  settlement, só que pro lado combo — aplica o efeito na carteira **só** quando o bilhete de fato muda de
+  status nesta rodada; se ainda restam pernas pendentes, só grava o resultado da perna, sem mexer no saldo).
+  **Simplificação aceita e avisada ao usuário**: como a odd é fixa (definida a partir do pool no momento da
+  aposta) e o payout não vem de um pool compartilhado, a "casa" absorve o risco do preço — sem margem/vig
+  embutida (só o cálculo de multiplicação foi pedido). Rotas: `POST /bet/combo` (cada perna chega do cliente
+  só com `marketType`/`marketId`/`selectionId`; o backend resolve `marketOpen`/`selectionIds` — igual ao
+  `PlaceBet` — e a odd via `getMarketOdds`, com fallback **2.00 (evens)** quando ninguém ainda apostou naquela
+  seleção) e `GET /bet/combo/mine`. Front: `app/(private)/combo` monta o bilhete escolhendo partidas/torneios
+  abertos + seleção, mostra uma odd combinada **estimada** (via as mesmas rotas de odds indicativas — o valor
+  real só trava na confirmação) e lista o histórico de bilhetes do usuário.
 - **category** — árvore auto-referente de categorias (`Category` com `parentId` opcional; ex.:
   games → e-sports → Counter Strike). CRUD **admin-only** (`Create/Update/Delete` estendem
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
@@ -273,8 +300,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
   `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`),
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/leaderboard` [ranking, `?limit=`, aberto a
-  qualquer autenticado]; `/match/:id` e `/match/:id/odds`; `/tournament/:id` e `/tournament/:id/odds`
-  [outright]),
+  qualquer autenticado]; `POST /combo` e `/combo/mine` [bilhete múltiplo, odds fixas]; `/match/:id` e
+  `/match/:id/odds`; `/tournament/:id` e `/tournament/:id/odds` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
@@ -309,8 +336,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `Match`(matches), `MatchParticipant`(match_participants),
-  `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `Category`(categories, self-relation
-  `parent_id`), `Tournament`(tournaments),
+  `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `ComboBet`(combo_bets),
+  `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
+  `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
   `player_b_id` são FKs lógicas). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
