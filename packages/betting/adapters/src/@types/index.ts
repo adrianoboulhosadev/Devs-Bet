@@ -1,3 +1,3 @@
-import { PlaceBetInput } from './inputs'
+import { PlaceBetInput, ComboBetLegInput, PlaceComboBetInput, PlaceComboBetLegInput } from './inputs'
 
-export type { PlaceBetInput }
+export type { PlaceBetInput, ComboBetLegInput, PlaceComboBetInput, PlaceComboBetLegInput }

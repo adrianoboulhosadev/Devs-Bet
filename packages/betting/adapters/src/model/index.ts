@@ -1,3 +1,4 @@
-// Rich entity re-exported as a VALUE: the app's Prisma repositories reconstitute
-// bets (`new Bet({...})`). Adapters is the context's only public surface.
-export { Bet } from '@betting/core'
+// Rich entities re-exported as VALUES: the app's Prisma repositories reconstitute
+// bets/combo tickets (`new Bet({...})`/`new ComboBet({...})`). Adapters is the
+// context's only public surface.
+export { Bet, ComboBet } from '@betting/core'

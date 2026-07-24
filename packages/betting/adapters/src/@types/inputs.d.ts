@@ -11,3 +11,26 @@ export interface PlaceBetInput {
   selectionId: string
   stake: number
 }
+
+/** One leg of a combo ticket, as sent by the client — just the pick. The odd
+ * (fixed-price, locked at placement) and the market's openness/valid selections
+ * are resolved server-side, same as a single bet. */
+export interface ComboBetLegInput {
+  marketType: BetMarketType
+  marketId: string
+  selectionId: string
+}
+
+/** Wire input for POST /bet/combo. Stake in CENTS; bettorId comes from the JWT. */
+export interface PlaceComboBetInput {
+  stake: number
+  legs: ComboBetLegInput[]
+}
+
+/** A combo leg after the backend resolved its market data + current indicative
+ * odd — what the facade/controller pass down to the PlaceComboBet use case. */
+export interface PlaceComboBetLegInput extends ComboBetLegInput {
+  odd: number
+  marketOpen: boolean
+  selectionIds: string[]
+}
