@@ -1,8 +1,14 @@
-import { Errors, ConflictError } from 'shared'
+import { Errors, ConflictError, ValidationError } from 'shared'
 import { Payment } from '../src'
 
 function deposit(): Payment {
-  return new Payment({ userId: 'user-1', direction: 'deposit', amount: 5000, referenceCode: 'DEP-1' })
+  return new Payment({
+    userId: 'user-1',
+    direction: 'deposit',
+    amount: 5000,
+    referenceCode: 'DEP-1',
+    receiptUrl: '/uploads/receipts/proof.png',
+  })
 }
 
 test('a fresh payment starts pending', () => {
@@ -44,4 +50,24 @@ test('settling a non-pending payment raises PAYMENT_ALREADY_SETTLED', () => {
     expect(error).toBeInstanceOf(ConflictError)
     expect((error as ConflictError).code).toBe(Errors.PAYMENT_ALREADY_SETTLED)
   }
+})
+
+test('a deposit without a receipt raises RECEIPT_REQUIRED', () => {
+  try {
+    new Payment({ userId: 'user-1', direction: 'deposit', amount: 5000, referenceCode: 'DEP-1' })
+    fail('should have thrown')
+  } catch (error) {
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).code).toBe(Errors.RECEIPT_REQUIRED)
+  }
+})
+
+test('a withdrawal never needs a receipt', () => {
+  const payment = new Payment({
+    userId: 'user-1',
+    direction: 'withdrawal',
+    amount: 5000,
+    referenceCode: 'WTH-1',
+  })
+  expect(payment.receiptUrl).toBeNull()
 })

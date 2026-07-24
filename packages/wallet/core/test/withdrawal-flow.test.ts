@@ -14,7 +14,11 @@ const admin: AuthenticatedActor = { id: 'admin-1', role: 'admin' }
 async function setupWithBalance(amount: number) {
   const repository = new WalletRepositoryInMemory()
   const getWallet = new GetMyWalletQuery(repository)
-  await new RequestDeposit(repository).execute({ userId: 'user-1', amount })
+  await new RequestDeposit(repository).execute({
+    userId: 'user-1',
+    amount,
+    receiptUrl: '/uploads/receipts/a.png',
+  })
   await new ConfirmDeposit(repository).execute({ paymentId: repository.payments[0].id }, admin)
   return {
     repository,

@@ -3,6 +3,7 @@ export interface DepositInstructions {
   pixKey: string
   pixKeyType: string
   beneficiaryName: string
+  beneficiaryCity: string
 }
 
 /**

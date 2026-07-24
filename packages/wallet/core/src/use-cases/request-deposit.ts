@@ -5,17 +5,19 @@ import { WalletRepository } from '../providers'
 interface Input {
   userId: string
   amount: number // cents
+  receiptUrl: string
 }
 
 /**
- * Opens a pending deposit: the user declares how much they will send by Pix. We
- * only record the intent (with a reference code to match the incoming Pix); the
- * balance is credited later, when the admin confirms receipt.
+ * Opens a pending deposit: the user declares how much they will send by Pix and
+ * attaches the proof of payment (mandatory — the Payment entity itself rejects a
+ * deposit without one). We only record the intent (with a reference code to match
+ * the incoming Pix); the balance is credited later, when the admin confirms receipt.
  */
 export default class RequestDeposit implements UseCase<Input, void> {
   constructor(private readonly walletRepository: WalletRepository) {}
 
-  async execute({ userId, amount }: Input): Promise<void> {
+  async execute({ userId, amount, receiptUrl }: Input): Promise<void> {
     const value = new Money(amount)
     if (value.isZero()) ValidationError.throwError(Errors.INVALID_AMOUNT, amount)
 
@@ -23,6 +25,7 @@ export default class RequestDeposit implements UseCase<Input, void> {
       userId,
       direction: 'deposit',
       amount,
+      receiptUrl,
       referenceCode: 'DEP-' + Id.create().replace(/-/g, '').slice(0, 10).toUpperCase(),
     })
 

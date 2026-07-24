@@ -17,7 +17,7 @@ function setup() {
 
 test('a deposit request creates a pending payment with a reference code', async () => {
   const { repository, requestDeposit } = setup()
-  await requestDeposit.execute({ userId: 'user-1', amount: 5000 })
+  await requestDeposit.execute({ userId: 'user-1', amount: 5000, receiptUrl: '/uploads/receipts/a.png' })
 
   expect(repository.payments).toHaveLength(1)
   expect(repository.payments[0]).toMatchObject({ status: 'pending', direction: 'deposit', amount: 5000 })
@@ -26,7 +26,7 @@ test('a deposit request creates a pending payment with a reference code', async 
 
 test('admin confirmation credits the wallet and writes the ledger', async () => {
   const { repository, requestDeposit, confirmDeposit, getWallet } = setup()
-  await requestDeposit.execute({ userId: 'user-1', amount: 5000 })
+  await requestDeposit.execute({ userId: 'user-1', amount: 5000, receiptUrl: '/uploads/receipts/a.png' })
   const paymentId = repository.payments[0].id
 
   await confirmDeposit.execute({ paymentId }, admin)
@@ -41,7 +41,7 @@ test('admin confirmation credits the wallet and writes the ledger', async () => 
 
 test('a non-admin cannot confirm a deposit (NOT_ADMIN)', async () => {
   const { repository, requestDeposit, confirmDeposit } = setup()
-  await requestDeposit.execute({ userId: 'user-1', amount: 5000 })
+  await requestDeposit.execute({ userId: 'user-1', amount: 5000, receiptUrl: '/uploads/receipts/a.png' })
   const paymentId = repository.payments[0].id
 
   await expect(confirmDeposit.execute({ paymentId }, user)).rejects.toBeInstanceOf(AccessDeniedError)
@@ -52,7 +52,7 @@ test('a non-admin cannot confirm a deposit (NOT_ADMIN)', async () => {
 
 test('confirming the same deposit twice raises PAYMENT_ALREADY_SETTLED', async () => {
   const { repository, requestDeposit, confirmDeposit } = setup()
-  await requestDeposit.execute({ userId: 'user-1', amount: 5000 })
+  await requestDeposit.execute({ userId: 'user-1', amount: 5000, receiptUrl: '/uploads/receipts/a.png' })
   const paymentId = repository.payments[0].id
 
   await confirmDeposit.execute({ paymentId }, admin)

@@ -8,6 +8,7 @@ export interface PaymentDTO {
   amount: number
   status: PaymentStatus
   referenceCode: string
+  receiptUrl: string | null
   createdAt: Date
   confirmedAt: Date | null
 }

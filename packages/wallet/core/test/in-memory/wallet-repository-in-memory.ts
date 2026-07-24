@@ -26,6 +26,7 @@ interface PaymentRow {
   amount: number
   status: PaymentStatus
   referenceCode: string
+  receiptUrl: string | null
   createdAt: Date
   confirmedBy: string | null
   confirmedAt: Date | null
@@ -74,6 +75,7 @@ export default class WalletRepositoryInMemory
       amount: payment.amount.cents,
       status: payment.status,
       referenceCode: payment.referenceCode,
+      receiptUrl: payment.receiptUrl,
       createdAt: new Date(),
       confirmedBy: payment.confirmedBy,
       confirmedAt: payment.confirmedAt,
@@ -116,6 +118,7 @@ export default class WalletRepositoryInMemory
           amount: row.amount,
           status: row.status,
           referenceCode: row.referenceCode,
+          receiptUrl: row.receiptUrl,
           confirmedBy: row.confirmedBy,
           confirmedAt: row.confirmedAt,
         })
@@ -177,6 +180,7 @@ export default class WalletRepositoryInMemory
       amount: row.amount,
       status: row.status,
       referenceCode: row.referenceCode,
+      receiptUrl: row.receiptUrl,
       createdAt: row.createdAt,
       confirmedAt: row.confirmedAt,
     }
