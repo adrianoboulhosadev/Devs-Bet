@@ -1,4 +1,4 @@
-import { Bet, BetDTO } from '../model'
+import { Bet, BetDTO, ComboBetDTO } from '../model'
 
 /** Bet READ port (query side of CQRS). */
 export interface BetQueryRepository {
@@ -9,4 +9,5 @@ export interface BetQueryRepository {
   // Settled bets (won/lost/refunded) across every market, for the leaderboard
   // read model (LeaderboardCalculator).
   findSettledBets(): Promise<Bet[]>
+  listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]>
 }
