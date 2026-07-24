@@ -8,6 +8,10 @@ interface ParticipantInput {
 }
 
 interface Input {
+  // Optional pre-generated id. The tournament context supplies one so it can link
+  // the created Match to its bracket slot; normal creation leaves it undefined and
+  // the domain generates the id.
+  id?: string
   title: string
   categoryId: string
   // Resolved from the category context by the caller (backend) — kept as plain
@@ -41,6 +45,7 @@ export default class CreateMatch extends AdminUseCase<Input, void> {
     }
 
     const match = new Match({
+      id: input.id,
       creatorId: actor.id,
       title: input.title,
       categoryId: input.categoryId,
