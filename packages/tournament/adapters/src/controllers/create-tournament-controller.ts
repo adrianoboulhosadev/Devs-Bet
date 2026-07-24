@@ -26,6 +26,7 @@ export default class CreateTournamentController {
         imageUrl: input.imageUrl,
         scheduledAt: new Date(input.scheduledAt),
         rakeBasisPoints: input.rakeBasisPoints,
+        bestOf: input.bestOf,
         size: input.size,
         participants: input.participants,
       },
