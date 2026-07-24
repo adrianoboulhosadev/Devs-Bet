@@ -2,9 +2,13 @@ import {
   WalletRepository,
   WalletQueryRepository,
   PaymentQueryRepository,
+  DepositLimitQueryRepository,
   Wallet,
   LedgerEntry,
   Payment,
+  DepositLimit,
+  DepositLimitPeriod,
+  DepositLimitDTO,
   WalletDTO,
   PaymentDTO,
   LedgerEntryType,
@@ -46,11 +50,12 @@ interface LedgerRow {
  * Prisma adapter's `$transaction` by mutating all rows together.
  */
 export default class WalletRepositoryInMemory
-  implements WalletRepository, WalletQueryRepository, PaymentQueryRepository
+  implements WalletRepository, WalletQueryRepository, PaymentQueryRepository, DepositLimitQueryRepository
 {
   readonly wallets: WalletRow[] = []
   readonly payments: PaymentRow[] = []
   readonly ledger: LedgerRow[] = []
+  readonly depositLimits: DepositLimit[] = []
 
   private upsertWallet(wallet: Wallet): void {
     const row = this.wallets.find((current) => current.userId === wallet.userId)
@@ -149,6 +154,41 @@ export default class WalletRepositoryInMemory
   async rejectPayment(payment: Payment, wallet: Wallet | null): Promise<void> {
     if (wallet) this.upsertWallet(wallet)
     this.updatePayment(payment)
+  }
+
+  async findDepositLimits(userId: string): Promise<DepositLimit[]> {
+    return this.depositLimits.filter((limit) => limit.userId === userId)
+  }
+
+  async findDepositLimit(userId: string, period: DepositLimitPeriod): Promise<DepositLimit | null> {
+    return this.depositLimits.find((limit) => limit.userId === userId && limit.period === period) ?? null
+  }
+
+  async saveDepositLimit(limit: DepositLimit): Promise<void> {
+    if (!this.depositLimits.includes(limit)) this.depositLimits.push(limit)
+  }
+
+  async sumDepositsSince(userId: string, since: Date): Promise<number> {
+    return this.payments
+      .filter(
+        (row) =>
+          row.userId === userId &&
+          row.direction === 'deposit' &&
+          row.status !== 'rejected' &&
+          row.createdAt.getTime() >= since.getTime(),
+      )
+      .reduce((sum, row) => sum + row.amount, 0)
+  }
+
+  async listDepositLimitsByUserQuery(userId: string): Promise<DepositLimitDTO[]> {
+    return this.depositLimits
+      .filter((limit) => limit.userId === userId)
+      .map((limit) => ({
+        period: limit.period,
+        amount: limit.effectiveAmount(),
+        pendingAmount: limit.pendingAmount,
+        effectiveAt: limit.effectiveAt,
+      }))
   }
 
   async findByUserIdQuery(userId: string): Promise<WalletDTO | null> {
