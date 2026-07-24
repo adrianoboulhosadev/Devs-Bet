@@ -172,3 +172,63 @@ model Category {
   @@index([parentId])
   @@map("categories")
 }
+
+// --- tournament ----------------------------------------------------------------
+
+// Single-elimination bracket over 2..32 competitors (powers of 2). It ORCHESTRATES
+// matches: each confrontation is a plain Match (bracket slot's matchId is a LOGICAL
+// FK — no cross-context relation). status: in_progress -> finished | cancelled.
+// `championParticipantId` is set when the final is decided. creatorId/categoryId are
+// LOGICAL FKs. Participants and slots are part of the aggregate (cascade).
+model Tournament {
+  id                    String                  @id @default(uuid())
+  creatorId             String                  @map("creator_id")
+  title                 String
+  categoryId            String                  @map("category_id")
+  imageUrl              String?                 @map("image_url")
+  status                String                  @default("in_progress")
+  size                  Int
+  rakeBasisPoints       Int                     @default(0) @map("rake_basis_points")
+  championParticipantId String?                 @map("champion_participant_id")
+  scheduledAt           DateTime                @map("scheduled_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+  participants          TournamentParticipant[]
+  slots                 TournamentSlot[]
+
+  @@index([creatorId])
+  @@index([categoryId])
+  @@map("tournaments")
+}
+
+// A competitor in a tournament; the displayName is the natural key within it. May
+// reference a registered user (userId, logical FK) or just carry the name.
+model TournamentParticipant {
+  id           String     @id @default(uuid())
+  tournamentId String     @map("tournament_id")
+  userId       String?    @map("user_id")
+  displayName  String     @map("display_name")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@map("tournament_participants")
+}
+
+// One node of the bracket at (round, position). Round 0 is the fullest round; the
+// last round is the final. `matchId` is the Match that decides it (logical FK, null
+// until created); playerAId/playerBId are TournamentParticipant ids (kept as plain
+// strings — no relation — since they are filled in as the bracket advances).
+model TournamentSlot {
+  id           String     @id @default(uuid())
+  tournamentId String     @map("tournament_id")
+  round        Int
+  position     Int
+  matchId      String?    @map("match_id")
+  playerAId    String?    @map("player_a_id")
+  playerBId    String?    @map("player_b_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@index([matchId])
+  @@map("tournament_slots")
+}
