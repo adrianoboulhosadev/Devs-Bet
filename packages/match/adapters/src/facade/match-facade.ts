@@ -5,12 +5,12 @@ import {
   UpdateMatchController,
   LockMatchController,
   AutoLockMatchController,
-  DeclareMatchResultController,
+  RecordMatchUnitResultController,
   CancelMatchController,
   GetMatchController,
   ListMatchesController,
 } from '../controllers'
-import { CreateMatchInput, UpdateMatchInput, DeclareResultInput } from '../@types'
+import { CreateMatchInput, UpdateMatchInput, RecordUnitResultInput } from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -61,12 +61,12 @@ export default class MatchFacade {
     await new AutoLockMatchController(this.matchRepository!).execute(matchId)
   }
 
-  async declareResult(
+  async recordUnitResult(
     matchId: string,
-    input: DeclareResultInput,
+    input: RecordUnitResultInput,
     actor: AuthenticatedActor,
   ): Promise<void> {
-    await new DeclareMatchResultController(this.matchRepository!).execute(matchId, input, actor)
+    await new RecordMatchUnitResultController(this.matchRepository!).execute(matchId, input, actor)
   }
 
   async cancelMatch(matchId: string, actor: AuthenticatedActor): Promise<void> {

@@ -1,3 +1,3 @@
-import type { MatchDTO, MatchParticipantDTO, MatchStatus } from '@match/core'
+import type { MatchDTO, MatchParticipantDTO, MatchUnitDTO, MatchStatus } from '@match/core'
 
-export type { MatchDTO, MatchParticipantDTO, MatchStatus }
+export type { MatchDTO, MatchParticipantDTO, MatchUnitDTO, MatchStatus }
