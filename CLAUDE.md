@@ -167,7 +167,8 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar conforme necessário):
 `INSUFFICIENT_BALANCE`, `INVALID_AMOUNT`, `INVALID_STAKE`, `BETTING_CLOSED`, `MATCH_NOT_OPEN`,
 `MATCH_ALREADY_SETTLED`, `NOT_A_PARTICIPANT`, `MATCH_NOT_FOUND`, `BET_NOT_FOUND`, `WITHDRAWAL_TOO_LARGE`,
-`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
+`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `DRAW_NOT_ALLOWED`, `INVALID_BEST_OF`,
+`INVALID_UNIT_NUMBER`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`.
@@ -181,13 +182,18 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   para confirmar depósito e efetivar saque.
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
-  `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
-  `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). `settle` aceita
-  `winnerParticipantId: string | null` — `null` declara **empate**, só permitido quando o `Match`
-  foi criado com **`allowsDraw: true`** (padrão da criação avulsa; joga `DRAW_NOT_ALLOWED` senão).
-  Confronto de torneio é sempre criado com `allowsDraw: false` (`RecordBracketResultInput` também
-  exige um vencedor real — dupla trava, domínio + tipo). **Empate é uma seleção de aposta como
-  qualquer outra**: quando `allowsDraw`, `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por
+  `open → locked → settled` / `cancelled`), `MatchParticipant`. **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
+  defaults a 1) decide a match por maioria de **`MatchUnit`** (unidade sport-agnostic: mapa/leg/round/luta
+  — não é "game" porque nem toda categoria é um jogo, ex.: luta de boxe). Métodos: `lockBetting()`,
+  `recordUnitResult(unitNumber, winnerParticipantId)`, `cancel()` (invariantes de transição no modelo).
+  `recordUnitResult` registra o vencedor da **próxima** unidade (sempre `units.length + 1` — quem chama
+  nunca rastreia o número); quando alguém atinge a maioria (`ceil(bestOf/2)`), a match **se auto-liquida**
+  (`settled` + `winnerParticipantId`). `winnerParticipantId: null` declara **empate** de uma unidade — só
+  permitido quando `bestOf === 1` **e** o `Match` foi criado com **`allowsDraw: true`** (padrão da criação
+  avulsa; joga `DRAW_NOT_ALLOWED` senão — um `bestOf` múltiplo nunca empata, sempre há maioria). Confronto
+  de torneio é sempre criado com `allowsDraw: false` (`RecordBracketResultInput` também exige um vencedor
+  real — dupla trava, domínio + tipo), mas herda o `bestOf` do torneio. **Empate é uma seleção de aposta
+  como qualquer outra**: quando `allowsDraw`, `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por
   `@match/core`/`@match/adapters`) entra nas `selectionIds` válidas do mercado (o backend, em
   `bet.controller`, só soma esse id se `match.allowsDraw`) — tem pool/odd própria e pode ser
   apostado como A ou B. Ao liquidar um empate, o backend enfileira `winningSelectionId:
@@ -195,10 +201,12 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `PayoutCalculator` trata como qualquer seleção vencedora — se ninguém apostou no empate, todo
   mundo perde (ver seção "Payout parimutuel"), não há estorno. **Criar partida é
   admin-only** (`CreateMatch` estende `AdminUseCase`). **Editar** (`UpdateMatch`, admin) muda
-  título/tipo/data **só enquanto `open`** (`Match.edit`); participantes e imagem não são editáveis
-  após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
+  título/tipo/data **só enquanto `open`** (`Match.edit`); participantes, imagem e `bestOf` não são
+  editáveis após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
   chega o `scheduledAt`: `CreateMatch` agenda via porta `MatchLockQueue` (job BullMQ **atrasado**) e o
-  worker roda `AutoLockMatch` (system, não-admin, idempotente).
+  worker roda `AutoLockMatch` (system, não-admin, idempotente). A liquidação das apostas (settlement) só é
+  enfileirada quando a match realmente chega em `settled` — enquanto o bestOf está em andamento
+  (`locked`, aguardando a próxima unidade), nada é enfileirado.
 - **betting** — aposta num **mercado**: `Bet` (`open/won/lost/refunded`) tem `marketType`
   (`match` | `tournament_outright`) + `marketId` (id da match ou do torneio) + `selectionId` (participante
   da match ou do torneio). `PayoutCalculator`/`OddsCalculator` (parimutuel) agrupam por `selectionId` — mesma
@@ -212,17 +220,21 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
   match aponta pra uma **folha**.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
-  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2; `championParticipantId`
-  ao decidir a final), `TournamentParticipant` (displayName **único** = chave natural), `BracketSlot`
+  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2; **`bestOf`** (1,
+  3 ou 5, default 1) aplicado a **todo** confronto do bracket; `championParticipantId` ao decidir a final),
+  `TournamentParticipant` (displayName **único** = chave natural), `BracketSlot`
   (`round`/`position`/`matchId?`/`playerAId?`/`playerBId?`; round 0 = mais cheia, última = final). Domain
   services `BracketBuilder` (monta os slots: round 0 pareia os participantes, demais vazios) e `BracketAdvancer`
   (vencedor de (r,p) sobe pro pai (r+1, p/2), lado A/B). **Cada confronto do bracket É uma `Match` normal**
-  (2 participantes, aposta parimutuel por confronto) — o `tournament` **não** importa `match`; quem cria/settla
-  as matches é o **backend** (camada de app). Criar/cancelar/declarar resultado é **admin-only** (`Create`/`Cancel`
-  estendem `AdminUseCase`; `RecordBracketResult` é system, disparado logo após o settle admin); listar/ver é
-  aberto. **Sem ciclo de módulo**: dependência só `tournament → match` — o resultado do confronto é declarado
-  numa **rota dedicada do tournament** (`/tournament/:id/matches/:matchId/result`) que trava+settla a match via
-  `MatchFacade`, enfileira o pagamento das apostas e avança o bracket, criando as matches da próxima rodada.
+  (2 participantes, `bestOf` do torneio, `allowsDraw: false`, aposta parimutuel por confronto) — o
+  `tournament` **não** importa `match`; quem cria/liquida as matches é o **backend** (camada de app).
+  Criar/cancelar/declarar resultado é **admin-only** (`Create`/`Cancel` estendem `AdminUseCase`;
+  `RecordBracketResult` é system, disparado só quando o confronto **realmente** se liquida); listar/ver é
+  aberto. **Sem ciclo de módulo**: dependência só `tournament → match` — o resultado do confronto é
+  declarado unidade por unidade numa **rota dedicada do tournament**
+  (`/tournament/:id/matches/:matchId/result`, chamável mais de uma vez por confronto se `bestOf > 1`) que
+  trava+registra a unidade via `MatchFacade`; só quando a match chega a `settled` (maioria atingida) é que
+  a rota enfileira o pagamento das apostas e avança o bracket, criando as matches da próxima rodada.
   Matches do round 0 travam no `scheduledAt` do torneio; as das rodadas seguintes abrem quando a anterior
   encerra e travam após uma janela padrão. Reaproveita o worker (`settlement` + `match-lock`). Além da aposta
   por confronto, há a aposta **outright no campeão** (mercado `tournament_outright` do `betting`): quando a
@@ -233,7 +245,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
-  [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`,
+  [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
+  `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`), `upload/matchs`,
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/match/:id` e `/match/:id/odds`;
   `/tournament/:id` e `/tournament/:id/odds` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
@@ -269,7 +282,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `Match`(matches), `MatchParticipant`(match_participants),
-  `Bet`(bets), `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
+  `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `Category`(categories, self-relation
+  `parent_id`), `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
   `player_b_id` são FKs lógicas). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
