@@ -167,7 +167,7 @@ Use-case/domínio **nunca** lança erro interno/500. Códigos ficam em `Errors` 
 body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar conforme necessário):
 `INSUFFICIENT_BALANCE`, `INVALID_AMOUNT`, `INVALID_STAKE`, `BETTING_CLOSED`, `MATCH_NOT_OPEN`,
 `MATCH_ALREADY_SETTLED`, `NOT_A_PARTICIPANT`, `MATCH_NOT_FOUND`, `BET_NOT_FOUND`, `WITHDRAWAL_TOO_LARGE`,
-`PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `DRAW_NOT_ALLOWED`, `INVALID_BEST_OF`,
+`PAYMENT_NOT_FOUND`, `RECEIPT_REQUIRED`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `DRAW_NOT_ALLOWED`, `INVALID_BEST_OF`,
 `INVALID_UNIT_NUMBER`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
@@ -179,7 +179,17 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   refresh 7d **stateful** (rotação + detecção de reuso). VOs: `Email`, `StrongPassword`, `PasswordHash`.
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
   `Payment` (depósito/saque). Porta `PaymentGateway` (adapter manual/admin-confirmado). Endpoints admin
-  para confirmar depósito e efetivar saque.
+  para confirmar depósito e efetivar saque. **Depósito é um wizard de 2 passos no front**: (1) o usuário
+  digita o valor; (2) mostra o Pix pra pagar (QR code real — BR Code/EMV gerado no front,
+  `apps/web/src/lib/pix.ts`, com CRC16 — a partir de `DepositInstructions`, que ganhou
+  `beneficiaryCity`; sem txid dinâmico, campo `62/05` fixo em `***`) **+ input de arquivo pro
+  comprovante (imagem ou PDF), obrigatório**. O comprovante é enviado primeiro
+  (`POST /upload/receipts`, rota **não-admin** — o próprio usuário autenticado envia o seu; ver seção
+  Uploads) e só então o depósito é de fato criado (`POST /wallet/deposit` com `receiptUrl`) — não existe
+  `Payment` de depósito sem comprovante: a própria entidade `Payment` rejeita (`RECEIPT_REQUIRED`) um
+  `direction: 'deposit'` sem `receiptUrl` no construtor (saque nunca tem comprovante). `receiptUrl` fica
+  em `payments.receipt_url` (nullable) e aparece no `PaymentDTO`; o admin vê um link "Ver comprovante"
+  (`mediaUrl`) no painel de pendências antes de confirmar o depósito.
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
@@ -250,12 +260,13 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
-  `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`), `upload/matchs`,
+  `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`),
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/match/:id` e `/match/:id/odds`;
   `/tournament/:id` e `/tournament/:id/odds` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
-  `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]), `admin/{deposits,withdrawals}`.
+  `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
+  `admin/{deposits,withdrawals}`, `upload/{matchs [admin], receipts [usuário autenticado]}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
@@ -314,13 +325,20 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 ## Uploads (armazenamento local, sem nuvem)
 
-- Arquivos ficam em **`apps/backend/uploads/<tema>/`** (ex.: `uploads/matchs`), servidos estáticos em
-  **`/uploads/**`** via `app.useStaticAssets` (o `main.ts` cria as subpastas no boot). A pasta é gitignored.
-- Upload é **admin-only**: `UploadController` (`POST /upload/matchs`, `AuthMiddleware` + `AdminGuard`,
-  `FileInterceptor` do multer com `diskStorage`, só `image/*`, limite de 5 MB) salva o arquivo com nome
-  `uuid.ext` e devolve `{ url: '/uploads/matchs/<arquivo>' }`. A entidade guarda esse caminho relativo
-  (`Match.imageUrl`); o front monta a URL absoluta com `lib/media.ts` (`mediaUrl`). Novo tema = nova
-  subpasta em `UPLOADS_SUBDIRS` + rota no controller.
+- Arquivos ficam em **`apps/backend/uploads/<tema>/`** (ex.: `uploads/matchs`, `uploads/receipts`),
+  servidos estáticos em **`/uploads/**`** via `app.useStaticAssets` (o `main.ts` cria as subpastas no
+  boot, lendo `UPLOADS_SUBDIRS`). A pasta é gitignored.
+- Upload de imagem de match é **admin-only**: `UploadController` (`POST /upload/matchs`,
+  `AuthMiddleware` + `AdminGuard`, `FileInterceptor` do multer com `diskStorage`, só `image/*`, limite
+  de 5 MB) salva o arquivo com nome `uuid.ext` e devolve `{ url: '/uploads/matchs/<arquivo>' }`. A
+  entidade guarda esse caminho relativo (`Match.imageUrl`); o front monta a URL absoluta com
+  `lib/media.ts` (`mediaUrl`).
+- Upload de **comprovante de depósito é do próprio usuário, NÃO admin**: `UploadReceiptController`
+  (`POST /upload/receipts`, só `AuthMiddleware`, sem `AdminGuard`) aceita `image/*` **ou**
+  `application/pdf`, limite de 10 MB, mesmo padrão de nome (`uuid.ext`) e devolve
+  `{ url: '/uploads/receipts/<arquivo>' }`, guardado em `Payment.receiptUrl` (ver seção wallet).
+- Novo tema = nova subpasta em `UPLOADS_SUBDIRS` (+ constante `<TEMA>_UPLOAD_DIR`) + controller (decidir
+  se é admin-only ou do próprio usuário autenticado, caso a caso).
 
 ## apps/web (Next.js SPA)
 
