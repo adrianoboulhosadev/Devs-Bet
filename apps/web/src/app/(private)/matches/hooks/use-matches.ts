@@ -7,15 +7,16 @@ import type { MatchDTO, CreateMatchInput } from '@match/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { useAuth } from '@/contexts/auth-context'
+import { useCategories } from '@/hooks/use-categories'
 
 const MATCHES_KEY = ['matches']
 
-// The form mirrors CreateMatchInput but the userId of a participant is not set here.
-// scheduledAt comes from a <input type="datetime-local"> (local time, no zone);
-// image is an optional FileList from a <input type="file">.
+// The form mirrors CreateMatchInput but the userId of a participant is not set
+// here. scheduledAt comes from <input type="datetime-local">; categoryId is the
+// chosen LEAF (set by the CategoryPicker); image is an optional FileList.
 interface MatchForm {
   title: string
-  gameType: string
+  categoryId: string
   scheduledAt: string
   image?: FileList
   participants: { displayName: string }[]
@@ -23,7 +24,7 @@ interface MatchForm {
 
 const emptyForm: MatchForm = {
   title: '',
-  gameType: '',
+  categoryId: '',
   scheduledAt: '',
   participants: [{ displayName: '' }, { displayName: '' }],
 }
@@ -31,6 +32,7 @@ const emptyForm: MatchForm = {
 export function useMatches() {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
+  const { categories, pathOf } = useCategories()
   const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
@@ -55,7 +57,7 @@ export function useMatches() {
 
       const input: CreateMatchInput = {
         title: data.title,
-        gameType: data.gameType.trim() || null,
+        categoryId: data.categoryId,
         imageUrl,
         // datetime-local is local time; toISOString normalizes to UTC for the API.
         scheduledAt: new Date(data.scheduledAt).toISOString(),
@@ -74,6 +76,10 @@ export function useMatches() {
 
   const onSubmit = form.handleSubmit((data) => {
     setError(null)
+    if (!data.categoryId) {
+      setError('Selecione a categoria (até o nível mais específico).')
+      return
+    }
     creation.mutate(data)
   })
 
@@ -81,6 +87,8 @@ export function useMatches() {
     isAdmin,
     matches: query.data ?? [],
     loading: query.isLoading,
+    categories,
+    pathOf,
     form,
     participants,
     onSubmit,

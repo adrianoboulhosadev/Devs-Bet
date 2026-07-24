@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/api/errors'
 import { toCents } from '@/lib/money'
 import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
+import { useCategories } from '@/hooks/use-categories'
 
 interface BetFields {
   participantId: string
@@ -18,13 +19,14 @@ interface BetFields {
 
 interface EditFields {
   title: string
-  gameType: string
+  categoryId: string
   scheduledAt: string
 }
 
 export function useMatchDetail(matchId: string) {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
+  const { categories, pathOf } = useCategories()
   const [error, setError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
@@ -96,13 +98,13 @@ export function useMatchDetail(matchId: string) {
   })
 
   // Edit (admin, only while open): title / gameType / scheduledAt.
-  const editForm = useForm<EditFields>({ defaultValues: { title: '', gameType: '', scheduledAt: '' } })
+  const editForm = useForm<EditFields>({ defaultValues: { title: '', categoryId: '', scheduledAt: '' } })
 
   const startEdit = () => {
     if (!match.data) return
     editForm.reset({
       title: match.data.title,
-      gameType: match.data.gameType ?? '',
+      categoryId: match.data.categoryId,
       scheduledAt: toDateTimeLocalValue(match.data.scheduledAt),
     })
     setError(null)
@@ -113,7 +115,7 @@ export function useMatchDetail(matchId: string) {
     mutationFn: (fields: EditFields) =>
       api.patch(`/match/${matchId}`, {
         title: fields.title,
-        gameType: fields.gameType.trim() || null,
+        categoryId: fields.categoryId,
         scheduledAt: new Date(fields.scheduledAt).toISOString(),
       }),
     onSuccess: () => {
@@ -148,5 +150,7 @@ export function useMatchDetail(matchId: string) {
     editForm,
     onEditSubmit,
     saving: update.isPending,
+    categories,
+    pathOf,
   }
 }

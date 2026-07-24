@@ -7,6 +7,7 @@ import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
+import { CategoryPicker } from '@/components/category-picker'
 import { useMatchDetail } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
@@ -30,6 +31,8 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     editForm,
     onEditSubmit,
     saving,
+    categories,
+    pathOf,
   } = useMatchDetail(matchId)
 
   if (loading || !match) return <Loading />
@@ -43,7 +46,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{match.title}</h1>
-          {match.gameType && <p className="text-sm text-slate-500">{match.gameType}</p>}
+          <p className="text-sm text-slate-500">{pathOf(match.categoryId)}</p>
           <p className="text-sm text-slate-500">{formatDateTime(match.scheduledAt)}</p>
         </div>
         <StatusBadge status={match.status} />
@@ -136,7 +139,14 @@ export function MatchDetail({ matchId }: { matchId: string }) {
             <form onSubmit={onEditSubmit} className="space-y-3 rounded-lg border border-amber-300 bg-white p-4">
               <h3 className="text-sm font-medium">Editar partida</h3>
               <Field label="Título" required {...editForm.register('title')} />
-              <Field label="Tipo (ex.: luta, FIFA)" {...editForm.register('gameType')} />
+              <div className="space-y-1">
+                <span className="text-sm font-medium">Categoria</span>
+                <CategoryPicker
+                  categories={categories}
+                  value={editForm.watch('categoryId') || null}
+                  onChange={(leafId) => editForm.setValue('categoryId', leafId ?? '')}
+                />
+              </div>
               <Field label="Data e hora" type="datetime-local" required {...editForm.register('scheduledAt')} />
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>

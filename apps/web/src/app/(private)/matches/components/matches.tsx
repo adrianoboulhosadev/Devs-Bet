@@ -5,12 +5,14 @@ import { Field } from '@/components/field'
 import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
+import { CategoryPicker } from '@/components/category-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useMatches } from '../hooks/use-matches'
 
 export function Matches() {
-  const { isAdmin, matches, loading, form, participants, onSubmit, submitting, error } = useMatches()
+  const { isAdmin, matches, loading, categories, pathOf, form, participants, onSubmit, submitting, error } =
+    useMatches()
 
   return (
     <div className="space-y-8">
@@ -22,7 +24,14 @@ export function Matches() {
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <Field label="Título" required {...form.register('title')} />
-          <Field label="Tipo (ex.: luta, FIFA)" {...form.register('gameType')} />
+          <div className="space-y-1">
+            <span className="text-sm font-medium">Categoria</span>
+            <CategoryPicker
+              categories={categories}
+              value={form.watch('categoryId') || null}
+              onChange={(leafId) => form.setValue('categoryId', leafId ?? '')}
+            />
+          </div>
           <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
           <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
@@ -81,7 +90,9 @@ export function Matches() {
                       <p className="text-sm text-slate-500">
                         {match.participants.map((participant) => participant.displayName).join(' × ')}
                       </p>
-                      <p className="text-xs text-slate-400">{formatDateTime(match.scheduledAt)}</p>
+                      <p className="text-xs text-slate-400">
+                        {pathOf(match.categoryId)} · {formatDateTime(match.scheduledAt)}
+                      </p>
                     </div>
                   </div>
                   <StatusBadge status={match.status} />

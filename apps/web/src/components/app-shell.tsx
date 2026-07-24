@@ -18,7 +18,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const { user, isAdmin, logout } = useAuth()
 
-  const items = isAdmin ? [...NAV_ITEMS, { href: '/admin', label: 'Admin' }] : NAV_ITEMS
+  const items = isAdmin
+    ? [...NAV_ITEMS, { href: '/categories', label: 'Categorias' }, { href: '/admin', label: 'Admin' }]
+    : NAV_ITEMS
 
   return (
     <div className="min-h-screen">
