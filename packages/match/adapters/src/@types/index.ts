@@ -1,3 +1,8 @@
-import { CreateMatchInput, CreateMatchParticipantInput, DeclareResultInput } from './inputs'
+import {
+  CreateMatchInput,
+  CreateMatchParticipantInput,
+  UpdateMatchInput,
+  DeclareResultInput,
+} from './inputs'
 
-export type { CreateMatchInput, CreateMatchParticipantInput, DeclareResultInput }
+export type { CreateMatchInput, CreateMatchParticipantInput, UpdateMatchInput, DeclareResultInput }
