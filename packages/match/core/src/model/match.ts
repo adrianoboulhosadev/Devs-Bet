@@ -28,12 +28,12 @@ const MAX_BASIS_POINTS = 10_000
  */
 export class Match extends Entity<Match, MatchProps> {
   readonly creatorId: string
-  readonly title: string
-  readonly gameType: string | null
   readonly imageUrl: string | null
-  readonly scheduledAt: Date
   readonly rakeBasisPoints: number
   readonly participants: MatchParticipant[]
+  title: string
+  gameType: string | null
+  scheduledAt: Date
   status: MatchStatus
   winnerParticipantId: string | null
   lockedAt: Date | null
@@ -47,13 +47,7 @@ export class Match extends Entity<Match, MatchProps> {
     // Required: when the match will happen. `!props.id` means a brand-new match
     // (reconstitution from the DB always carries an id) — only then do we reject
     // a past date; a match that already started must still reconstitute.
-    const scheduledAt = props.scheduledAt
-    if (!(scheduledAt instanceof Date) || Number.isNaN(scheduledAt.getTime())) {
-      ValidationError.throwError(Errors.REQUIRED_FIELD, 'scheduledAt')
-    }
-    if (!props.id && scheduledAt.getTime() <= Date.now()) {
-      ValidationError.throwError(Errors.SCHEDULED_IN_PAST, scheduledAt.toISOString())
-    }
+    const scheduledAt = Match.requireScheduledAt(props.scheduledAt, !props.id)
 
     const participants = (props.participants ?? []).map(
       (participant) => new MatchParticipant(participant),
@@ -78,6 +72,39 @@ export class Match extends Entity<Match, MatchProps> {
     this.winnerParticipantId = props.winnerParticipantId ?? null
     this.lockedAt = props.lockedAt ?? null
     this.settledAt = props.settledAt ?? null
+  }
+
+  // Required scheduledAt; `enforceFuture` rejects a past date (creation/edit) but
+  // not reconstitution of a match that already happened.
+  private static requireScheduledAt(scheduledAt: Date | undefined, enforceFuture: boolean): Date {
+    if (!(scheduledAt instanceof Date) || Number.isNaN(scheduledAt.getTime())) {
+      ValidationError.throwError(Errors.REQUIRED_FIELD, 'scheduledAt')
+    }
+    if (enforceFuture && scheduledAt.getTime() <= Date.now()) {
+      ValidationError.throwError(Errors.SCHEDULED_IN_PAST, scheduledAt.toISOString())
+    }
+    return scheduledAt
+  }
+
+  /**
+   * Admin edits the mutable details. Only while `open` — once betting is locked
+   * (or the match settled/cancelled) the details are frozen. Participants are
+   * NOT editable (kept fixed after creation, so placed bets stay valid); the
+   * image is set only at creation. Each provided field is validated like on
+   * creation (title non-empty, scheduledAt required and not in the past).
+   */
+  edit(fields: { title?: string; gameType?: string | null; scheduledAt?: Date }): void {
+    if (this.status !== 'open') ConflictError.throwError(Errors.MATCH_NOT_OPEN, this.status)
+
+    if (fields.title !== undefined) {
+      const title = fields.title.trim()
+      if (!title) ValidationError.throwError(Errors.REQUIRED_FIELD, 'title')
+      this.title = title
+    }
+    if (fields.gameType !== undefined) this.gameType = fields.gameType ?? null
+    if (fields.scheduledAt !== undefined) {
+      this.scheduledAt = Match.requireScheduledAt(fields.scheduledAt, true)
+    }
   }
 
   get isOpen(): boolean {

@@ -1,6 +1,7 @@
-import { AuthenticatedActor, AccessDeniedError, Errors, ConflictError } from 'shared'
+import { AuthenticatedActor, AccessDeniedError, Errors, ConflictError, ValidationError } from 'shared'
 import {
   CreateMatch,
+  UpdateMatch,
   LockMatch,
   AutoLockMatch,
   DeclareMatchResult,
@@ -52,6 +53,48 @@ test('a non-admin cannot create a match (NOT_ADMIN)', async () => {
   )
   await expect(create).rejects.toBeInstanceOf(AccessDeniedError)
   await expect(create).rejects.toMatchObject({ code: Errors.NOT_ADMIN })
+})
+
+test('admin edits title and schedule while open; reschedules the auto-lock', async () => {
+  const { repository, lockQueue, matchId } = await setupWithMatch()
+  const newDate = new Date(Date.now() + 2 * 60 * 60 * 1000)
+
+  await new UpdateMatch(repository, lockQueue).execute(
+    { matchId, title: 'Novo titulo', scheduledAt: newDate },
+    admin,
+  )
+
+  const match = await new GetMatchQuery(repository).execute(matchId)
+  expect(match.title).toBe('Novo titulo')
+  expect(new Date(match.scheduledAt).getTime()).toBe(newDate.getTime())
+  // a second scheduleLock (reschedule) was recorded for the new date
+  expect(lockQueue.scheduled).toHaveLength(2)
+  expect(lockQueue.scheduled[1]).toEqual({ matchId, at: newDate })
+})
+
+test('a non-admin cannot edit a match (NOT_ADMIN)', async () => {
+  const { repository, matchId } = await setupWithMatch()
+  const edit = new UpdateMatch(repository).execute({ matchId, title: 'x' }, user)
+  await expect(edit).rejects.toBeInstanceOf(AccessDeniedError)
+  await expect(edit).rejects.toMatchObject({ code: Errors.NOT_ADMIN })
+})
+
+test('editing a locked match fails (MATCH_NOT_OPEN)', async () => {
+  const { repository, matchId } = await setupWithMatch()
+  await new LockMatch(repository).execute({ matchId }, admin)
+  const edit = new UpdateMatch(repository).execute({ matchId, title: 'x' }, admin)
+  await expect(edit).rejects.toBeInstanceOf(ConflictError)
+  await expect(edit).rejects.toMatchObject({ code: Errors.MATCH_NOT_OPEN })
+})
+
+test('editing to a past date fails (SCHEDULED_IN_PAST)', async () => {
+  const { repository, matchId } = await setupWithMatch()
+  const edit = new UpdateMatch(repository).execute(
+    { matchId, scheduledAt: new Date(Date.now() - 1000) },
+    admin,
+  )
+  await expect(edit).rejects.toBeInstanceOf(ValidationError)
+  await expect(edit).rejects.toMatchObject({ code: Errors.SCHEDULED_IN_PAST })
 })
 
 test('the scheduled auto-lock closes betting (open -> locked)', async () => {

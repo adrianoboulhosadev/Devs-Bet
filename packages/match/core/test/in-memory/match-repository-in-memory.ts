@@ -83,6 +83,9 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
   async update(match: Match): Promise<void> {
     const row = this.matches.find((current) => current.id === match.id.value)
     if (row) {
+      row.title = match.title
+      row.gameType = match.gameType
+      row.scheduledAt = match.scheduledAt
       row.status = match.status
       row.winnerParticipantId = match.winnerParticipantId
       row.lockedAt = match.lockedAt
