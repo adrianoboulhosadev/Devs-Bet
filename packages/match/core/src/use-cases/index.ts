@@ -1,4 +1,5 @@
 export { default as CreateMatch } from './create-match'
+export { default as UpdateMatch } from './update-match'
 export { default as LockMatch } from './lock-match'
 export { default as AutoLockMatch } from './auto-lock-match'
 export { default as DeclareMatchResult } from './declare-match-result'
