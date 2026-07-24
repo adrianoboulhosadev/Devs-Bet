@@ -5,7 +5,7 @@ type MatchRowWithParticipants = {
   id: string
   creatorId: string
   title: string
-  gameType: string | null
+  categoryId: string
   imageUrl: string | null
   status: string
   rakeBasisPoints: number
@@ -29,7 +29,7 @@ export class PrismaMatchRepository implements MatchRepository {
       id: row.id,
       creatorId: row.creatorId,
       title: row.title,
-      gameType: row.gameType,
+      categoryId: row.categoryId,
       imageUrl: row.imageUrl,
       status: row.status as MatchStatus,
       rakeBasisPoints: row.rakeBasisPoints,
@@ -57,7 +57,7 @@ export class PrismaMatchRepository implements MatchRepository {
         id: match.id.value,
         creatorId: match.creatorId,
         title: match.title,
-        gameType: match.gameType,
+        categoryId: match.categoryId,
         imageUrl: match.imageUrl,
         scheduledAt: match.scheduledAt,
         status: match.status,
@@ -79,7 +79,7 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { id: match.id.value },
       data: {
         title: match.title,
-        gameType: match.gameType,
+        categoryId: match.categoryId,
         scheduledAt: match.scheduledAt,
         status: match.status,
         winnerParticipantId: match.winnerParticipantId,
