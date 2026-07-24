@@ -27,7 +27,7 @@ Monorepo **Turborepo + npm workspaces** em TypeScript. Arquitetura **hexagonal (
 por bounded context**, com **modelagem RICA** (entidades com comportamento e invariantes + value
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
-Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`. O `auth` é a **referência canônica**
+Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `tournament`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -51,8 +51,8 @@ apps/
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
 
-Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`. `core` e `adapters` são
-**pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
+Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@tournament/*`. `core` e
+`adapters` são **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
 
@@ -116,7 +116,7 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   cross-context (ex.: `PlaceBet` toca `wallet` + `match` + `betting`) fica na camada de app (backend).
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
   `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats;
-  `category`=árvore de categorias das partidas.
+  `category`=árvore de categorias das partidas; `tournament`=chaveamento eliminatório que orquestra matches.
 - **Categoria da partida (cross-context)**: o `match` guarda `categoryId` (folha da árvore) como
   dado puro; a validação "existe + é folha" segue o padrão do `PlaceBet` — o **backend resolve** via
   `category` (`findByIdQuery` → `isLeaf`) e passa `categoryIsLeaf` pro use-case do match (que lança
@@ -164,7 +164,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `INSUFFICIENT_BALANCE`, `INVALID_AMOUNT`, `INVALID_STAKE`, `BETTING_CLOSED`, `MATCH_NOT_OPEN`,
 `MATCH_ALREADY_SETTLED`, `NOT_A_PARTICIPANT`, `MATCH_NOT_FOUND`, `BET_NOT_FOUND`, `WITHDRAWAL_TOO_LARGE`,
 `PAYMENT_NOT_FOUND`, `NOT_ADMIN`, `SCHEDULED_IN_PAST`, `CATEGORY_NOT_FOUND`, `CATEGORY_NOT_LEAF`,
-`CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`.
+`CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
+`NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
+`TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`.
 
 ## Contextos
 
@@ -189,13 +191,29 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
   em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
   match aponta pra uma **folha**.
+- **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
+  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2; `championParticipantId`
+  ao decidir a final), `TournamentParticipant` (displayName **único** = chave natural), `BracketSlot`
+  (`round`/`position`/`matchId?`/`playerAId?`/`playerBId?`; round 0 = mais cheia, última = final). Domain
+  services `BracketBuilder` (monta os slots: round 0 pareia os participantes, demais vazios) e `BracketAdvancer`
+  (vencedor de (r,p) sobe pro pai (r+1, p/2), lado A/B). **Cada confronto do bracket É uma `Match` normal**
+  (2 participantes, aposta parimutuel por confronto) — o `tournament` **não** importa `match`; quem cria/settla
+  as matches é o **backend** (camada de app). Criar/cancelar/declarar resultado é **admin-only** (`Create`/`Cancel`
+  estendem `AdminUseCase`; `RecordBracketResult` é system, disparado logo após o settle admin); listar/ver é
+  aberto. **Sem ciclo de módulo**: dependência só `tournament → match` — o resultado do confronto é declarado
+  numa **rota dedicada do tournament** (`/tournament/:id/matches/:matchId/result`) que trava+settla a match via
+  `MatchFacade`, enfileira o pagamento das apostas e avança o bracket, criando as matches da próxima rodada.
+  Matches do round 0 travam no `scheduledAt` do torneio; as das rodadas seguintes abrem quando a anterior
+  encerra e travam após uma janela padrão. Reaproveita o worker (`match-settlement` + `match-lock`).
 
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`, `bet` (`/`, `/:id`),
-  `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]), `admin/{deposits,withdrawals}`.
+  `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
+  `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
+  `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]), `admin/{deposits,withdrawals}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
@@ -226,7 +244,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `Match`(matches), `MatchParticipant`(match_participants),
-  `Bet`(bets), `Category`(categories, self-relation `parent_id`). FKs entre contextos são **lógicas**
+  `Bet`(bets), `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
+  `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
+  `player_b_id` são FKs lógicas). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
   intra-contexto, então tem relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
 - **Greenfield**: schema do zero; cada contexto adiciona seu(s) `model`. `npm run db:sync` = `prisma db push`.
@@ -241,6 +261,10 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
+- **Torneio reaproveita o worker sem código novo**: os confrontos do bracket são matches normais, então o
+  auto-lock (`match-lock`) e o pagamento parimutuel (`match-settlement`) das apostas por confronto já
+  funcionam. O **avanço do bracket** (subir o vencedor e criar as matches da próxima rodada) é **síncrono no
+  backend** (na rota de resultado do torneio), não passa pela fila.
 
 ## Uploads (armazenamento local, sem nuvem)
 
@@ -260,7 +284,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - **Visual ≠ lógica**: em `app/`, cada rota tem `<rota>/components/` (só JSX) e `<rota>/hooks/` (states,
   effects, handlers, chamadas). `page.tsx` só importa e renderiza.
 - **Route groups por acesso**: `app/(public)/` (login/register) e `app/(private)/` (dashboard, match, wallet,
-  bet). Guard no `layout.tsx` do grupo, nunca por página.
+  bet, tournament). Guard no `layout.tsx` do grupo, nunca por página.
 - **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar contratos.
 - **Auth do SPA**: `accessToken` em memória (nunca localStorage); refresh no cookie httpOnly; axios com
   `withCredentials`; interceptor de 401 chama `/auth/refresh` (dedup) e repete; silent refresh no boot.
