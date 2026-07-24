@@ -225,6 +225,17 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   **Outright (campeão do torneio)**: aberto **só até o torneio começar** (trava no `scheduledAt`); liquida
   quando o campeão é decidido (paga bem mais — azarão), estorna se o torneio é cancelado. Quem resolve se o
   mercado está aberto + as seleções válidas é o **backend** (dado puro pro use-case), como no resto.
+  **Ranking de apostadores**: domain service `LeaderboardCalculator.calculate(bets, limit)` (puro/estático,
+  mesmo padrão do `OddsCalculator`) agrupa **todas** as apostas `won`/`lost` (de qualquer mercado) por
+  `bettorId` e soma `netProfit = totalPayout − totalStaked`; apostas `open`/`refunded` são ignoradas (refund
+  é neutro, não carrega sinal de habilidade). Ordena por `netProfit` desc (empate: `betsWon` desc, depois
+  `totalStaked` desc, depois `bettorId` p/ ordem estável) e corta em `limit`. Porta nova
+  `BetQueryRepository.findSettledBets()` traz as entidades `Bet` com `status !== 'open'` de qualquer mercado
+  (o adapter Prisma faz um único `findMany`, sem agrupar por tipo). `GetLeaderboardQuery` (read-only) chama
+  a porta + o domain service e devolve `LeaderboardEntryDTO[]`. Rota aberta a **qualquer usuário autenticado**
+  (não é admin-only, é vitrine pública do produto) — `GET /bet/leaderboard?limit=N` (default 10). O front
+  (`app/(private)/leaderboard`) mostra o id do apostador **truncado** (8 chars, igual ao painel admin de
+  pagamentos) — nunca o e-mail, pra não expor dado pessoal numa tela que qualquer usuário vê.
 - **category** — árvore auto-referente de categorias (`Category` com `parentId` opcional; ex.:
   games → e-sports → Counter Strike). CRUD **admin-only** (`Create/Update/Delete` estendem
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
@@ -261,8 +272,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
   `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`),
-  `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/match/:id` e `/match/:id/odds`;
-  `/tournament/:id` e `/tournament/:id/odds` [outright]),
+  `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/leaderboard` [ranking, `?limit=`, aberto a
+  qualquer autenticado]; `/match/:id` e `/match/:id/odds`; `/tournament/:id` e `/tournament/:id/odds`
+  [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
