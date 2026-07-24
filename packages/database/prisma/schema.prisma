@@ -101,7 +101,7 @@ model Match {
   id                  String             @id @default(uuid())
   creatorId           String             @map("creator_id")
   title               String
-  gameType            String?            @map("game_type")
+  categoryId          String             @map("category_id")
   imageUrl            String?            @map("image_url")
   status              String             @default("open")
   rakeBasisPoints     Int                @default(0) @map("rake_basis_points")
@@ -114,6 +114,7 @@ model Match {
   participants        MatchParticipant[]
 
   @@index([creatorId])
+  @@index([categoryId])
   @@map("matches")
 }
 
@@ -150,4 +151,24 @@ model Bet {
   @@index([matchId])
   @@index([bettorId])
   @@map("bets")
+}
+
+// --- category ------------------------------------------------------------------
+
+// Self-referential category tree (e.g. games -> e-sports -> Counter Strike).
+// `parentId` is null for a root; the self relation stays WITHIN this context.
+// A match references a LEAF category (matches.category_id) as a LOGICAL FK
+// (cross-context — no Prisma relation there). onDelete: Restrict blocks removing
+// a node that still has children (the DeleteCategory use case guards it too).
+model Category {
+  id        String     @id @default(uuid())
+  name      String
+  parentId  String?    @map("parent_id")
+  parent    Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  children  Category[] @relation("CategoryChildren")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@index([parentId])
+  @@map("categories")
 }
