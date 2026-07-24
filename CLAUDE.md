@@ -192,7 +192,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   permitido quando `bestOf === 1` **e** o `Match` foi criado com **`allowsDraw: true`** (padrão da criação
   avulsa; joga `DRAW_NOT_ALLOWED` senão — um `bestOf` múltiplo nunca empata, sempre há maioria). Confronto
   de torneio é sempre criado com `allowsDraw: false` (`RecordBracketResultInput` também exige um vencedor
-  real — dupla trava, domínio + tipo), mas herda o `bestOf` do torneio. **Empate é uma seleção de aposta
+  real — dupla trava, domínio + tipo), mas herda o `bestOf` da rodada (`Tournament.bestOfByRound`) em que
+  o confronto está. **Empate é uma seleção de aposta
   como qualquer outra**: quando `allowsDraw`, `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por
   `@match/core`/`@match/adapters`) entra nas `selectionIds` válidas do mercado (o backend, em
   `bet.controller`, só soma esse id se `match.allowsDraw`) — tem pool/odd própria e pode ser
@@ -220,14 +221,17 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
   match aponta pra uma **folha**.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
-  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2; **`bestOf`** (1,
-  3 ou 5, default 1) aplicado a **todo** confronto do bracket; `championParticipantId` ao decidir a final),
+  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2;
+  **`bestOfByRound: number[]`** — **um valor por rodada** (índice 0 = rodada mais cheia, último = final;
+  cada valor 1/3/5, default todos 1) — permite, por exemplo, todo o torneio em MD3 com a **final em MD5**;
+  `bestOfFor(round)` resolve o valor da rodada; `championParticipantId` ao decidir a final),
   `TournamentParticipant` (displayName **único** = chave natural), `BracketSlot`
   (`round`/`position`/`matchId?`/`playerAId?`/`playerBId?`; round 0 = mais cheia, última = final). Domain
   services `BracketBuilder` (monta os slots: round 0 pareia os participantes, demais vazios) e `BracketAdvancer`
   (vencedor de (r,p) sobe pro pai (r+1, p/2), lado A/B). **Cada confronto do bracket É uma `Match` normal**
-  (2 participantes, `bestOf` do torneio, `allowsDraw: false`, aposta parimutuel por confronto) — o
-  `tournament` **não** importa `match`; quem cria/liquida as matches é o **backend** (camada de app).
+  (2 participantes, `bestOf` = `bestOfFor(round)` da sua rodada, `allowsDraw: false`, aposta parimutuel por
+  confronto) — o `tournament` **não** importa `match`; quem cria/liquida as matches é o **backend** (camada
+  de app).
   Criar/cancelar/declarar resultado é **admin-only** (`Create`/`Cancel` estendem `AdminUseCase`;
   `RecordBracketResult` é system, disparado só quando o confronto **realmente** se liquida); listar/ver é
   aberto. **Sem ciclo de módulo**: dependência só `tournament → match` — o resultado do confronto é
