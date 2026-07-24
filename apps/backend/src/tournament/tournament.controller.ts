@@ -89,7 +89,7 @@ export class TournamentController {
           imageUrl: null,
           scheduledAt: scheduledAt.toISOString(),
           rakeBasisPoints: tournament.rakeBasisPoints,
-          bestOf: tournament.bestOf,
+          bestOf: tournament.bestOfFor(slot.round),
           // A bracket confrontation must always produce a real winner to
           // advance the tournament — it never offers the draw selection.
           allowsDraw: false,

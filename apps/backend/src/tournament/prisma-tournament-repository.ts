@@ -26,7 +26,7 @@ type TournamentRow = {
   status: string
   size: number
   rakeBasisPoints: number
-  bestOf: number
+  bestOfByRound: number[]
   championParticipantId: string | null
   scheduledAt: Date
   createdAt: Date
@@ -55,7 +55,7 @@ export class PrismaTournamentRepository
       status: row.status as TournamentStatus,
       size: row.size,
       rakeBasisPoints: row.rakeBasisPoints,
-      bestOf: row.bestOf,
+      bestOfByRound: row.bestOfByRound,
       championParticipantId: row.championParticipantId,
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
@@ -95,7 +95,7 @@ export class PrismaTournamentRepository
         status: tournament.status,
         size: tournament.size,
         rakeBasisPoints: tournament.rakeBasisPoints,
-        bestOf: tournament.bestOf,
+        bestOfByRound: tournament.bestOfByRound,
         championParticipantId: tournament.championParticipantId,
         scheduledAt: tournament.scheduledAt,
         participants: {
@@ -176,7 +176,7 @@ export class PrismaTournamentRepository
       status: row.status as TournamentStatus,
       size: row.size,
       rakeBasisPoints: row.rakeBasisPoints,
-      bestOf: row.bestOf,
+      bestOfByRound: row.bestOfByRound,
       championParticipantId: row.championParticipantId,
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
