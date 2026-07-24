@@ -4,6 +4,7 @@ import {
   BetQueryRepository,
   BetDTO,
   MarketOddsDTO,
+  LeaderboardEntryDTO,
   SettlementJob,
 } from '@betting/core'
 import {
@@ -12,6 +13,7 @@ import {
   GetMarketOddsController,
   ListBetsByMarketController,
   ListMyBetsController,
+  GetLeaderboardController,
 } from '../controllers'
 import { PlaceBetInput } from '../@types'
 
@@ -56,5 +58,9 @@ export default class BettingFacade {
 
   async listMyBets(bettorId: string): Promise<BetDTO[]> {
     return new ListMyBetsController(this.betQueryRepository!).execute(bettorId)
+  }
+
+  async getLeaderboard(limit: number): Promise<LeaderboardEntryDTO[]> {
+    return new GetLeaderboardController(this.betQueryRepository!).execute(limit)
   }
 }
