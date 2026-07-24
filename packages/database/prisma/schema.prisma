@@ -133,22 +133,25 @@ model MatchParticipant {
 
 // --- betting -------------------------------------------------------------------
 
-// One bet by one bettor on one participant of a match. status: open | won | lost |
-// refunded. `stake`/`payout` in cents; `payout` is filled at settlement by the
-// parimutuel PayoutCalculator. matchId/bettorId/participantId are LOGICAL FKs
-// (cross-context — no Prisma relation).
+// One bet by one bettor on one SELECTION of a MARKET. A market is either a match
+// (marketType 'match', selection = a match participant) or a tournament's champion
+// (marketType 'tournament_outright', selection = a tournament participant). status:
+// open | won | lost | refunded. `stake`/`payout` in cents; `payout` is filled at
+// settlement by the parimutuel PayoutCalculator (same math for every market).
+// marketId/bettorId/selectionId are LOGICAL FKs (cross-context — no Prisma relation).
 model Bet {
-  id            String    @id @default(uuid())
-  matchId       String    @map("match_id")
-  bettorId      String    @map("bettor_id")
-  participantId String    @map("participant_id")
-  stake         Int
-  status        String    @default("open")
-  payout        Int       @default(0)
-  createdAt     DateTime  @default(now()) @map("created_at")
-  settledAt     DateTime? @map("settled_at")
+  id          String    @id @default(uuid())
+  marketType  String    @default("match") @map("market_type")
+  marketId    String    @map("market_id")
+  bettorId    String    @map("bettor_id")
+  selectionId String    @map("selection_id")
+  stake       Int
+  status      String    @default("open")
+  payout      Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  settledAt   DateTime? @map("settled_at")
 
-  @@index([matchId])
+  @@index([marketId])
   @@index([bettorId])
   @@map("bets")
 }
