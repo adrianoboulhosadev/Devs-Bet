@@ -46,7 +46,7 @@ packages/
     adapters/  (@<contexto>/adapters)  # src/{controllers,facade,dto,@types,providers} + index.ts (sem testes)
 apps/
   backend/   # NestJS: API. Driven adapters (repos Prisma, bcrypt, jwt, payment gateway), middleware, controllers, produtor BullMQ.
-  worker/    # consumidor BullMQ que roda o SettleMatch (paga/estorna as apostas). Tem testes. NÃO usa Groq/Playwright.
+  worker/    # consumidor BullMQ que roda o SettleMarket (paga/estorna as apostas). Tem testes. NÃO usa Groq/Playwright.
   web/       # Next.js (App Router) + Tailwind + TanStack Query + Axios + react-hook-form.
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
@@ -95,7 +95,7 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **App NUNCA importa `@ctx/core` — só `@ctx/adapters`.** O `@ctx/adapters` é a **única superfície
   pública** do contexto e reexporta (curado) DTOs, portas, **entidades/VOs/enums** e tipos de infra.
   **Só o pacote `adapters` importa o `core`.** Rodar um use-case a partir do app é sempre via
-  controller/facade do adapters (ex.: o worker chama `BettingFacade.settleMatch`, nunca `new SettleMatch`).
+  controller/facade do adapters (ex.: o worker chama `BettingFacade.settleMarket`, nunca `new SettleMarket`).
 - **`core` só depende de `shared`** (e `uuid`, via shared). **Proibido**: Zod ou qualquer outra lib
   no core. Validação usa `Validator`/`ValidationError`/`Errors` do `shared`.
 - **Adapters**: `controllers/` são presenters finos (instanciam o use-case e devolvem só o que o
@@ -128,16 +128,18 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   e as operações (`add`/`subtract`/`isNegative`/`isGreaterThan`); colunas Prisma em `Int`.
 - **Operações de dinheiro são atômicas.** Apostar = `wallet.hold(stake)` + criar `Bet` + registrar no
   ledger num **único commit**; settlement = pagar N apostas + creditar/consumir N carteiras de uma vez.
-  A **porta expõe a operação composta** (ex.: `BettingRepository.placeBet(...)`, `settleMatch(...)`) e o
+  A **porta expõe a operação composta** (ex.: `BettingRepository.placeBet(...)`, `settleMarket(...)`) e o
   **adapter Prisma envolve em `$transaction`**. O core não conhece Prisma; a atomicidade é do adapter.
 - **Ledger append-only**: toda mudança de saldo gera um `LedgerEntry` (deposit, bet_hold, bet_won,
   bet_lost, refund, withdrawal). Fonte de auditoria — nunca editar/apagar linha de ledger.
 
 ## Payout parimutuel
 
-Domain service `PayoutCalculator.calculate(bets, winnerParticipantId, rakeBasisPoints)` (puro/estático):
+Domain service `PayoutCalculator.calculate(bets, winningSelectionId, rakeBasisPoints)` (puro/estático).
+Mesma matemática pra **qualquer mercado** (vencedor de uma match ou campeão de um torneio), agrupando pela
+**seleção** da aposta:
 
-- `pool(participant)` = soma dos stakes naquele participante; `total` = soma de todos.
+- `pool(selection)` = soma dos stakes naquela seleção; `total` = soma de todos.
 - `distributable = total − rake` (`rake = total × rakeBasisPoints / 10000`; começa em 0).
 - Aposta vencedora `i` recebe `stake_i / pool(winner) × distributable`. Odd implícita do vencedor =
   `distributable / pool(winner)` → quanto menor o pool, maior o pagamento (azarão paga mais).
@@ -184,8 +186,13 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
   chega o `scheduledAt`: `CreateMatch` agenda via porta `MatchLockQueue` (job BullMQ **atrasado**) e o
   worker roda `AutoLockMatch` (system, não-admin, idempotente).
-- **betting** — `Bet` (`open/won/lost/refunded`), `PayoutCalculator` (parimutuel), `SettleMatch`
-  (enfileirado → worker), stats.
+- **betting** — aposta num **mercado**: `Bet` (`open/won/lost/refunded`) tem `marketType`
+  (`match` | `tournament_outright`) + `marketId` (id da match ou do torneio) + `selectionId` (participante
+  da match ou do torneio). `PayoutCalculator`/`OddsCalculator` (parimutuel) agrupam por `selectionId` — mesma
+  lógica pros dois mercados. `SettleMarket`/`RefundMarket` (enfileirados → worker via fila `settlement`), stats.
+  **Outright (campeão do torneio)**: aberto **só até o torneio começar** (trava no `scheduledAt`); liquida
+  quando o campeão é decidido (paga bem mais — azarão), estorna se o torneio é cancelado. Quem resolve se o
+  mercado está aberto + as seleções válidas é o **backend** (dado puro pro use-case), como no resto.
 - **category** — árvore auto-referente de categorias (`Category` com `parentId` opcional; ex.:
   games → e-sports → Counter Strike). CRUD **admin-only** (`Create/Update/Delete` estendem
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
@@ -204,13 +211,18 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   numa **rota dedicada do tournament** (`/tournament/:id/matches/:matchId/result`) que trava+settla a match via
   `MatchFacade`, enfileira o pagamento das apostas e avança o bracket, criando as matches da próxima rodada.
   Matches do round 0 travam no `scheduledAt` do torneio; as das rodadas seguintes abrem quando a anterior
-  encerra e travam após uma janela padrão. Reaproveita o worker (`match-settlement` + `match-lock`).
+  encerra e travam após uma janela padrão. Reaproveita o worker (`settlement` + `match-lock`). Além da aposta
+  por confronto, há a aposta **outright no campeão** (mercado `tournament_outright` do `betting`): quando a
+  final é decidida, a rota de resultado enfileira o settlement do outright (`marketId` = torneio,
+  `winningSelectionId` = campeão); cancelar o torneio estorna o outright.
 
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
-  [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`, `bet` (`/`, `/:id`),
+  [GET e PATCH], `/:id/lock`, `/:id/settle`, `/:id/cancel`), `upload/matchs`,
+  `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/match/:id` e `/match/:id/odds`;
+  `/tournament/:id` e `/tournament/:id/odds` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]), `admin/{deposits,withdrawals}`.
@@ -253,16 +265,19 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 ## Worker e fila (settlement assíncrono)
 
-- `SettleMatch` (disparado pelo admin ao declarar o resultado) **enfileira** via porta `MatchSettlementQueue`
-  (produtor BullMQ no backend). O **worker** consome a fila `match-settlement` e roda o settlement através da
-  facade do `betting`, aplicando o `PayoutCalculator` e persistindo tudo numa transação.
+- A liquidação (disparada pelo admin ao declarar o resultado da match, ou pela rota de resultado do torneio,
+  ou pelo cancelamento) **enfileira** via porta `SettlementQueue` (produtor BullMQ no backend), com um job
+  genérico `{ marketId, winningSelectionId, rakeBasisPoints, cancelled? }`. O **worker** consome a fila
+  `settlement` e roda `SettleMarket`/`RefundMarket` através da facade do `betting`, aplicando o
+  `PayoutCalculator` e persistindo tudo numa transação. Serve qualquer mercado (match ou outright do torneio),
+  sem ramificar por tipo (a liquidação acha as apostas abertas por `marketId`).
 - Os literais da fila precisam bater entre backend (produtor) e worker (consumidor). O worker **não** usa
   Groq/Playwright.
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
 - **Torneio reaproveita o worker sem código novo**: os confrontos do bracket são matches normais, então o
-  auto-lock (`match-lock`) e o pagamento parimutuel (`match-settlement`) das apostas por confronto já
+  auto-lock (`match-lock`) e o pagamento parimutuel (`settlement`) das apostas por confronto já
   funcionam. O **avanço do bracket** (subir o vencedor e criar as matches da próxima rodada) é **síncrono no
   backend** (na rota de resultado do torneio), não passa pela fila.
 
