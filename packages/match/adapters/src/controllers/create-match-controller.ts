@@ -16,10 +16,12 @@ export default class CreateMatchController {
     input: CreateMatchInput,
     actor: AuthenticatedActor,
     categoryIsLeaf: boolean,
+    matchId?: string,
   ): Promise<void> {
     const useCase = new CreateMatch(this.matchRepository, this.lockQueue)
     await useCase.execute(
       {
+        id: matchId,
         title: input.title,
         categoryId: input.categoryId,
         categoryIsLeaf,

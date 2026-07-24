@@ -28,11 +28,13 @@ export default class MatchFacade {
     input: CreateMatchInput,
     actor: AuthenticatedActor,
     categoryIsLeaf: boolean,
+    matchId?: string,
   ): Promise<void> {
     await new CreateMatchController(this.matchRepository!, this.lockQueue).execute(
       input,
       actor,
       categoryIsLeaf,
+      matchId,
     )
   }
 
