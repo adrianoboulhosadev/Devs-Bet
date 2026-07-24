@@ -13,8 +13,8 @@ interface Input {
  * winner or a tournament's champion. Computes the parimutuel outcomes with
  * PayoutCalculator, applies them to the Bet entities (guarded transitions) and
  * persists everything atomically via the settlement repository (which also moves
- * the wallets). No winner / empty winner pool → everyone refunded (handled by the
- * calculator).
+ * the wallets). Nobody backed the winner → everyone loses (no refund); a
+ * cancelled market never reaches here — that's RefundMarket's job.
  */
 export default class SettleMarket implements UseCase<Input, void> {
   constructor(private readonly settlementRepository: BettingSettlementRepository) {}

@@ -47,11 +47,11 @@ test('losing bets get a zero payout', () => {
   expect(loser?.payout).toBe(0)
 })
 
-test('nobody backed the winner -> everyone refunded', () => {
+test('nobody backed the winner -> everyone loses their stake', () => {
   const pool = bets([{ selectionId: 'A', stake: 1000, count: 2 }])
   const outcomes = PayoutCalculator.calculate(pool, 'B', 0)
-  expect(outcomes.every((outcome) => outcome.outcome === 'refunded')).toBe(true)
-  expect(outcomes.every((outcome) => outcome.payout === 1000)).toBe(true)
+  expect(outcomes.every((outcome) => outcome.outcome === 'lost')).toBe(true)
+  expect(outcomes.every((outcome) => outcome.payout === 0)).toBe(true)
 })
 
 test('no winner declared -> everyone refunded', () => {

@@ -17,8 +17,10 @@ export interface BetOutcome {
  *  - a winning bet `i` gets floor(stake_i / pool(winner) × distributable) — so the
  *    winner's implied odd is distributable / pool(winner): the smaller the pool,
  *    the bigger the payout (the underdog pays more).
- *  - if nobody backed the winner (pool == 0) or there is no winner, EVERYONE is
- *    refunded (gets their stake back).
+ *  - if there is no winner declared (market cancelled), EVERYONE is refunded
+ *    (gets their stake back). If a winner IS declared but nobody backed it
+ *    (pool == 0), every bet just LOSES — nobody guessed right, so nobody is
+ *    owed anything back.
  */
 export class PayoutCalculator {
   static calculate(
@@ -28,16 +30,19 @@ export class PayoutCalculator {
   ): BetOutcome[] {
     if (bets.length === 0) return []
 
-    const total = bets.reduce((sum, bet) => sum + bet.stake.cents, 0)
-    const winnerPool = winningSelectionId
-      ? bets
-          .filter((bet) => bet.selectionId === winningSelectionId)
-          .reduce((sum, bet) => sum + bet.stake.cents, 0)
-      : 0
-
-    // No winner declared, or nobody backed the winner: refund everyone.
-    if (!winningSelectionId || winnerPool === 0) {
+    // No winner declared (market cancelled): refund everyone.
+    if (!winningSelectionId) {
       return bets.map((bet) => ({ betId: bet.id.value, outcome: 'refunded', payout: bet.stake.cents }))
+    }
+
+    const total = bets.reduce((sum, bet) => sum + bet.stake.cents, 0)
+    const winnerPool = bets
+      .filter((bet) => bet.selectionId === winningSelectionId)
+      .reduce((sum, bet) => sum + bet.stake.cents, 0)
+
+    // A winner was declared but nobody backed it: everybody loses their stake.
+    if (winnerPool === 0) {
+      return bets.map((bet) => ({ betId: bet.id.value, outcome: 'lost', payout: 0 }))
     }
 
     const rake = Math.floor((total * rakeBasisPoints) / 10_000)

@@ -70,6 +70,19 @@ test('settlement resolves winners and losers by the parimutuel share', async () 
   expect(onA.every((bet) => bet.status === 'lost')).toBe(true)
 })
 
+test('nobody backed the winner -> everyone loses (no refund)', async () => {
+  const repository = new BettingRepositoryInMemory()
+  const place = new PlaceBet(repository)
+  await place.execute({ marketId: 'm2', bettorId: 'u1', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
+  await place.execute({ marketId: 'm2', bettorId: 'u2', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
+
+  await new SettleMarket(repository).execute({ marketId: 'm2', winningSelectionId: 'B', rakeBasisPoints: 0 })
+
+  const book = await new ListBetsByMarketQuery(repository).execute('m2')
+  expect(book.every((bet) => bet.status === 'lost')).toBe(true)
+  expect(book.every((bet) => bet.payout === 0)).toBe(true)
+})
+
 test('refund settles every open bet back to its stake', async () => {
   const repository = new BettingRepositoryInMemory()
   await placeSome(repository)
