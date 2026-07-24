@@ -132,15 +132,19 @@ export class Match extends Entity<Match, MatchProps> {
     this.lockedAt = new Date()
   }
 
-  /** Declares the winner. Only from `locked`; the winner must be a participant. */
-  settle(winnerParticipantId: string): void {
+  /**
+   * Declares the result. Only from `locked`. `winnerParticipantId` must be a
+   * participant; `null` declares a draw (nobody won) — betting-wise a draw
+   * voids the market (every bet is refunded, same as no winner declared).
+   */
+  settle(winnerParticipantId: string | null): void {
     if (this.status === 'settled' || this.status === 'cancelled') {
       ConflictError.throwError(Errors.MATCH_ALREADY_SETTLED, this.status)
     }
     if (this.status !== 'locked') {
       ConflictError.throwError(Errors.INVALID_MATCH_STATUS, this.status)
     }
-    if (!this.hasParticipant(winnerParticipantId)) {
+    if (winnerParticipantId !== null && !this.hasParticipant(winnerParticipantId)) {
       ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerParticipantId)
     }
     this.status = 'settled'

@@ -159,6 +159,14 @@ test('the winner must be a participant (NOT_A_PARTICIPANT)', () => {
   }
 })
 
+test('settle(null) declares a draw', () => {
+  const match = newMatch()
+  match.lockBetting()
+  match.settle(null)
+  expect(match.status).toBe('settled')
+  expect(match.winnerParticipantId).toBeNull()
+})
+
 test('cannot settle twice (MATCH_ALREADY_SETTLED)', () => {
   const match = newMatch()
   const winner = match.participants[0].id.value

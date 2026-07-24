@@ -148,6 +148,17 @@ test('admin locks, declares the winner; the flow reaches settled', async () => {
   expect(match.winnerParticipantId).toBe(winner)
 })
 
+test('admin declares a draw (null winner) via DeclareMatchResult', async () => {
+  const { repository, matchId } = await setupWithMatch()
+
+  await new LockMatch(repository).execute({ matchId }, admin)
+  await new DeclareMatchResult(repository).execute({ matchId, winnerParticipantId: null }, admin)
+
+  const match = await new GetMatchQuery(repository).execute(matchId)
+  expect(match.status).toBe('settled')
+  expect(match.winnerParticipantId).toBeNull()
+})
+
 test('a non-admin cannot lock a match (NOT_ADMIN)', async () => {
   const { repository, matchId } = await setupWithMatch()
   await expect(new LockMatch(repository).execute({ matchId }, user)).rejects.toBeInstanceOf(
