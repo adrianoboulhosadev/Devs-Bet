@@ -172,7 +172,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
-`INVALID_COMBO_ODD`.
+`INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`.
 
 ## Contextos
 
@@ -191,6 +191,22 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `direction: 'deposit'` sem `receiptUrl` no construtor (saque nunca tem comprovante). `receiptUrl` fica
   em `payments.receipt_url` (nullable) e aparece no `PaymentDTO`; o admin vê um link "Ver comprovante"
   (`mediaUrl`) no painel de pendências antes de confirmar o depósito.
+  **Jogo responsável — limite de depósito**: `DepositLimit` (entidade rica, uma linha por usuário+período
+  `daily`/`weekly`/`monthly`, `@@unique([userId, period])`) é um teto **autoimposto** pelo próprio usuário
+  (self-service, não é o admin quem define). Janelas **rolantes** (últimas 24h/7d/30d — não alinhadas a
+  calendário, evita o efeito "zera à meia-noite" e fuso horário) — `PERIOD_WINDOW_MS` no model.
+  `DepositLimit.update(newAmount)` é a regra central: **diminuir aplica na hora**; **aumentar só entra em
+  vigor 24h depois** (`pendingAmount`/`effectiveAt`) — evita o usuário subir o próprio limite às pressas
+  antes de um depósito por impulso; um novo `update` que diminui de novo **cancela** o aumento agendado.
+  `effectiveAmount()`/`ensureWithinLimit(usedInWindow, depositAmount)` resolvem um aumento vencido antes de
+  comparar (auto-consistente, sem precisar de job externo). `RequestDeposit` carrega os limites do usuário
+  (`WalletRepository.findDepositLimits`) e, pra cada um, soma o já depositado na janela
+  (`sumDepositsSince`, conta `status !== 'rejected'`, ou seja pendente+confirmado) antes de criar o
+  `Payment` — estoura o teto → `ValidationError`/`DEPOSIT_LIMIT_EXCEEDED` (mesma classificação de
+  `INSUFFICIENT_BALANCE`). Rotas self-service: `GET`/`POST /wallet/deposit-limits` (`SetDepositLimit`
+  cria ou ajusta; `ListMyDepositLimitsQuery` lista os próprios). **Simplificação desta v1**: não há como
+  remover um limite já definido (só ajustar o valor) — cobre o pedido do usuário (limite de
+  depósito diário/semanal/mensal) sem o caso extra de "tirar o teto de vez".
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
@@ -296,7 +312,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
-  `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`, `match` (`/`, `/:id`
+  `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`,
+  `wallet/deposit-limits` (GET lista os próprios; POST define/ajusta — jogo responsável), `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
   `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`),
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/leaderboard` [ranking, `?limit=`, aberto a
@@ -335,7 +352,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - Prisma em **`packages/database`**: `prisma/schema.prisma` + client gerado em `generated/` (gitignored).
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
-  `LedgerEntry`(ledger_entries), `Payment`(payments), `Match`(matches), `MatchParticipant`(match_participants),
+  `LedgerEntry`(ledger_entries), `Payment`(payments), `DepositLimit`(deposit_limits; `@@unique([userId, period])`),
+  `Match`(matches), `MatchParticipant`(match_participants),
   `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `ComboBet`(combo_bets),
   `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
   `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
