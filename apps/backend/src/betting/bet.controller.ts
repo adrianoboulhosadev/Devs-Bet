@@ -42,11 +42,12 @@ export class BetController {
 
     const match = await this.matchRepository.findByIdQuery(input.marketId)
     if (!match) NotFoundError.throwError(Errors.MATCH_NOT_FOUND, input.marketId)
-    // A match can also draw: bettors may back that pseudo-selection too.
-    return {
-      marketOpen: match.status === 'open',
-      selectionIds: [...match.participants.map((p) => p.id), MATCH_DRAW_SELECTION_ID],
-    }
+    // A match that allows a draw also lets bettors back that pseudo-selection
+    // (a tournament confrontation is created with allowsDraw false, since it
+    // must always produce a real winner to advance the bracket).
+    const selectionIds = match.participants.map((p) => p.id)
+    if (match.allowsDraw) selectionIds.push(MATCH_DRAW_SELECTION_ID)
+    return { marketOpen: match.status === 'open', selectionIds }
   }
 
   @Post()

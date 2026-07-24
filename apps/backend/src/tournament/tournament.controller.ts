@@ -88,6 +88,9 @@ export class TournamentController {
           imageUrl: null,
           scheduledAt: scheduledAt.toISOString(),
           rakeBasisPoints: tournament.rakeBasisPoints,
+          // A bracket confrontation must always produce a real winner to
+          // advance the tournament — it never offers the draw selection.
+          allowsDraw: false,
           participants: [{ displayName: nameA }, { displayName: nameB }],
         },
         actor,

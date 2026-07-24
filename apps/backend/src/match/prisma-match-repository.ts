@@ -10,6 +10,7 @@ type MatchRowWithParticipants = {
   imageUrl: string | null
   status: string
   rakeBasisPoints: number
+  allowsDraw: boolean
   winnerParticipantId: string | null
   scheduledAt: Date
   createdAt: Date
@@ -31,6 +32,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       imageUrl: row.imageUrl,
       status: row.status as MatchStatus,
       rakeBasisPoints: row.rakeBasisPoints,
+      allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
       lockedAt: row.lockedAt,
@@ -60,6 +62,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         scheduledAt: match.scheduledAt,
         status: match.status,
         rakeBasisPoints: match.rakeBasisPoints,
+        allowsDraw: match.allowsDraw,
         winnerParticipantId: match.winnerParticipantId,
         participants: {
           create: match.participants.map((participant) => ({
@@ -109,6 +112,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       imageUrl: row.imageUrl,
       status: row.status as MatchStatus,
       rakeBasisPoints: row.rakeBasisPoints,
+      allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
