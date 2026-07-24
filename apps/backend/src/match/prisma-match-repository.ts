@@ -10,6 +10,7 @@ type MatchRowWithParticipants = {
   imageUrl: string | null
   status: string
   rakeBasisPoints: number
+  bestOf: number
   allowsDraw: boolean
   winnerParticipantId: string | null
   scheduledAt: Date
@@ -17,6 +18,12 @@ type MatchRowWithParticipants = {
   lockedAt: Date | null
   settledAt: Date | null
   participants: { id: string; userId: string | null; displayName: string }[]
+  units: { unitNumber: number; winnerParticipantId: string | null }[]
+}
+
+const includeAggregate = {
+  participants: true,
+  units: { orderBy: { unitNumber: 'asc' as const } },
 }
 
 @Injectable()
@@ -32,6 +39,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       imageUrl: row.imageUrl,
       status: row.status as MatchStatus,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
@@ -43,11 +51,16 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         userId: participant.userId,
         displayName: participant.displayName,
       })),
+      units: row.units.map((unit) => ({
+        matchId: row.id,
+        unitNumber: unit.unitNumber,
+        winnerParticipantId: unit.winnerParticipantId,
+      })),
     })
   }
 
   async findById(id: string): Promise<Match | null> {
-    const row = await this.prisma.match.findUnique({ where: { id }, include: { participants: true } })
+    const row = await this.prisma.match.findUnique({ where: { id }, include: includeAggregate })
     return row ? this.reconstitute(row) : null
   }
 
@@ -62,6 +75,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         scheduledAt: match.scheduledAt,
         status: match.status,
         rakeBasisPoints: match.rakeBasisPoints,
+        bestOf: match.bestOf,
         allowsDraw: match.allowsDraw,
         winnerParticipantId: match.winnerParticipantId,
         participants: {
@@ -76,28 +90,43 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
   }
 
   async update(match: Match): Promise<void> {
-    await this.prisma.match.update({
-      where: { id: match.id.value },
-      data: {
-        title: match.title,
-        categoryId: match.categoryId,
-        scheduledAt: match.scheduledAt,
-        status: match.status,
-        winnerParticipantId: match.winnerParticipantId,
-        lockedAt: match.lockedAt,
-        settledAt: match.settledAt,
-      },
-    })
+    // Units only ever grow (recordUnitResult appends) — upsert each so a repeated
+    // call (or reconstituted-then-resaved unit) stays idempotent.
+    await this.prisma.$transaction([
+      this.prisma.match.update({
+        where: { id: match.id.value },
+        data: {
+          title: match.title,
+          categoryId: match.categoryId,
+          scheduledAt: match.scheduledAt,
+          status: match.status,
+          winnerParticipantId: match.winnerParticipantId,
+          lockedAt: match.lockedAt,
+          settledAt: match.settledAt,
+        },
+      }),
+      ...match.units.map((unit) =>
+        this.prisma.matchUnit.upsert({
+          where: { matchId_unitNumber: { matchId: match.id.value, unitNumber: unit.unitNumber } },
+          create: {
+            matchId: match.id.value,
+            unitNumber: unit.unitNumber,
+            winnerParticipantId: unit.winnerParticipantId,
+          },
+          update: { winnerParticipantId: unit.winnerParticipantId },
+        }),
+      ),
+    ])
   }
 
   async findByIdQuery(id: string): Promise<MatchDTO | null> {
-    const row = await this.prisma.match.findUnique({ where: { id }, include: { participants: true } })
+    const row = await this.prisma.match.findUnique({ where: { id }, include: includeAggregate })
     return row ? this.toDTO(row) : null
   }
 
   async listQuery(): Promise<MatchDTO[]> {
     const rows = await this.prisma.match.findMany({
-      include: { participants: true },
+      include: includeAggregate,
       orderBy: { createdAt: 'desc' },
     })
     return rows.map((row) => this.toDTO(row))
@@ -112,6 +141,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       imageUrl: row.imageUrl,
       status: row.status as MatchStatus,
       rakeBasisPoints: row.rakeBasisPoints,
+      bestOf: row.bestOf,
       allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
@@ -119,6 +149,10 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         id: participant.id,
         userId: participant.userId,
         displayName: participant.displayName,
+      })),
+      units: row.units.map((unit) => ({
+        unitNumber: unit.unitNumber,
+        winnerParticipantId: unit.winnerParticipantId,
       })),
       createdAt: row.createdAt,
       lockedAt: row.lockedAt,

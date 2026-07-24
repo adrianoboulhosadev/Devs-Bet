@@ -5,7 +5,7 @@ import {
   TournamentDTO,
   TournamentFacade,
 } from '@tournament/adapters'
-import { MatchFacade } from '@match/adapters'
+import { MatchFacade, MatchDTO } from '@match/adapters'
 import { UserDTO } from '@auth/adapters'
 import { AuthenticatedActor, Id, NotFoundError, Errors } from 'shared'
 import { PrismaTournamentRepository } from './prisma-tournament-repository'
@@ -26,10 +26,11 @@ const NEXT_ROUND_BETTING_WINDOW_MS = 60 * 60 * 1000
  * confrontation result are admin-only.
  *
  * This controller is the CROSS-CONTEXT orchestrator: a tournament ORCHESTRATES
- * matches. Each bracket confrontation is a plain Match created here via the
- * MatchFacade; declaring its winner settles the Match, enqueues its bet payout and
- * advances the bracket — creating the next matches. The dependency is one-way
- * (tournament → match), so there is no Nest module cycle.
+ * matches. Each bracket confrontation is a plain Match (with the tournament's
+ * bestOf) created here via the MatchFacade; recording its units' results settles
+ * the Match once the series is decided, enqueues its bet payout and advances the
+ * bracket — creating the next matches. The dependency is one-way (tournament →
+ * match), so there is no Nest module cycle.
  */
 @Controller('tournament')
 export class TournamentController {
@@ -88,6 +89,7 @@ export class TournamentController {
           imageUrl: null,
           scheduledAt: scheduledAt.toISOString(),
           rakeBasisPoints: tournament.rakeBasisPoints,
+          bestOf: tournament.bestOf,
           // A bracket confrontation must always produce a real winner to
           // advance the tournament — it never offers the draw selection.
           allowsDraw: false,
@@ -142,15 +144,18 @@ export class TournamentController {
     })
   }
 
+  // Records the winner of the confrontation's next unit. A bestOf-1 confrontation
+  // decides (and advances the bracket) right away; a bestOf-3/5 one may need this
+  // called again for the following units before the bracket actually advances.
   @Post(':id/matches/:matchId/result')
-  @HttpCode(204)
+  @HttpCode(200)
   @UseGuards(AdminGuard)
-  async declareResult(
+  async recordUnitResult(
     @Param('id') id: string,
     @Param('matchId') matchId: string,
     @Body() input: RecordBracketResultInput,
     @authenticatedUser() user: UserDTO,
-  ) {
+  ): Promise<MatchDTO> {
     const actor = this.actor(user)
 
     // Settling requires the match to be locked; lock it first if betting is open,
@@ -158,10 +163,13 @@ export class TournamentController {
     const current = await this.matchFacade().getMatch(matchId)
     if (current.status === 'open') await this.matchFacade().lockMatch(matchId, actor)
 
-    // 1. Record the winner on the Match (admin).
-    await this.matchFacade().declareResult(matchId, input, actor)
-    // 2. Enqueue the parimutuel payout of this confrontation's bets (worker).
+    // 1. Record this unit's winner on the Match (admin).
+    await this.matchFacade().recordUnitResult(matchId, input, actor)
     const match = await this.matchFacade().getMatch(matchId)
+    // The bestOf series isn't decided yet — wait for the next unit's result.
+    if (match.status !== 'settled') return match
+
+    // 2. Enqueue the parimutuel payout of this confrontation's bets (worker).
     await this.settlementQueue.enqueue({
       marketId: matchId,
       winningSelectionId: match.winnerParticipantId,
@@ -171,7 +179,7 @@ export class TournamentController {
     const winnerName = match.participants.find(
       (participant) => participant.id === match.winnerParticipantId,
     )?.displayName
-    if (!winnerName) return
+    if (!winnerName) return match
     await this.tournamentFacade().recordResult(id, matchId, winnerName)
     // 4. Create the matches for whatever slots just became ready (next round).
     await this.createPendingMatches(id, actor)
@@ -184,5 +192,6 @@ export class TournamentController {
         rakeBasisPoints: tournament.rakeBasisPoints,
       })
     }
+    return match
   }
 }

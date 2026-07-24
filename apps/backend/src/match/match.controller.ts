@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '
 import {
   CreateMatchInput,
   UpdateMatchInput,
-  DeclareResultInput,
+  RecordUnitResultInput,
   MatchDTO,
   MatchFacade,
   MATCH_DRAW_SELECTION_ID,
@@ -86,24 +86,30 @@ export class MatchController {
     await this.facade().lockMatch(id, this.actor(user))
   }
 
-  @Post(':id/settle')
-  @HttpCode(204)
+  // Records the winner of the match's next unit (map/leg/round/fight). A bestOf-1
+  // match settles right away; a bestOf-3/5 match may need this called again for
+  // the following units before it actually settles (the response reflects that).
+  @Post(':id/units')
+  @HttpCode(200)
   @UseGuards(AdminGuard)
-  async settle(
+  async recordUnitResult(
     @Param('id') id: string,
-    @Body() input: DeclareResultInput,
+    @Body() input: RecordUnitResultInput,
     @authenticatedUser() user: UserDTO,
-  ) {
-    await this.facade().declareResult(id, input, this.actor(user))
-    // Cross-context: enqueue the parimutuel payout of the bets (worker settles).
-    // A draw (winnerParticipantId null) settles as its own selection, so bets
-    // placed on the draw are paid like any other winning selection.
+  ): Promise<MatchDTO> {
+    await this.facade().recordUnitResult(id, input, this.actor(user))
     const match = await this.facade().getMatch(id)
-    await this.settlementQueue.enqueue({
-      marketId: id,
-      winningSelectionId: match.winnerParticipantId ?? MATCH_DRAW_SELECTION_ID,
-      rakeBasisPoints: match.rakeBasisPoints,
-    })
+    if (match.status === 'settled') {
+      // Cross-context: enqueue the parimutuel payout of the bets (worker settles).
+      // A draw (winnerParticipantId null) settles as its own selection, so bets
+      // placed on the draw are paid like any other winning selection.
+      await this.settlementQueue.enqueue({
+        marketId: id,
+        winningSelectionId: match.winnerParticipantId ?? MATCH_DRAW_SELECTION_ID,
+        rakeBasisPoints: match.rakeBasisPoints,
+      })
+    }
+    return match
   }
 
   @Post(':id/cancel')
