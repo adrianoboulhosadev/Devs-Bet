@@ -15,6 +15,14 @@ export interface CreateMatchInput {
   participants: CreateMatchParticipantInput[]
 }
 
+// All fields optional (patch). scheduledAt is an ISO 8601 string on the wire.
+// Participants and image are not editable after creation.
+export interface UpdateMatchInput {
+  title?: string
+  gameType?: string | null
+  scheduledAt?: string
+}
+
 export interface DeclareResultInput {
   winnerParticipantId: string
 }
