@@ -28,7 +28,7 @@ export interface TournamentDTO {
   status: TournamentStatus
   size: number
   rakeBasisPoints: number
-  bestOf: number
+  bestOfByRound: number[]
   championParticipantId: string | null
   scheduledAt: Date
   participants: TournamentParticipantDTO[]

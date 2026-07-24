@@ -23,11 +23,12 @@ export interface TournamentProps extends EntityProps {
   status?: TournamentStatus
   size?: number
   rakeBasisPoints?: number
-  // How many units decide EACH confrontation of the bracket — 1, 3 or 5
-  // (defaults to 1). Applied to every Match the backend creates for this
-  // tournament (see Match.bestOf); a bracket confrontation never allows a
-  // draw regardless, so this only matters for bestOf > 1.
-  bestOf?: number
+  // How many units decide each confrontation, ONE ENTRY PER ROUND (index 0 =
+  // round 0, the fullest; last entry = the final) — so e.g. every round can be
+  // MD3 except an MD5 final. Each entry is 1, 3 or 5 (defaults to all 1s).
+  // Applied to the Match the backend creates for that round (see Match.bestOf);
+  // a bracket confrontation never allows a draw regardless.
+  bestOfByRound?: number[]
   championParticipantId?: string | null
   participants?: TournamentParticipantProps[]
   // Present on reconstitution (from the DB); absent for a brand-new tournament,
@@ -55,7 +56,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
   readonly imageUrl: string | null
   readonly scheduledAt: Date
   readonly rakeBasisPoints: number
-  readonly bestOf: number
+  readonly bestOfByRound: number[]
   readonly size: number
   readonly participants: TournamentParticipant[]
   readonly slots: BracketSlot[]
@@ -98,9 +99,13 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
       ValidationError.throwError(Errors.INVALID_AMOUNT, rakeBasisPoints)
     }
 
-    const bestOf = props.bestOf ?? 1
-    if (!VALID_BEST_OF.includes(bestOf)) {
-      ValidationError.throwError(Errors.INVALID_BEST_OF, bestOf)
+    const roundCount = BracketBuilder.roundCount(size)
+    const bestOfByRound = props.bestOfByRound ?? Array(roundCount).fill(1)
+    if (bestOfByRound.length !== roundCount) {
+      ValidationError.throwError(Errors.INVALID_BEST_OF, bestOfByRound.length)
+    }
+    for (const bestOf of bestOfByRound) {
+      if (!VALID_BEST_OF.includes(bestOf)) ValidationError.throwError(Errors.INVALID_BEST_OF, bestOf)
     }
 
     // Reconstitute the bracket from the DB, or lay it out fresh from the players.
@@ -117,7 +122,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
-    this.bestOf = bestOf
+    this.bestOfByRound = bestOfByRound
     this.size = size
     this.status = props.status ?? 'in_progress'
     this.championParticipantId = props.championParticipantId ?? null
@@ -142,6 +147,11 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
 
   get isFinished(): boolean {
     return this.status === 'finished'
+  }
+
+  /** bestOf for a given round (0 = fullest round; the last is the final). */
+  bestOfFor(round: number): number {
+    return this.bestOfByRound[round]
   }
 
   participantName(participantId: string | null): string | null {

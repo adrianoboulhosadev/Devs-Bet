@@ -184,4 +184,59 @@ describe('Tournament bracket advancement', () => {
     expect(finished.status).toBe('finished')
     expect(() => finished.cancel()).toThrow(ConflictError)
   })
+
+  test('bestOfByRound defaults to 1 for every round', () => {
+    const tournament = newTournament(8)
+    expect(tournament.bestOfByRound).toEqual([1, 1, 1])
+    expect(tournament.bestOfFor(0)).toBe(1)
+  })
+
+  test('bestOfByRound can differ per round (e.g. MD3 everywhere but an MD5 final)', () => {
+    const tournament = new Tournament({
+      creatorId: 'c',
+      title: 'Champions Cup',
+      categoryId: 'cat-leaf',
+      scheduledAt: inOneHour(),
+      size: 8,
+      bestOfByRound: [3, 3, 5],
+      participants: names(8),
+    })
+    expect(tournament.bestOfFor(0)).toBe(3)
+    expect(tournament.bestOfFor(1)).toBe(3)
+    expect(tournament.bestOfFor(2)).toBe(5)
+  })
+
+  test('bestOfByRound must have one entry per round (INVALID_BEST_OF)', () => {
+    try {
+      new Tournament({
+        creatorId: 'c',
+        title: 'X',
+        categoryId: 'cat-leaf',
+        scheduledAt: inOneHour(),
+        size: 8,
+        bestOfByRound: [1, 1],
+        participants: names(8),
+      })
+      fail('should have thrown')
+    } catch (error) {
+      expect((error as ValidationError).code).toBe(Errors.INVALID_BEST_OF)
+    }
+  })
+
+  test('every bestOfByRound entry must be 1, 3 or 5 (INVALID_BEST_OF)', () => {
+    try {
+      new Tournament({
+        creatorId: 'c',
+        title: 'X',
+        categoryId: 'cat-leaf',
+        scheduledAt: inOneHour(),
+        size: 8,
+        bestOfByRound: [1, 2, 1],
+        participants: names(8),
+      })
+      fail('should have thrown')
+    } catch (error) {
+      expect((error as ValidationError).code).toBe(Errors.INVALID_BEST_OF)
+    }
+  })
 })
