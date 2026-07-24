@@ -26,9 +26,15 @@ export function Bets() {
             >
               <div className="text-sm">
                 <p className="font-medium">{formatBRL(bet.stake)}</p>
-                <Link href={`/matches/${bet.matchId}`} className="text-slate-500 underline">
-                  ver partida
-                </Link>
+                {bet.marketType === 'tournament_outright' ? (
+                  <Link href={`/tournaments/${bet.marketId}`} className="text-slate-500 underline">
+                    ver torneio (campeão)
+                  </Link>
+                ) : (
+                  <Link href={`/matches/${bet.marketId}`} className="text-slate-500 underline">
+                    ver partida
+                  </Link>
+                )}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 {bet.status !== 'open' && <span>{formatBRL(bet.payout)}</span>}

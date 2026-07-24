@@ -38,7 +38,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
   if (loading || !match) return <Loading />
 
   const poolOf = (participantId: string) =>
-    odds?.entries.find((entry) => entry.participantId === participantId)
+    odds?.entries.find((entry) => entry.selectionId === participantId)
   const winnerName = match.participants.find((p) => p.id === match.winnerParticipantId)?.displayName
 
   return (
@@ -168,7 +168,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         ) : (
           <ul className="divide-y divide-slate-100">
             {book.map((bet) => {
-              const on = match.participants.find((p) => p.id === bet.participantId)?.displayName
+              const on = match.participants.find((p) => p.id === bet.selectionId)?.displayName
               return (
                 <li key={bet.id} className="flex items-center justify-between px-5 py-3 text-sm">
                   <span>

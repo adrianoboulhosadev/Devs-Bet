@@ -7,6 +7,7 @@ import { mediaUrl } from '@/lib/media'
 import { formatDateTime } from '@/lib/date'
 import { useTournamentDetail } from '../hooks/use-tournament-detail'
 import { BracketSlotCard } from './bracket-slot-card'
+import { OutrightCard } from './outright-card'
 
 export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
   const {
@@ -32,6 +33,10 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
       .sort((first, second) => first.position - second.position)
 
   const canCancel = isAdmin && tournament.status === 'in_progress'
+  // Outright market is open only before the tournament starts (backend enforces it).
+  const outrightOpen =
+    tournament.status === 'in_progress' &&
+    new Date(tournament.scheduledAt).getTime() > Date.now()
 
   return (
     <div className="space-y-6">
@@ -62,6 +67,13 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
           Campeão: <span className="font-medium">{championName ?? '—'}</span>
         </p>
       )}
+
+      <OutrightCard
+        tournamentId={tournament.id}
+        participants={tournament.participants}
+        open={outrightOpen}
+        championParticipantId={tournament.championParticipantId}
+      />
 
       <div className="overflow-x-auto pb-2">
         <div className="flex min-w-max gap-4">

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { MatchDTO } from '@match/adapters'
-import type { MatchOddsDTO, BetDTO } from '@betting/adapters'
+import type { MarketOddsDTO, BetDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { toCents } from '@/lib/money'
@@ -43,8 +43,8 @@ export function useMatchDetail(matchId: string) {
 
   const odds = useQuery({
     queryKey: oddsKey,
-    queryFn: async (): Promise<MatchOddsDTO> =>
-      (await api.get<MatchOddsDTO>(`/bet/match/${matchId}/odds`)).data,
+    queryFn: async (): Promise<MarketOddsDTO> =>
+      (await api.get<MarketOddsDTO>(`/bet/match/${matchId}/odds`)).data,
     // Odds float while the match is open; poll to reflect new bets.
     refetchInterval: isOpen ? 5000 : false,
   })
@@ -65,7 +65,12 @@ export function useMatchDetail(matchId: string) {
 
   const placeBet = useMutation({
     mutationFn: (fields: BetFields) =>
-      api.post('/bet', { matchId, participantId: fields.participantId, stake: toCents(fields.amount) }),
+      api.post('/bet', {
+        marketType: 'match',
+        marketId: matchId,
+        selectionId: fields.participantId,
+        stake: toCents(fields.amount),
+      }),
     onSuccess: () => {
       betForm.reset()
       invalidate()
