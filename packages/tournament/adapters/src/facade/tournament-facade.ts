@@ -1,0 +1,63 @@
+import { TournamentRepository, TournamentQueryRepository, TournamentDTO } from '@tournament/core'
+import { AuthenticatedActor } from 'shared'
+import {
+  CreateTournamentController,
+  RecordBracketResultController,
+  CancelTournamentController,
+  GetTournamentController,
+  ListTournamentsController,
+} from '../controllers'
+import { CreateTournamentInput } from '../@types'
+
+/**
+ * Single entry point the backend (NestJS) calls. Optional ports in the
+ * constructor; each method builds its controller. The admin actor (id + role)
+ * comes from the JWT — the role is re-checked inside each admin use case. Creating
+ * the round-0 matches (and the next-round matches as the bracket advances) is
+ * cross-context orchestration that lives in the backend, not here.
+ */
+export default class TournamentFacade {
+  constructor(
+    private readonly tournamentRepository?: TournamentRepository,
+    private readonly tournamentQueryRepository?: TournamentQueryRepository,
+  ) {}
+
+  async createTournament(
+    input: CreateTournamentInput,
+    actor: AuthenticatedActor,
+    categoryIsLeaf: boolean,
+    tournamentId?: string,
+  ): Promise<void> {
+    await new CreateTournamentController(this.tournamentRepository!).execute(
+      input,
+      actor,
+      categoryIsLeaf,
+      tournamentId,
+    )
+  }
+
+  async cancelTournament(tournamentId: string, actor: AuthenticatedActor): Promise<void> {
+    await new CancelTournamentController(this.tournamentRepository!).execute(tournamentId, actor)
+  }
+
+  /** Advances the bracket after a confrontation is settled (system path). */
+  async recordResult(
+    tournamentId: string,
+    matchId: string,
+    winnerDisplayName: string,
+  ): Promise<void> {
+    await new RecordBracketResultController(this.tournamentRepository!).execute(
+      tournamentId,
+      matchId,
+      winnerDisplayName,
+    )
+  }
+
+  async getTournament(id: string): Promise<TournamentDTO> {
+    return new GetTournamentController(this.tournamentQueryRepository!).execute(id)
+  }
+
+  async listTournaments(): Promise<TournamentDTO[]> {
+    return new ListTournamentsController(this.tournamentQueryRepository!).execute()
+  }
+}
