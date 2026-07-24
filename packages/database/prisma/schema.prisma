@@ -93,6 +93,22 @@ model Payment {
   @@map("payments")
 }
 
+// Responsible-gambling self-imposed deposit cap (one row per user per period).
+// `amount` is the currently EFFECTIVE cap; a raise is only scheduled
+// (`pendingAmount`/`effectiveAt`, 24h grace period) — a lower cap always applies
+// immediately. userId is a LOGICAL FK (cross-context, same as Payment/Wallet).
+model DepositLimit {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  period        String
+  amount        Int
+  pendingAmount Int?      @map("pending_amount")
+  effectiveAt   DateTime? @map("effective_at")
+
+  @@unique([userId, period])
+  @@map("deposit_limits")
+}
+
 // --- match ---------------------------------------------------------------------
 
 // A contest between 2+ participants. status: open → locked → settled | cancelled.
