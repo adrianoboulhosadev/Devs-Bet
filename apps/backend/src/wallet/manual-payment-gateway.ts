@@ -13,6 +13,7 @@ export class ManualPaymentGateway implements PaymentGateway {
       pixKey: process.env.WALLET_PIX_KEY ?? '',
       pixKeyType: process.env.WALLET_PIX_KEY_TYPE ?? 'email',
       beneficiaryName: process.env.WALLET_BENEFICIARY_NAME ?? '',
+      beneficiaryCity: process.env.WALLET_BENEFICIARY_CITY ?? 'SAO PAULO',
     }
   }
 }

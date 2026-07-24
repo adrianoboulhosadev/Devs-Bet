@@ -35,6 +35,7 @@ export class PrismaWalletRepository
     amount: number
     status: string
     referenceCode: string
+    receiptUrl: string | null
     confirmedBy: string | null
     confirmedAt: Date | null
   }): Payment {
@@ -45,6 +46,7 @@ export class PrismaWalletRepository
       amount: row.amount,
       status: row.status as PaymentStatus,
       referenceCode: row.referenceCode,
+      receiptUrl: row.receiptUrl,
       confirmedBy: row.confirmedBy,
       confirmedAt: row.confirmedAt,
     })
@@ -105,6 +107,7 @@ export class PrismaWalletRepository
         amount: payment.amount.cents,
         status: payment.status,
         referenceCode: payment.referenceCode,
+        receiptUrl: payment.receiptUrl,
       },
     })
   }
@@ -120,6 +123,7 @@ export class PrismaWalletRepository
           amount: payment.amount.cents,
           status: payment.status,
           referenceCode: payment.referenceCode,
+          receiptUrl: payment.receiptUrl,
         },
       }),
     ])
@@ -184,6 +188,7 @@ export class PrismaWalletRepository
     amount: number
     status: string
     referenceCode: string
+    receiptUrl: string | null
     createdAt: Date
     confirmedAt: Date | null
   }): PaymentDTO {
@@ -194,6 +199,7 @@ export class PrismaWalletRepository
       amount: row.amount,
       status: row.status as PaymentStatus,
       referenceCode: row.referenceCode,
+      receiptUrl: row.receiptUrl,
       createdAt: row.createdAt,
       confirmedAt: row.confirmedAt,
     }
