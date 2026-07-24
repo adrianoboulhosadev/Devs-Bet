@@ -184,10 +184,14 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
   `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). `settle` aceita
   `winnerParticipantId: string | null` — `null` declara **empate** (só existe em `match`; torneio
-  nunca empata, `RecordBracketResultInput` exige um vencedor real). Ao liquidar, `winningSelectionId
-  = null` cai no ramo "sem vencedor" do `PayoutCalculator`: **estorna todas as apostas** (diferente
-  do caso "vencedor declarado, mas ninguém apostou nele", que perde o stake — ver seção "Payout
-  parimutuel"). **Criar partida é
+  nunca empata, `RecordBracketResultInput` exige um vencedor real). **Empate é uma seleção de aposta
+  como qualquer outra**: `MATCH_DRAW_SELECTION_ID` (`'draw'`, exportado por `@match/core`/`@match/adapters`)
+  é incluído nas `selectionIds` válidas de todo mercado `match` (o backend, em `bet.controller`,
+  soma esse id aos participantes) — tem pool/odd própria e pode ser apostado como A ou B. Ao
+  liquidar um empate, o backend enfileira `winningSelectionId: MATCH_DRAW_SELECTION_ID` (traduzindo o
+  `winnerParticipantId: null` da entidade); o `PayoutCalculator` trata como qualquer seleção
+  vencedora — se ninguém apostou no empate, todo mundo perde (ver seção "Payout parimutuel"), não
+  há estorno. **Criar partida é
   admin-only** (`CreateMatch` estende `AdminUseCase`). **Editar** (`UpdateMatch`, admin) muda
   título/tipo/data **só enquanto `open`** (`Match.edit`); participantes e imagem não são editáveis
   após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
