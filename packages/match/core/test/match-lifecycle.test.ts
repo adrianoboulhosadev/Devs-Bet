@@ -22,6 +22,8 @@ async function setupWithMatch() {
   await new CreateMatch(repository, lockQueue).execute(
     {
       title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
+      categoryIsLeaf: true,
       scheduledAt,
       participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
     },
@@ -46,6 +48,8 @@ test('a non-admin cannot create a match (NOT_ADMIN)', async () => {
   const create = new CreateMatch(repository).execute(
     {
       title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
+      categoryIsLeaf: true,
       scheduledAt: inOneHour(),
       participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
     },
@@ -53,6 +57,21 @@ test('a non-admin cannot create a match (NOT_ADMIN)', async () => {
   )
   await expect(create).rejects.toBeInstanceOf(AccessDeniedError)
   await expect(create).rejects.toMatchObject({ code: Errors.NOT_ADMIN })
+})
+
+test('creating a match on a non-leaf category is rejected (CATEGORY_NOT_LEAF)', async () => {
+  const repository = new MatchRepositoryInMemory()
+  const create = new CreateMatch(repository).execute(
+    {
+      title: 'Fabio vs Bruno',
+      categoryId: 'cat-branch',
+      categoryIsLeaf: false,
+      scheduledAt: inOneHour(),
+      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    },
+    admin,
+  )
+  await expect(create).rejects.toMatchObject({ code: Errors.CATEGORY_NOT_LEAF })
 })
 
 test('admin edits title and schedule while open; reschedules the auto-lock', async () => {

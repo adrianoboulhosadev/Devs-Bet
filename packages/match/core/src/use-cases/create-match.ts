@@ -1,4 +1,4 @@
-import { AdminUseCase, AuthenticatedActor } from 'shared'
+import { AdminUseCase, AuthenticatedActor, ValidationError, Errors } from 'shared'
 import { Match } from '../model'
 import { MatchRepository, MatchLockQueue } from '../providers'
 
@@ -9,7 +9,11 @@ interface ParticipantInput {
 
 interface Input {
   title: string
-  gameType?: string | null
+  categoryId: string
+  // Resolved from the category context by the caller (backend) — kept as plain
+  // data so match does not import the category context. The category must exist
+  // (checked by the caller) and be a leaf (checked here).
+  categoryIsLeaf: boolean
   imageUrl?: string | null
   scheduledAt: Date
   rakeBasisPoints?: number
@@ -17,11 +21,11 @@ interface Input {
 }
 
 /**
- * Admin creates a match. All the rules (title required, scheduledAt required and
- * not in the past, at least two participants, valid rake) live in the
- * Match/MatchParticipant constructors — the use case only builds the aggregate
- * (creator = the admin actor), persists it and schedules the automatic betting
- * lock for the match's scheduledAt. Admin-only (AdminUseCase).
+ * Admin creates a match. All the rules (title required, category leaf, scheduledAt
+ * required and not in the past, at least two participants, valid rake) are enforced
+ * here / in the Match constructor — the use case builds the aggregate (creator =
+ * the admin actor), persists it and schedules the automatic betting lock for the
+ * match's scheduledAt. Admin-only (AdminUseCase).
  */
 export default class CreateMatch extends AdminUseCase<Input, void> {
   constructor(
@@ -32,10 +36,14 @@ export default class CreateMatch extends AdminUseCase<Input, void> {
   }
 
   protected async executeAsAdmin(input: Input, actor: AuthenticatedActor): Promise<void> {
+    if (!input.categoryIsLeaf) {
+      ValidationError.throwError(Errors.CATEGORY_NOT_LEAF, input.categoryId)
+    }
+
     const match = new Match({
       creatorId: actor.id,
       title: input.title,
-      gameType: input.gameType,
+      categoryId: input.categoryId,
       imageUrl: input.imageUrl,
       scheduledAt: input.scheduledAt,
       rakeBasisPoints: input.rakeBasisPoints,

@@ -11,7 +11,7 @@ export interface MatchDTO {
   id: string
   creatorId: string
   title: string
-  gameType: string | null
+  categoryId: string
   imageUrl: string | null
   status: MatchStatus
   rakeBasisPoints: number

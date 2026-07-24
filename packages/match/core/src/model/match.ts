@@ -6,7 +6,8 @@ export type MatchStatus = 'open' | 'locked' | 'settled' | 'cancelled'
 export interface MatchProps extends EntityProps {
   creatorId: string
   title?: string
-  gameType?: string | null
+  // Leaf of the category tree this match belongs to (logical FK). Required.
+  categoryId?: string
   imageUrl?: string | null
   scheduledAt?: Date
   status?: MatchStatus
@@ -32,7 +33,7 @@ export class Match extends Entity<Match, MatchProps> {
   readonly rakeBasisPoints: number
   readonly participants: MatchParticipant[]
   title: string
-  gameType: string | null
+  categoryId: string
   scheduledAt: Date
   status: MatchStatus
   winnerParticipantId: string | null
@@ -43,6 +44,11 @@ export class Match extends Entity<Match, MatchProps> {
     super(props)
     const title = props.title?.trim() ?? ''
     if (!title) ValidationError.throwError(Errors.REQUIRED_FIELD, 'title')
+
+    // Required: the category leaf. Leaf-ness (a cross-context rule) is checked in
+    // the use case with data resolved by the app; here we only require the id.
+    const categoryId = props.categoryId?.trim() ?? ''
+    if (!categoryId) ValidationError.throwError(Errors.REQUIRED_FIELD, 'categoryId')
 
     // Required: when the match will happen. `!props.id` means a brand-new match
     // (reconstitution from the DB always carries an id) — only then do we reject
@@ -63,7 +69,7 @@ export class Match extends Entity<Match, MatchProps> {
 
     this.creatorId = props.creatorId
     this.title = title
-    this.gameType = props.gameType ?? null
+    this.categoryId = categoryId
     this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
@@ -93,7 +99,7 @@ export class Match extends Entity<Match, MatchProps> {
    * image is set only at creation. Each provided field is validated like on
    * creation (title non-empty, scheduledAt required and not in the past).
    */
-  edit(fields: { title?: string; gameType?: string | null; scheduledAt?: Date }): void {
+  edit(fields: { title?: string; categoryId?: string; scheduledAt?: Date }): void {
     if (this.status !== 'open') ConflictError.throwError(Errors.MATCH_NOT_OPEN, this.status)
 
     if (fields.title !== undefined) {
@@ -101,7 +107,11 @@ export class Match extends Entity<Match, MatchProps> {
       if (!title) ValidationError.throwError(Errors.REQUIRED_FIELD, 'title')
       this.title = title
     }
-    if (fields.gameType !== undefined) this.gameType = fields.gameType ?? null
+    if (fields.categoryId !== undefined) {
+      const categoryId = fields.categoryId.trim()
+      if (!categoryId) ValidationError.throwError(Errors.REQUIRED_FIELD, 'categoryId')
+      this.categoryId = categoryId
+    }
     if (fields.scheduledAt !== undefined) {
       this.scheduledAt = Match.requireScheduledAt(fields.scheduledAt, true)
     }

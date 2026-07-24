@@ -7,6 +7,7 @@ function newMatch() {
   return new Match({
     creatorId: 'creator-1',
     title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
     scheduledAt: inOneHour(),
     participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
   })
@@ -23,11 +24,26 @@ test('imageUrl is optional (defaults to null) and kept when provided', () => {
   const withImage = new Match({
     creatorId: 'c',
     title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
     scheduledAt: inOneHour(),
     imageUrl: '/uploads/matchs/x.png',
     participants: [{ displayName: 'A' }, { displayName: 'B' }],
   })
   expect(withImage.imageUrl).toBe('/uploads/matchs/x.png')
+})
+
+test('requires a categoryId', () => {
+  try {
+    new Match({
+      creatorId: 'c',
+      title: 'Fabio vs Bruno',
+      scheduledAt: inOneHour(),
+      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+    } as never)
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.REQUIRED_FIELD)
+  }
 })
 
 test('requires a title', () => {
@@ -47,6 +63,7 @@ test('requires a scheduledAt', () => {
     new Match({
       creatorId: 'c',
       title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
       participants: [{ displayName: 'A' }, { displayName: 'B' }],
     } as never)
     fail('should have thrown')
@@ -60,6 +77,7 @@ test('a new match cannot be scheduled in the past (SCHEDULED_IN_PAST)', () => {
     new Match({
       creatorId: 'c',
       title: 'Fabio vs Bruno',
+      categoryId: 'cat-leaf',
       scheduledAt: new Date(Date.now() - 1000),
       participants: [{ displayName: 'A' }, { displayName: 'B' }],
     })
@@ -76,6 +94,7 @@ test('a past-dated match still reconstitutes when it carries an id', () => {
     id: existingId,
     creatorId: 'c',
     title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
     scheduledAt: new Date(Date.now() - 1000),
     participants: [{ displayName: 'A' }, { displayName: 'B' }],
   })
@@ -84,7 +103,7 @@ test('a past-dated match still reconstitutes when it carries an id', () => {
 
 test('requires at least two participants', () => {
   try {
-    new Match({ creatorId: 'c', title: 'Solo', scheduledAt: inOneHour(), participants: [{ displayName: 'A' }] })
+    new Match({ creatorId: 'c', title: 'Solo', categoryId: 'cat-leaf', scheduledAt: inOneHour(), participants: [{ displayName: 'A' }] })
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.NOT_ENOUGH_PARTICIPANTS)

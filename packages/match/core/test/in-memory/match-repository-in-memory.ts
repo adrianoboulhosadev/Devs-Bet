@@ -11,7 +11,7 @@ interface MatchRow {
   id: string
   creatorId: string
   title: string
-  gameType: string | null
+  categoryId: string
   imageUrl: string | null
   scheduledAt: Date
   status: MatchStatus
@@ -31,7 +31,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       id: row.id,
       creatorId: row.creatorId,
       title: row.title,
-      gameType: row.gameType,
+      categoryId: row.categoryId,
       imageUrl: row.imageUrl,
       scheduledAt: row.scheduledAt,
       status: row.status,
@@ -60,7 +60,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       id: match.id.value,
       creatorId: match.creatorId,
       title: match.title,
-      gameType: match.gameType,
+      categoryId: match.categoryId,
       imageUrl: match.imageUrl,
       scheduledAt: match.scheduledAt,
       status: match.status,
@@ -84,7 +84,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
     const row = this.matches.find((current) => current.id === match.id.value)
     if (row) {
       row.title = match.title
-      row.gameType = match.gameType
+      row.categoryId = match.categoryId
       row.scheduledAt = match.scheduledAt
       row.status = match.status
       row.winnerParticipantId = match.winnerParticipantId
@@ -109,7 +109,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       id: row.id,
       creatorId: row.creatorId,
       title: row.title,
-      gameType: row.gameType,
+      categoryId: row.categoryId,
       imageUrl: row.imageUrl,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
