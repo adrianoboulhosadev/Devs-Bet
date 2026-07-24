@@ -35,6 +35,11 @@ export function Matches() {
           <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
           <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" {...form.register('allowsDraw')} />
+            Permite empate (a partida pode terminar empatada e o empate vira uma seleção de aposta)
+          </label>
+
           <div className="space-y-2">
             <span className="text-sm font-medium">Participantes</span>
             {participants.fields.map((fieldItem, index) => (

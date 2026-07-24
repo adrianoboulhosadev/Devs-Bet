@@ -37,10 +37,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
 
   if (loading || !match) return <Loading />
 
-  // Betting selections for a match: its participants plus the draw pseudo-selection.
+  // Betting selections for a match: its participants plus the draw pseudo-selection
+  // (only when this match allows a draw — e.g. never for a tournament confrontation).
   const selections = [
     ...match.participants.map((participant) => ({ id: participant.id, label: participant.displayName })),
-    { id: MATCH_DRAW_SELECTION_ID, label: 'Empate' },
+    ...(match.allowsDraw ? [{ id: MATCH_DRAW_SELECTION_ID, label: 'Empate' }] : []),
   ]
   const selectionLabel = (selectionId: string) =>
     selections.find((selection) => selection.id === selectionId)?.label ?? '—'
@@ -143,7 +144,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
                   Vencedor: {participant.displayName}
                 </Button>
               ))}
-            {match.status === 'locked' && (
+            {match.status === 'locked' && match.allowsDraw && (
               <Button variant="secondary" onClick={() => settle(null)}>
                 Empate
               </Button>

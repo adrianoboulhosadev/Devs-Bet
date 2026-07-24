@@ -19,6 +19,7 @@ interface MatchForm {
   categoryId: string
   scheduledAt: string
   image?: FileList
+  allowsDraw: boolean
   participants: { displayName: string }[]
 }
 
@@ -26,6 +27,7 @@ const emptyForm: MatchForm = {
   title: '',
   categoryId: '',
   scheduledAt: '',
+  allowsDraw: true,
   participants: [{ displayName: '' }, { displayName: '' }],
 }
 
@@ -61,6 +63,7 @@ export function useMatches() {
         imageUrl,
         // datetime-local is local time; toISOString normalizes to UTC for the API.
         scheduledAt: new Date(data.scheduledAt).toISOString(),
+        allowsDraw: data.allowsDraw,
         participants: data.participants
           .map((participant) => ({ displayName: participant.displayName.trim() }))
           .filter((participant) => participant.displayName),
