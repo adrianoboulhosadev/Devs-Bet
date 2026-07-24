@@ -182,7 +182,12 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. Métodos: `lockBetting()`,
-  `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). **Criar partida é
+  `settle(winnerParticipantId)`, `cancel()` (invariantes de transição no modelo). `settle` aceita
+  `winnerParticipantId: string | null` — `null` declara **empate** (só existe em `match`; torneio
+  nunca empata, `RecordBracketResultInput` exige um vencedor real). Ao liquidar, `winningSelectionId
+  = null` cai no ramo "sem vencedor" do `PayoutCalculator`: **estorna todas as apostas** (diferente
+  do caso "vencedor declarado, mas ninguém apostou nele", que perde o stake — ver seção "Payout
+  parimutuel"). **Criar partida é
   admin-only** (`CreateMatch` estende `AdminUseCase`). **Editar** (`UpdateMatch`, admin) muda
   título/tipo/data **só enquanto `open`** (`Match.edit`); participantes e imagem não são editáveis
   após criar. Mudar a data reagenda o auto-lock. O **auto-lock** trava as apostas sozinho quando
