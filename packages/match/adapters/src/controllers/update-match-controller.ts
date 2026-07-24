@@ -10,13 +10,20 @@ export default class UpdateMatchController {
 
   // The actor (id + role) comes from the JWT; the admin role is re-checked inside
   // the use case (AdminUseCase). scheduledAt arrives as an ISO string.
-  async execute(matchId: string, input: UpdateMatchInput, actor: AuthenticatedActor): Promise<void> {
+  // categoryIsLeaf is resolved by the backend when categoryId is being changed.
+  async execute(
+    matchId: string,
+    input: UpdateMatchInput,
+    actor: AuthenticatedActor,
+    categoryIsLeaf?: boolean,
+  ): Promise<void> {
     const useCase = new UpdateMatch(this.matchRepository, this.lockQueue)
     await useCase.execute(
       {
         matchId,
         title: input.title,
-        gameType: input.gameType,
+        categoryId: input.categoryId,
+        categoryIsLeaf,
         scheduledAt: input.scheduledAt !== undefined ? new Date(input.scheduledAt) : undefined,
       },
       actor,

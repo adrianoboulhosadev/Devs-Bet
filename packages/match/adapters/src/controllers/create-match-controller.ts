@@ -10,13 +10,19 @@ export default class CreateMatchController {
 
   // The actor (id + role) comes from the JWT; the admin role is re-checked inside
   // the use case (AdminUseCase). scheduledAt arrives on the wire as an ISO string
-  // and becomes a Date here — the Match entity validates it (required, not past).
-  async execute(input: CreateMatchInput, actor: AuthenticatedActor): Promise<void> {
+  // and becomes a Date here. categoryIsLeaf is resolved from the category context
+  // by the backend and passed in (match never imports category).
+  async execute(
+    input: CreateMatchInput,
+    actor: AuthenticatedActor,
+    categoryIsLeaf: boolean,
+  ): Promise<void> {
     const useCase = new CreateMatch(this.matchRepository, this.lockQueue)
     await useCase.execute(
       {
         title: input.title,
-        gameType: input.gameType,
+        categoryId: input.categoryId,
+        categoryIsLeaf,
         imageUrl: input.imageUrl,
         scheduledAt: new Date(input.scheduledAt),
         rakeBasisPoints: input.rakeBasisPoints,

@@ -24,16 +24,30 @@ export default class MatchFacade {
     private readonly lockQueue?: MatchLockQueue,
   ) {}
 
-  async createMatch(input: CreateMatchInput, actor: AuthenticatedActor): Promise<void> {
-    await new CreateMatchController(this.matchRepository!, this.lockQueue).execute(input, actor)
+  async createMatch(
+    input: CreateMatchInput,
+    actor: AuthenticatedActor,
+    categoryIsLeaf: boolean,
+  ): Promise<void> {
+    await new CreateMatchController(this.matchRepository!, this.lockQueue).execute(
+      input,
+      actor,
+      categoryIsLeaf,
+    )
   }
 
   async updateMatch(
     matchId: string,
     input: UpdateMatchInput,
     actor: AuthenticatedActor,
+    categoryIsLeaf?: boolean,
   ): Promise<void> {
-    await new UpdateMatchController(this.matchRepository!, this.lockQueue).execute(matchId, input, actor)
+    await new UpdateMatchController(this.matchRepository!, this.lockQueue).execute(
+      matchId,
+      input,
+      actor,
+      categoryIsLeaf,
+    )
   }
 
   async lockMatch(matchId: string, actor: AuthenticatedActor): Promise<void> {
