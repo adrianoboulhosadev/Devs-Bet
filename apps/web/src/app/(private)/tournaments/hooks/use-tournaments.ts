@@ -13,18 +13,22 @@ import { useCategories } from '@/hooks/use-categories'
 const TOURNAMENTS_KEY = ['tournaments']
 
 export const TOURNAMENT_SIZES = [2, 4, 8, 16, 32]
-// bestOf applied to EVERY bracket confrontation. Must match Match.VALID_BEST_OF.
+// bestOf option for a single round. Must match Match.VALID_BEST_OF.
 export const TOURNAMENT_BEST_OF_OPTIONS = [1, 3, 5] as const
+// Round labels by distance to the final (mirrors use-tournament-detail's).
+export const ROUND_LABELS = ['Final', 'Semifinal', 'Quartas', 'Oitavas', '16-avos']
 
 // Mirrors CreateTournamentInput minus the wire concerns: image is an optional
-// FileList; size drives how many participant fields are shown; categoryId is the
-// chosen LEAF (set by the CategoryPicker).
+// FileList; size drives how many participant fields are shown; bestOfByRound has
+// one entry per round (index 0 = fullest round, last = the final) so e.g. every
+// round can be MD3 except an MD5 final; categoryId is the chosen LEAF (set by
+// the CategoryPicker).
 interface TournamentForm {
   title: string
   categoryId: string
   scheduledAt: string
   size: number
-  bestOf: number
+  bestOfByRound: number[]
   image?: FileList
   participants: { displayName: string }[]
 }
@@ -36,7 +40,7 @@ const emptyForm = (): TournamentForm => ({
   categoryId: '',
   scheduledAt: '',
   size: DEFAULT_SIZE,
-  bestOf: 1,
+  bestOfByRound: Array(Math.log2(DEFAULT_SIZE)).fill(1),
   participants: Array.from({ length: DEFAULT_SIZE }, () => ({ displayName: '' })),
 })
 
@@ -56,6 +60,7 @@ export function useTournaments() {
   const form = useForm<TournamentForm>({ defaultValues: emptyForm() })
   const participants = useFieldArray({ control: form.control, name: 'participants' })
   const size = Number(form.watch('size'))
+  const roundCount = TOURNAMENT_SIZES.includes(size) ? Math.log2(size) : 0
 
   // Keep exactly `size` participant fields, preserving any names already typed.
   useEffect(() => {
@@ -67,6 +72,18 @@ export function useTournaments() {
     }))
     participants.replace(next)
   }, [size, form, participants])
+
+  // Keep exactly `roundCount` bestOf fields, preserving any choices already made.
+  useEffect(() => {
+    if (!roundCount) return
+    const current = form.getValues('bestOfByRound') ?? []
+    if (current.length === roundCount) return
+    const next = Array.from({ length: roundCount }, (_, index) => current[index] ?? 1)
+    form.setValue('bestOfByRound', next)
+  }, [roundCount, form])
+
+  const roundLabel = (round: number): string =>
+    ROUND_LABELS[roundCount - 1 - round] ?? `Rodada ${round + 1}`
 
   const creation = useMutation({
     mutationFn: async (data: TournamentForm): Promise<{ id: string }> => {
@@ -86,7 +103,7 @@ export function useTournaments() {
         imageUrl,
         scheduledAt: new Date(data.scheduledAt).toISOString(),
         size: Number(data.size),
-        bestOf: Number(data.bestOf),
+        bestOfByRound: data.bestOfByRound.map(Number),
         participants: data.participants
           .map((participant) => ({ displayName: participant.displayName.trim() }))
           .filter((participant) => participant.displayName),
@@ -118,6 +135,8 @@ export function useTournaments() {
     pathOf,
     form,
     participants,
+    roundCount,
+    roundLabel,
     onSubmit,
     submitting: creation.isPending,
     error,

@@ -79,7 +79,10 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
         <div className="flex min-w-max gap-4">
           {rounds.map((round) => (
             <div key={round} className="flex w-56 shrink-0 flex-col gap-3">
-              <h2 className="text-sm font-medium text-slate-500">{roundLabel(round)}</h2>
+              <h2 className="text-sm font-medium text-slate-500">
+                {roundLabel(round)}
+                {tournament.bestOfByRound[round] > 1 && ` · MD${tournament.bestOfByRound[round]}`}
+              </h2>
               {slotsOfRound(round).map((slot) => (
                 <BracketSlotCard
                   key={slot.id}

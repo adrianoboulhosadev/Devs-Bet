@@ -19,6 +19,8 @@ export function Tournaments() {
     pathOf,
     form,
     participants,
+    roundCount,
+    roundLabel,
     onSubmit,
     submitting,
     error,
@@ -58,19 +60,24 @@ export function Tournaments() {
             </select>
           </label>
 
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Melhor de (cada confronto)</span>
-            <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-              {...form.register('bestOf', { valueAsNumber: true })}
-            >
-              {TOURNAMENT_BEST_OF_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option === 1 ? 'Jogo único (MD1)' : `${option} (MD${option})`}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Melhor de (por rodada)</span>
+            {Array.from({ length: roundCount }, (_, round) => (
+              <label key={round} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-slate-600">{roundLabel(round)}</span>
+                <select
+                  className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                  {...form.register(`bestOfByRound.${round}` as const, { valueAsNumber: true })}
+                >
+                  {TOURNAMENT_BEST_OF_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option === 1 ? 'Jogo único (MD1)' : `${option} (MD${option})`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
 
           <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
