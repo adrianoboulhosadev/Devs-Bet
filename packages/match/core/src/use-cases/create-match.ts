@@ -21,6 +21,8 @@ interface Input {
   imageUrl?: string | null
   scheduledAt: Date
   rakeBasisPoints?: number
+  // Whether this match can end in a draw (defaults to true — see Match.allowsDraw).
+  allowsDraw?: boolean
   participants: ParticipantInput[]
 }
 
@@ -52,6 +54,7 @@ export default class CreateMatch extends AdminUseCase<Input, void> {
       imageUrl: input.imageUrl,
       scheduledAt: input.scheduledAt,
       rakeBasisPoints: input.rakeBasisPoints,
+      allowsDraw: input.allowsDraw,
       participants: input.participants,
     })
 

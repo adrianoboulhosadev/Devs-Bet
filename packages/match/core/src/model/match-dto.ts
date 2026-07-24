@@ -15,6 +15,7 @@ export interface MatchDTO {
   imageUrl: string | null
   status: MatchStatus
   rakeBasisPoints: number
+  allowsDraw: boolean
   winnerParticipantId: string | null
   scheduledAt: Date
   participants: MatchParticipantDTO[]

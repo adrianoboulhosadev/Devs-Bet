@@ -19,6 +19,11 @@ export interface MatchProps extends EntityProps {
   scheduledAt?: Date
   status?: MatchStatus
   rakeBasisPoints?: number
+  // Whether this match can end in a draw (and therefore offers the draw
+  // betting selection). Decided at creation, immutable — e.g. a tournament
+  // confrontation is created with this false, since it must always advance
+  // the bracket with a real winner. Defaults to true for a standalone match.
+  allowsDraw?: boolean
   winnerParticipantId?: string | null
   participants?: MatchParticipantProps[]
   lockedAt?: Date | null
@@ -38,6 +43,7 @@ export class Match extends Entity<Match, MatchProps> {
   readonly creatorId: string
   readonly imageUrl: string | null
   readonly rakeBasisPoints: number
+  readonly allowsDraw: boolean
   readonly participants: MatchParticipant[]
   title: string
   categoryId: string
@@ -80,6 +86,7 @@ export class Match extends Entity<Match, MatchProps> {
     this.imageUrl = props.imageUrl ?? null
     this.scheduledAt = scheduledAt
     this.rakeBasisPoints = rakeBasisPoints
+    this.allowsDraw = props.allowsDraw ?? true
     this.participants = participants
     this.status = props.status ?? 'open'
     this.winnerParticipantId = props.winnerParticipantId ?? null
@@ -141,8 +148,11 @@ export class Match extends Entity<Match, MatchProps> {
 
   /**
    * Declares the result. Only from `locked`. `winnerParticipantId` must be a
-   * participant; `null` declares a draw (nobody won) — betting-wise a draw
-   * voids the market (every bet is refunded, same as no winner declared).
+   * participant; `null` declares a draw (nobody won) — only allowed when this
+   * match `allowsDraw` (e.g. a tournament confrontation never does, since it
+   * must always produce a winner to advance the bracket). Betting-wise a draw
+   * is just another selection (`MATCH_DRAW_SELECTION_ID`) that the parimutuel
+   * payout settles like any other.
    */
   settle(winnerParticipantId: string | null): void {
     if (this.status === 'settled' || this.status === 'cancelled') {
@@ -151,7 +161,9 @@ export class Match extends Entity<Match, MatchProps> {
     if (this.status !== 'locked') {
       ConflictError.throwError(Errors.INVALID_MATCH_STATUS, this.status)
     }
-    if (winnerParticipantId !== null && !this.hasParticipant(winnerParticipantId)) {
+    if (winnerParticipantId === null) {
+      if (!this.allowsDraw) ValidationError.throwError(Errors.DRAW_NOT_ALLOWED, this.id.value)
+    } else if (!this.hasParticipant(winnerParticipantId)) {
       ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerParticipantId)
     }
     this.status = 'settled'

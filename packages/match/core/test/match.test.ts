@@ -159,12 +159,31 @@ test('the winner must be a participant (NOT_A_PARTICIPANT)', () => {
   }
 })
 
-test('settle(null) declares a draw', () => {
+test('settle(null) declares a draw (allowsDraw defaults to true)', () => {
   const match = newMatch()
+  expect(match.allowsDraw).toBe(true)
   match.lockBetting()
   match.settle(null)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBeNull()
+})
+
+test('settle(null) is rejected when the match does not allow a draw (DRAW_NOT_ALLOWED)', () => {
+  const match = new Match({
+    creatorId: 'creator-1',
+    title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
+    scheduledAt: inOneHour(),
+    allowsDraw: false,
+    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+  })
+  match.lockBetting()
+  try {
+    match.settle(null)
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.DRAW_NOT_ALLOWED)
+  }
 })
 
 test('cannot settle twice (MATCH_ALREADY_SETTLED)', () => {

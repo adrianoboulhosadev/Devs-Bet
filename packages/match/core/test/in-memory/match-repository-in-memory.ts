@@ -16,6 +16,7 @@ interface MatchRow {
   scheduledAt: Date
   status: MatchStatus
   rakeBasisPoints: number
+  allowsDraw: boolean
   winnerParticipantId: string | null
   createdAt: Date
   lockedAt: Date | null
@@ -36,6 +37,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       scheduledAt: row.scheduledAt,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
+      allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       lockedAt: row.lockedAt,
       settledAt: row.settledAt,
@@ -65,6 +67,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       scheduledAt: match.scheduledAt,
       status: match.status,
       rakeBasisPoints: match.rakeBasisPoints,
+      allowsDraw: match.allowsDraw,
       winnerParticipantId: match.winnerParticipantId,
       createdAt: new Date(),
       lockedAt: match.lockedAt,
@@ -113,6 +116,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       imageUrl: row.imageUrl,
       status: row.status,
       rakeBasisPoints: row.rakeBasisPoints,
+      allowsDraw: row.allowsDraw,
       winnerParticipantId: row.winnerParticipantId,
       scheduledAt: row.scheduledAt,
       participants: this.participants
