@@ -9,6 +9,8 @@ import ListPendingPaymentsController from './list-pending-payments-controller'
 import DepositInstructionsController from './deposit-instructions-controller'
 import SetDepositLimitController from './set-deposit-limit-controller'
 import ListMyDepositLimitsController from './list-my-deposit-limits-controller'
+import StartSelfExclusionController from './start-self-exclusion-controller'
+import GetMySelfExclusionController from './get-my-self-exclusion-controller'
 
 export {
   RequestDepositController,
@@ -22,4 +24,6 @@ export {
   DepositInstructionsController,
   SetDepositLimitController,
   ListMyDepositLimitsController,
+  StartSelfExclusionController,
+  GetMySelfExclusionController,
 }

@@ -8,6 +8,7 @@ import {
   PaymentDTO,
   DepositInstructions,
   DepositLimitDTO,
+  SelfExclusionDTO,
 } from '@wallet/core'
 import { AuthenticatedActor } from 'shared'
 import {
@@ -22,8 +23,10 @@ import {
   DepositInstructionsController,
   SetDepositLimitController,
   ListMyDepositLimitsController,
+  StartSelfExclusionController,
+  GetMySelfExclusionController,
 } from '../controllers'
-import { DepositInput, WithdrawalInput, SetDepositLimitInput } from '../@types'
+import { DepositInput, WithdrawalInput, SetDepositLimitInput, StartSelfExclusionInput } from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -81,5 +84,13 @@ export default class WalletFacade {
 
   async listMyDepositLimits(userId: string): Promise<DepositLimitDTO[]> {
     return new ListMyDepositLimitsController(this.depositLimitQueryRepository!).execute(userId)
+  }
+
+  async startSelfExclusion(input: StartSelfExclusionInput, userId: string): Promise<void> {
+    await new StartSelfExclusionController(this.walletRepository!).execute(input, userId)
+  }
+
+  async getMySelfExclusion(userId: string): Promise<SelfExclusionDTO | null> {
+    return new GetMySelfExclusionController(this.walletQueryRepository!).execute(userId)
   }
 }

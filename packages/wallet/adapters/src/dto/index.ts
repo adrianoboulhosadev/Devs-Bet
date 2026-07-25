@@ -6,6 +6,8 @@ import type {
   LedgerEntryType,
   DepositLimitDTO,
   DepositLimitPeriod,
+  SelfExclusionDTO,
+  SelfExclusionPeriod,
 } from '@wallet/core'
 
 export type {
@@ -16,4 +18,6 @@ export type {
   LedgerEntryType,
   DepositLimitDTO,
   DepositLimitPeriod,
+  SelfExclusionDTO,
+  SelfExclusionPeriod,
 }
