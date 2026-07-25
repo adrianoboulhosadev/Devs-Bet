@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { RegisterUserInput } from '@auth/adapters'
 import { useAuth } from '@/contexts/auth-context'
+import { useGoogleOAuthBridge } from '@/hooks/use-google-oauth-bridge'
 import { errorMessage } from '@/lib/api/errors'
 
 // The confirmation is form-only (it does not go to the backend).
@@ -26,6 +27,11 @@ export function useRegister() {
       setError(errorMessage(failure, 'Não foi possível criar a conta.'))
     }
   })
+
+  // "Continuar com Google" doubles as register+login: the backend creates the
+  // User on the first sign-in (see LoginWithGoogle) — same bridge as /login.
+  const onGoogleSuccess = useCallback(() => router.replace('/dashboard'), [router])
+  useGoogleOAuthBridge(onGoogleSuccess, setError)
 
   return { form, error, onSubmit, submitting: form.formState.isSubmitting }
 }

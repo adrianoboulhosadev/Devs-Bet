@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { LoginUserInput } from '@auth/adapters'
 import { useAuth } from '@/contexts/auth-context'
+import { useGoogleOAuthBridge } from '@/hooks/use-google-oauth-bridge'
 import { errorMessage } from '@/lib/api/errors'
 
 export function useLogin() {
@@ -23,6 +24,9 @@ export function useLogin() {
       setError(errorMessage(failure, 'E-mail ou senha inválidos.'))
     }
   })
+
+  const onGoogleSuccess = useCallback(() => router.replace('/dashboard'), [router])
+  useGoogleOAuthBridge(onGoogleSuccess, setError)
 
   return { form, error, onSubmit, submitting: form.formState.isSubmitting }
 }

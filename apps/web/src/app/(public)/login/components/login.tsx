@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Field } from '@/components/field'
 import { Button } from '@/components/button'
+import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { useLogin } from '../hooks/use-login'
 
 export function Login() {
@@ -25,6 +26,14 @@ export function Login() {
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? 'Entrando…' : 'Entrar'}
         </Button>
+
+        <div className="flex items-center gap-3 text-xs text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          ou
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <GoogleSignInButton />
 
         <p className="text-center text-sm text-slate-500">
           Não tem conta?{' '}

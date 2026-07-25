@@ -13,6 +13,9 @@ interface Auth {
   isAdmin: boolean
   login: (input: LoginUserInput) => Promise<void>
   register: (input: RegisterUserInput) => Promise<void>
+  // Google ID token (from the NextAuth bridge, see useGoogleOAuthBridge) — the
+  // backend verifies it and issues the SAME access/refresh session as `login`.
+  loginWithGoogle: (idToken: string) => Promise<void>
   logout: () => Promise<void>
   clearSession: () => void
 }
@@ -66,6 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   )
 
+  const loginWithGoogle = useCallback(
+    async (idToken: string) => {
+      const { data } = await api.post<{ accessToken: string }>('/auth/oauth/google', { idToken })
+      setAccessToken(data.accessToken)
+      await loadUser()
+    },
+    [loadUser],
+  )
+
   const clearSession = useCallback(() => {
     setAccessToken(null)
     setUser(null)
@@ -81,7 +93,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, isAdmin: user?.role === 'admin', login, register, logout, clearSession }}
+      value={{
+        user,
+        loading,
+        isAdmin: user?.role === 'admin',
+        login,
+        register,
+        loginWithGoogle,
+        logout,
+        clearSession,
+      }}
     >
       {children}
     </AuthContext.Provider>
