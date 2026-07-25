@@ -1,11 +1,19 @@
-export interface CreateTournamentParticipantInput {
+// A participant snapshot ready for the domain: the backend resolves each
+// participantId against the catalog (packages/participant) and fills in
+// displayName/nickname/imageUrl — tournament never imports @participant/core.
+export interface TournamentParticipantSnapshot {
+  participantId: string
   displayName: string
-  userId?: string | null
+  nickname?: string | null
+  imageUrl?: string | null
 }
 
 // creatorId comes from the JWT, never the body. scheduledAt is an ISO 8601 string
 // on the wire; the controller turns it into a Date. `size` must be a power of 2 in
-// 2..32 and match the number of participants (enforced by the domain).
+// 2..128 and match the number of participants (enforced by the domain).
+// participantIds are catalog ids picked in the admin's create-tournament form —
+// the backend resolves them into TournamentParticipantSnapshot[] before calling
+// the use case (see CreateTournamentController.execute).
 export interface CreateTournamentInput {
   title: string
   // Leaf category the tournament belongs to (its id). Required.
@@ -19,7 +27,7 @@ export interface CreateTournamentInput {
   // MD3 except an MD5 final: [3, 3, ..., 5].
   bestOfByRound?: number[]
   size: number
-  participants: CreateTournamentParticipantInput[]
+  participantIds: string[]
 }
 
 // The admin declares the winner of a bracket confrontation by the MatchParticipant

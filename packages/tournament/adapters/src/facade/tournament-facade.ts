@@ -7,7 +7,7 @@ import {
   GetTournamentController,
   ListTournamentsController,
 } from '../controllers'
-import { CreateTournamentInput } from '../@types'
+import { CreateTournamentInput, TournamentParticipantSnapshot } from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -26,12 +26,14 @@ export default class TournamentFacade {
     input: CreateTournamentInput,
     actor: AuthenticatedActor,
     categoryIsLeaf: boolean,
+    participants: TournamentParticipantSnapshot[],
     tournamentId?: string,
   ): Promise<void> {
     await new CreateTournamentController(this.tournamentRepository!).execute(
       input,
       actor,
       categoryIsLeaf,
+      participants,
       tournamentId,
     )
   }

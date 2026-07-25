@@ -1,7 +1,7 @@
 import {
   CreateTournamentInput,
-  CreateTournamentParticipantInput,
+  TournamentParticipantSnapshot,
   RecordBracketResultInput,
 } from './inputs'
 
-export type { CreateTournamentInput, CreateTournamentParticipantInput, RecordBracketResultInput }
+export type { CreateTournamentInput, TournamentParticipantSnapshot, RecordBracketResultInput }
