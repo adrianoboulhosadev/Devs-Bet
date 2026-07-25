@@ -9,6 +9,7 @@ import type {
   ComboLegDTO,
   ComboLegResult,
   StakeLimitDTO,
+  OddsSnapshotDTO,
 } from '@betting/core'
 
 export type {
@@ -22,4 +23,5 @@ export type {
   ComboLegDTO,
   ComboLegResult,
   StakeLimitDTO,
+  OddsSnapshotDTO,
 }

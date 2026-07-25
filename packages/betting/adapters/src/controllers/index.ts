@@ -8,6 +8,7 @@ import PlaceComboBetController from './place-combo-bet-controller'
 import ListMyComboBetsController from './list-my-combo-bets-controller'
 import SetStakeLimitController from './set-stake-limit-controller'
 import GetMyStakeLimitController from './get-my-stake-limit-controller'
+import GetOddsHistoryController from './get-odds-history-controller'
 
 export {
   PlaceBetController,
@@ -20,4 +21,5 @@ export {
   ListMyComboBetsController,
   SetStakeLimitController,
   GetMyStakeLimitController,
+  GetOddsHistoryController,
 }

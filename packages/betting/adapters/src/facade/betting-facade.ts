@@ -10,6 +10,7 @@ import {
   LeaderboardEntryDTO,
   ComboBetDTO,
   StakeLimitDTO,
+  OddsSnapshotDTO,
   SettlementJob,
 } from '@betting/core'
 import {
@@ -23,6 +24,7 @@ import {
   ListMyComboBetsController,
   SetStakeLimitController,
   GetMyStakeLimitController,
+  GetOddsHistoryController,
 } from '../controllers'
 import { PlaceBetInput, PlaceComboBetLegInput, SetStakeLimitInput } from '../@types'
 
@@ -102,5 +104,9 @@ export default class BettingFacade {
 
   async getMyStakeLimit(bettorId: string): Promise<StakeLimitDTO | null> {
     return new GetMyStakeLimitController(this.stakeLimitQueryRepository!).execute(bettorId)
+  }
+
+  async getOddsHistory(marketId: string): Promise<OddsSnapshotDTO[]> {
+    return new GetOddsHistoryController(this.betQueryRepository!).execute(marketId)
   }
 }
