@@ -3,8 +3,10 @@ import { MatchRepository, MatchQueryRepository, Match, MatchDTO, MatchStatus } f
 interface ParticipantRow {
   id: string
   matchId: string
-  userId: string | null
+  participantId: string
   displayName: string
+  nickname: string | null
+  imageUrl: string | null
 }
 
 interface UnitRow {
@@ -55,8 +57,10 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
         .map((participant) => ({
           id: participant.id,
           matchId: participant.matchId,
-          userId: participant.userId,
+          participantId: participant.participantId,
           displayName: participant.displayName,
+          nickname: participant.nickname,
+          imageUrl: participant.imageUrl,
         })),
       units: this.unitsOf(row.id),
     })
@@ -99,8 +103,10 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       this.participants.push({
         id: participant.id.value,
         matchId: match.id.value,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })
     }
   }
@@ -158,8 +164,10 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
         .filter((participant) => participant.matchId === row.id)
         .map((participant) => ({
           id: participant.id,
-          userId: participant.userId,
+          participantId: participant.participantId,
           displayName: participant.displayName,
+          nickname: participant.nickname,
+          imageUrl: participant.imageUrl,
         })),
       units: this.unitsOf(row.id).map((unit) => ({
         unitNumber: unit.unitNumber,

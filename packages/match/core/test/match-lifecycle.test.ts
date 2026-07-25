@@ -25,7 +25,7 @@ async function setupWithMatch() {
       categoryId: 'cat-leaf',
       categoryIsLeaf: true,
       scheduledAt,
-      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+      participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
     },
     admin,
   )
@@ -51,7 +51,7 @@ test('a non-admin cannot create a match (NOT_ADMIN)', async () => {
       categoryId: 'cat-leaf',
       categoryIsLeaf: true,
       scheduledAt: inOneHour(),
-      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+      participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
     },
     user,
   )
@@ -67,7 +67,7 @@ test('creating a match on a non-leaf category is rejected (CATEGORY_NOT_LEAF)', 
       categoryId: 'cat-branch',
       categoryIsLeaf: false,
       scheduledAt: inOneHour(),
-      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+      participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
     },
     admin,
   )
@@ -169,7 +169,7 @@ test('a bestOf-3 match reaches settled only after the deciding unit', async () =
       scheduledAt: inOneHour(),
       bestOf: 3,
       allowsDraw: false,
-      participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+      participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
     },
     admin,
   )

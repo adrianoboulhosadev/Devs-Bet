@@ -89,6 +89,10 @@ export class Match extends Entity<Match, MatchProps> {
     if (participants.length < MIN_PARTICIPANTS) {
       ValidationError.throwError(Errors.NOT_ENOUGH_PARTICIPANTS, participants.length)
     }
+    const uniqueParticipantIds = new Set(participants.map((participant) => participant.participantId))
+    if (uniqueParticipantIds.size !== participants.length) {
+      ValidationError.throwError(Errors.DUPLICATE_PARTICIPANT_NAME, participants.length)
+    }
 
     const rakeBasisPoints = props.rakeBasisPoints ?? 0
     if (rakeBasisPoints < 0 || rakeBasisPoints > MAX_BASIS_POINTS) {

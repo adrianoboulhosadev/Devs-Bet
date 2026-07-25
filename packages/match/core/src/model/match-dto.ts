@@ -2,8 +2,10 @@ import { MatchStatus } from './match'
 
 export interface MatchParticipantDTO {
   id: string
-  userId: string | null
+  participantId: string
   displayName: string
+  nickname: string | null
+  imageUrl: string | null
 }
 
 export interface MatchUnitDTO {

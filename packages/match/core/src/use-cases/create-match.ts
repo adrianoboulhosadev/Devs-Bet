@@ -3,8 +3,12 @@ import { Match } from '../model'
 import { MatchRepository, MatchLockQueue } from '../providers'
 
 interface ParticipantInput {
+  // Resolved by the backend from the participant catalog (by participantId) —
+  // match never imports @participant/core.
+  participantId: string
   displayName: string
-  userId?: string | null
+  nickname?: string | null
+  imageUrl?: string | null
 }
 
 interface Input {

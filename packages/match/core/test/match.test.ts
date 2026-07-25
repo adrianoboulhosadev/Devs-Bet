@@ -9,7 +9,7 @@ function newMatch() {
     title: 'Fabio vs Bruno',
     categoryId: 'cat-leaf',
     scheduledAt: inOneHour(),
-    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
   })
 }
 
@@ -27,7 +27,7 @@ test('imageUrl is optional (defaults to null) and kept when provided', () => {
     categoryId: 'cat-leaf',
     scheduledAt: inOneHour(),
     imageUrl: '/uploads/matchs/x.png',
-    participants: [{ displayName: 'A' }, { displayName: 'B' }],
+    participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
   })
   expect(withImage.imageUrl).toBe('/uploads/matchs/x.png')
 })
@@ -38,7 +38,7 @@ test('requires a categoryId', () => {
       creatorId: 'c',
       title: 'Fabio vs Bruno',
       scheduledAt: inOneHour(),
-      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+      participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
     } as never)
     fail('should have thrown')
   } catch (error) {
@@ -53,7 +53,7 @@ test('requires a title', () => {
         creatorId: 'c',
         title: '  ',
         scheduledAt: inOneHour(),
-        participants: [{ displayName: 'A' }, { displayName: 'B' }],
+        participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
       }),
   ).toThrow(ValidationError)
 })
@@ -64,7 +64,7 @@ test('requires a scheduledAt', () => {
       creatorId: 'c',
       title: 'Fabio vs Bruno',
       categoryId: 'cat-leaf',
-      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+      participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
     } as never)
     fail('should have thrown')
   } catch (error) {
@@ -79,7 +79,7 @@ test('a new match cannot be scheduled in the past (SCHEDULED_IN_PAST)', () => {
       title: 'Fabio vs Bruno',
       categoryId: 'cat-leaf',
       scheduledAt: new Date(Date.now() - 1000),
-      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+      participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
     })
     fail('should have thrown')
   } catch (error) {
@@ -96,14 +96,14 @@ test('a past-dated match still reconstitutes when it carries an id', () => {
     title: 'Fabio vs Bruno',
     categoryId: 'cat-leaf',
     scheduledAt: new Date(Date.now() - 1000),
-    participants: [{ displayName: 'A' }, { displayName: 'B' }],
+    participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
   })
   expect(match.id.value).toBe(existingId)
 })
 
 test('requires at least two participants', () => {
   try {
-    new Match({ creatorId: 'c', title: 'Solo', categoryId: 'cat-leaf', scheduledAt: inOneHour(), participants: [{ displayName: 'A' }] })
+    new Match({ creatorId: 'c', title: 'Solo', categoryId: 'cat-leaf', scheduledAt: inOneHour(), participants: [{ displayName: 'A', participantId: 'p-A' }] })
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.NOT_ENOUGH_PARTICIPANTS)
@@ -176,7 +176,7 @@ test('a draw is rejected when the match does not allow one (DRAW_NOT_ALLOWED)', 
     categoryId: 'cat-leaf',
     scheduledAt: inOneHour(),
     allowsDraw: false,
-    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
   })
   match.lockBetting()
   try {
@@ -219,7 +219,7 @@ test('rejects an invalid bestOf (INVALID_BEST_OF)', () => {
       categoryId: 'cat-leaf',
       scheduledAt: inOneHour(),
       bestOf: 2,
-      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+      participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
     })
     fail('should have thrown')
   } catch (error) {
@@ -236,7 +236,7 @@ test('a multi-unit match cannot allow a draw (DRAW_NOT_ALLOWED)', () => {
       scheduledAt: inOneHour(),
       bestOf: 3,
       allowsDraw: true,
-      participants: [{ displayName: 'A' }, { displayName: 'B' }],
+      participants: [{ displayName: 'A', participantId: 'p-A' }, { displayName: 'B', participantId: 'p-B' }],
     })
     fail('should have thrown')
   } catch (error) {
@@ -252,7 +252,7 @@ test('a bestOf-3 match settles once a participant reaches the majority (2 units)
     scheduledAt: inOneHour(),
     bestOf: 3,
     allowsDraw: false,
-    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
   })
   const [fabio, bruno] = match.participants.map((participant) => participant.id.value)
   match.lockBetting()
@@ -277,7 +277,7 @@ test('unit results must be recorded in order (INVALID_UNIT_NUMBER)', () => {
     scheduledAt: inOneHour(),
     bestOf: 3,
     allowsDraw: false,
-    participants: [{ displayName: 'Fabio' }, { displayName: 'Bruno' }],
+    participants: [{ displayName: 'Fabio', participantId: 'p-Fabio' }, { displayName: 'Bruno', participantId: 'p-Bruno' }],
   })
   match.lockBetting()
   try {
