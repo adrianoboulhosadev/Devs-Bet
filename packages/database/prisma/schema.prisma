@@ -124,6 +124,23 @@ model SelfExclusion {
   @@map("self_exclusions")
 }
 
+// --- participant -----------------------------------------------------------------
+
+// A reusable competitor profile the admin manages once and picks from when
+// creating a match/tournament, instead of typing a name every time.
+// MatchParticipant/TournamentParticipant snapshot name/nickname/imageUrl from
+// here (participantId, logical FK — no Prisma relation, cross-context) at
+// creation time; editing/renaming here never rewrites that history.
+model Participant {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  nickname  String?
+  imageUrl  String?  @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("participants")
+}
+
 // --- match ---------------------------------------------------------------------
 
 // A contest between 2+ participants. status: open → locked → settled | cancelled.
@@ -154,14 +171,19 @@ model Match {
   @@map("matches")
 }
 
-// A player in a match. May reference a registered friend (userId, logical FK) or
-// just carry a displayName for someone off-platform. Bets pick a participant by id.
+// A player in a match, picked from the participant catalog (participantId,
+// logical FK to Participant). displayName/nickname/imageUrl are a SNAPSHOT
+// taken at match-creation time (immutable afterwards, even if the catalog
+// entry is later renamed) — see packages/participant. Bets pick a participant
+// by id.
 model MatchParticipant {
-  id          String  @id @default(uuid())
-  matchId     String  @map("match_id")
-  userId      String? @map("user_id")
-  displayName String  @map("display_name")
-  match       Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  id            String  @id @default(uuid())
+  matchId       String  @map("match_id")
+  participantId String  @map("participant_id")
+  displayName   String  @map("display_name")
+  nickname      String?
+  imageUrl      String? @map("image_url")
+  match         Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@index([matchId])
   @@map("match_participants")
@@ -330,14 +352,18 @@ model Tournament {
   @@map("tournaments")
 }
 
-// A competitor in a tournament; the displayName is the natural key within it. May
-// reference a registered user (userId, logical FK) or just carry the name.
+// A competitor in a tournament, picked from the participant catalog
+// (participantId, logical FK to Participant); the displayName is the natural
+// key within it. displayName/nickname/imageUrl are a SNAPSHOT taken at
+// tournament-creation time (immutable afterwards) — see packages/participant.
 model TournamentParticipant {
-  id           String     @id @default(uuid())
-  tournamentId String     @map("tournament_id")
-  userId       String?    @map("user_id")
-  displayName  String     @map("display_name")
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  id            String     @id @default(uuid())
+  tournamentId  String     @map("tournament_id")
+  participantId String     @map("participant_id")
+  displayName   String     @map("display_name")
+  nickname      String?
+  imageUrl      String?    @map("image_url")
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId])
   @@map("tournament_participants")
