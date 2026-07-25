@@ -9,6 +9,8 @@ import {
   DepositLimit,
   DepositLimitPeriod,
   DepositLimitDTO,
+  SelfExclusion,
+  SelfExclusionDTO,
   WalletDTO,
   PaymentDTO,
   LedgerEntryType,
@@ -56,6 +58,7 @@ export default class WalletRepositoryInMemory
   readonly payments: PaymentRow[] = []
   readonly ledger: LedgerRow[] = []
   readonly depositLimits: DepositLimit[] = []
+  readonly selfExclusions: SelfExclusion[] = []
 
   private upsertWallet(wallet: Wallet): void {
     const row = this.wallets.find((current) => current.userId === wallet.userId)
@@ -178,6 +181,25 @@ export default class WalletRepositoryInMemory
           row.createdAt.getTime() >= since.getTime(),
       )
       .reduce((sum, row) => sum + row.amount, 0)
+  }
+
+  async findActiveSelfExclusion(userId: string): Promise<SelfExclusion | null> {
+    return (
+      this.selfExclusions
+        .filter((exclusion) => exclusion.userId === userId)
+        .find((exclusion) => exclusion.isActive) ?? null
+    )
+  }
+
+  async saveSelfExclusion(exclusion: SelfExclusion): Promise<void> {
+    if (!this.selfExclusions.includes(exclusion)) this.selfExclusions.push(exclusion)
+  }
+
+  async findActiveSelfExclusionQuery(userId: string): Promise<SelfExclusionDTO | null> {
+    const exclusion = await this.findActiveSelfExclusion(userId)
+    return exclusion
+      ? { period: exclusion.period, startedAt: exclusion.startedAt, until: exclusion.until }
+      : null
   }
 
   async listDepositLimitsByUserQuery(userId: string): Promise<DepositLimitDTO[]> {

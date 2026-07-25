@@ -1,4 +1,4 @@
-import { Wallet, LedgerEntry, Payment, DepositLimit } from '../model'
+import { Wallet, LedgerEntry, Payment, DepositLimit, SelfExclusion } from '../model'
 
 /**
  * Wallet WRITE port (command side). Because money moves must be ATOMIC, the port
@@ -33,4 +33,9 @@ export interface WalletRepository {
   // Total already deposited (pending + confirmed, i.e. anything not rejected)
   // since `since` — used to enforce a limit's rolling window.
   sumDepositsSince(userId: string, since: Date): Promise<number>
+
+  // Responsible gambling: the user's current self-exclusion, if any is still
+  // in force (never mutated/cancelled — see the SelfExclusion model).
+  findActiveSelfExclusion(userId: string): Promise<SelfExclusion | null>
+  saveSelfExclusion(exclusion: SelfExclusion): Promise<void>
 }

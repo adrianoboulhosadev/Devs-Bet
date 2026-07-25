@@ -1,4 +1,4 @@
-import { UseCase, Money, ValidationError, Errors, Id } from 'shared'
+import { UseCase, Money, ValidationError, ConflictError, Errors, Id } from 'shared'
 import { Payment, PERIOD_WINDOW_MS } from '../model'
 import { WalletRepository } from '../providers'
 
@@ -14,11 +14,12 @@ interface Input {
  * deposit without one). We only record the intent (with a reference code to match
  * the incoming Pix); the balance is credited later, when the admin confirms receipt.
  *
- * Responsible gambling: every self-imposed DepositLimit the user has set is
- * checked BEFORE the request is created — `usedInWindow` (already deposited,
- * pending+confirmed) is a plain count resolved by the repository per limit's
- * rolling window; the limit entity itself decides whether this new amount
- * would breach its (possibly just-activated) cap.
+ * Responsible gambling: an active SelfExclusion blocks the request outright
+ * (SELF_EXCLUDED); otherwise every self-imposed DepositLimit the user has set is
+ * checked — `usedInWindow` (already deposited, pending+confirmed) is a plain
+ * count resolved by the repository per limit's rolling window; the limit entity
+ * itself decides whether this new amount would breach its (possibly
+ * just-activated) cap.
  */
 export default class RequestDeposit implements UseCase<Input, void> {
   constructor(private readonly walletRepository: WalletRepository) {}
@@ -26,6 +27,9 @@ export default class RequestDeposit implements UseCase<Input, void> {
   async execute({ userId, amount, receiptUrl }: Input): Promise<void> {
     const value = new Money(amount)
     if (value.isZero()) ValidationError.throwError(Errors.INVALID_AMOUNT, amount)
+
+    const exclusion = await this.walletRepository.findActiveSelfExclusion(userId)
+    if (exclusion?.isActive) ConflictError.throwError(Errors.SELF_EXCLUDED, userId)
 
     const limits = await this.walletRepository.findDepositLimits(userId)
     for (const limit of limits) {
