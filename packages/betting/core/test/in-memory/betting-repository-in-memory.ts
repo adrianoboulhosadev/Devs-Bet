@@ -3,10 +3,14 @@ import {
   BettingSettlementRepository,
   BetQueryRepository,
   ComboBettingPlacementRepository,
+  StakeLimitRepository,
+  StakeLimitQueryRepository,
   Bet,
   BetDTO,
   ComboBet,
   ComboBetDTO,
+  StakeLimit,
+  StakeLimitDTO,
 } from '../../src'
 
 /**
@@ -22,10 +26,13 @@ export default class BettingRepositoryInMemory
     BettingPlacementRepository,
     BettingSettlementRepository,
     BetQueryRepository,
-    ComboBettingPlacementRepository
+    ComboBettingPlacementRepository,
+    StakeLimitRepository,
+    StakeLimitQueryRepository
 {
   readonly bets: Bet[] = []
   readonly combos: ComboBet[] = []
+  readonly stakeLimits: StakeLimit[] = []
   private readonly createdAt = new Map<string, Date>()
 
   async placeBet(bet: Bet): Promise<void> {
@@ -72,6 +79,34 @@ export default class BettingRepositoryInMemory
 
   async listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]> {
     return this.combos.filter((combo) => combo.bettorId === bettorId).map((combo) => this.toComboDTO(combo))
+  }
+
+  async findStakeLimit(bettorId: string): Promise<StakeLimit | null> {
+    return this.stakeLimits.find((limit) => limit.bettorId === bettorId) ?? null
+  }
+
+  async saveStakeLimit(limit: StakeLimit): Promise<void> {
+    if (!this.stakeLimits.includes(limit)) this.stakeLimits.push(limit)
+  }
+
+  async sumStakedSince(bettorId: string, since: Date): Promise<number> {
+    const placedSince = (id: string) => (this.createdAt.get(id) ?? new Date(0)).getTime() >= since.getTime()
+
+    const betsSum = this.bets
+      .filter((bet) => bet.bettorId === bettorId && placedSince(bet.id.value))
+      .reduce((sum, bet) => sum + bet.stake.cents, 0)
+    const combosSum = this.combos
+      .filter((combo) => combo.bettorId === bettorId && placedSince(combo.id.value))
+      .reduce((sum, combo) => sum + combo.stake.cents, 0)
+
+    return betsSum + combosSum
+  }
+
+  async getMyStakeLimitQuery(bettorId: string): Promise<StakeLimitDTO | null> {
+    const limit = this.stakeLimits.find((candidate) => candidate.bettorId === bettorId)
+    return limit
+      ? { amount: limit.effectiveAmount(), pendingAmount: limit.pendingAmount, effectiveAt: limit.effectiveAt }
+      : null
   }
 
   private toDTO(bet: Bet): BetDTO {

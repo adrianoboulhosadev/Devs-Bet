@@ -1,6 +1,6 @@
 import { UseCase, ConflictError, ValidationError, Errors } from 'shared'
-import { ComboBet, BetMarketType } from '../model'
-import { ComboBettingPlacementRepository } from '../providers'
+import { ComboBet, BetMarketType, STAKE_LIMIT_WINDOW_MS } from '../model'
+import { ComboBettingPlacementRepository, StakeLimitRepository } from '../providers'
 
 interface ComboLegInput {
   marketType: BetMarketType
@@ -18,6 +18,8 @@ interface Input {
   bettorId: string
   stake: number // cents
   legs: ComboLegInput[]
+  // Resolved from the wallet context by the caller — responsible gambling.
+  bettorSelfExcluded: boolean
 }
 
 /**
@@ -26,16 +28,33 @@ interface Input {
  * on a real selection (ComboBet itself guards the minimum leg count and rejects
  * a repeated market). The atomic reservation of the stake happens in the
  * placement repo's adapter, same as a single bet.
+ *
+ * Responsible gambling: same checks as PlaceBet — active self-exclusion blocks
+ * outright; otherwise the ticket's stake counts against the bettor's daily
+ * StakeLimit alongside their single bets.
  */
 export default class PlaceComboBet implements UseCase<Input, void> {
-  constructor(private readonly comboPlacementRepository: ComboBettingPlacementRepository) {}
+  constructor(
+    private readonly comboPlacementRepository: ComboBettingPlacementRepository,
+    private readonly stakeLimitRepository: StakeLimitRepository,
+  ) {}
 
   async execute(input: Input): Promise<void> {
+    if (input.bettorSelfExcluded) {
+      ConflictError.throwError(Errors.SELF_EXCLUDED, input.bettorId)
+    }
     for (const leg of input.legs) {
       if (!leg.marketOpen) ConflictError.throwError(Errors.BETTING_CLOSED, leg.marketId)
       if (!leg.selectionIds.includes(leg.selectionId)) {
         ValidationError.throwError(Errors.NOT_A_PARTICIPANT, leg.selectionId)
       }
+    }
+
+    const stakeLimit = await this.stakeLimitRepository.findStakeLimit(input.bettorId)
+    if (stakeLimit) {
+      const since = new Date(Date.now() - STAKE_LIMIT_WINDOW_MS)
+      const usedInWindow = await this.stakeLimitRepository.sumStakedSince(input.bettorId, since)
+      stakeLimit.ensureWithinLimit(usedInWindow, input.stake)
     }
 
     const combo = new ComboBet({

@@ -12,10 +12,11 @@ const LEG = (marketId: string, selectionId: string, odd: number) => ({
 
 test('places a combo ticket across two markets', async () => {
   const repository = new BettingRepositoryInMemory()
-  await new PlaceComboBet(repository).execute({
+  await new PlaceComboBet(repository, repository).execute({
     bettorId: 'u1',
     stake: 1000,
     legs: [LEG('m1', 'A', 1.5), LEG('m2', 'X', 2)],
+    bettorSelfExcluded: false,
   })
 
   expect(repository.combos).toHaveLength(1)
@@ -24,10 +25,11 @@ test('places a combo ticket across two markets', async () => {
 
 test('winning every leg settles the ticket as won with the fixed combined odd', async () => {
   const repository = new BettingRepositoryInMemory()
-  await new PlaceComboBet(repository).execute({
+  await new PlaceComboBet(repository, repository).execute({
     bettorId: 'u1',
     stake: 1000,
     legs: [LEG('m1', 'A', 1.5), LEG('m2', 'X', 2)],
+    bettorSelfExcluded: false,
   })
 
   await new SettleMarket(repository).execute({ marketId: 'm1', winningSelectionId: 'A', rakeBasisPoints: 0 })
@@ -42,10 +44,11 @@ test('winning every leg settles the ticket as won with the fixed combined odd', 
 
 test('losing one leg settles the ticket as lost, regardless of the other leg', async () => {
   const repository = new BettingRepositoryInMemory()
-  await new PlaceComboBet(repository).execute({
+  await new PlaceComboBet(repository, repository).execute({
     bettorId: 'u1',
     stake: 1000,
     legs: [LEG('m1', 'A', 1.5), LEG('m2', 'X', 2)],
+    bettorSelfExcluded: false,
   })
 
   await new SettleMarket(repository).execute({ marketId: 'm1', winningSelectionId: 'B', rakeBasisPoints: 0 })
@@ -57,10 +60,11 @@ test('losing one leg settles the ticket as lost, regardless of the other leg', a
 
 test('cancelling a leg market refunds the whole ticket once every leg resolves', async () => {
   const repository = new BettingRepositoryInMemory()
-  await new PlaceComboBet(repository).execute({
+  await new PlaceComboBet(repository, repository).execute({
     bettorId: 'u1',
     stake: 1000,
     legs: [LEG('m1', 'A', 1.5), LEG('m2', 'X', 2)],
+    bettorSelfExcluded: false,
   })
 
   await new SettleMarket(repository).execute({ marketId: 'm1', winningSelectionId: 'A', rakeBasisPoints: 0 })

@@ -6,10 +6,11 @@ const OPEN_MATCH = {
   marketType: 'match' as const,
   marketOpen: true,
   selectionIds: ['A', 'B'],
+  bettorSelfExcluded: false,
 }
 
 async function placeSome(repository: BettingRepositoryInMemory) {
-  const place = new PlaceBet(repository)
+  const place = new PlaceBet(repository, repository)
   await place.execute({ marketId: 'm1', bettorId: 'u1', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
   await place.execute({ marketId: 'm1', bettorId: 'u2', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
   await place.execute({ marketId: 'm1', bettorId: 'u3', selectionId: 'B', stake: 1000, ...OPEN_MATCH })
@@ -17,7 +18,7 @@ async function placeSome(repository: BettingRepositoryInMemory) {
 
 test('places a bet on an open market', async () => {
   const repository = new BettingRepositoryInMemory()
-  await new PlaceBet(repository).execute({
+  await new PlaceBet(repository, repository).execute({
     marketId: 'm1',
     bettorId: 'u1',
     selectionId: 'A',
@@ -30,7 +31,7 @@ test('places a bet on an open market', async () => {
 test('cannot bet on a closed market (BETTING_CLOSED)', async () => {
   const repository = new BettingRepositoryInMemory()
   await expect(
-    new PlaceBet(repository).execute({
+    new PlaceBet(repository, repository).execute({
       marketType: 'match',
       marketId: 'm1',
       bettorId: 'u1',
@@ -38,6 +39,7 @@ test('cannot bet on a closed market (BETTING_CLOSED)', async () => {
       stake: 1000,
       marketOpen: false,
       selectionIds: ['A', 'B'],
+      bettorSelfExcluded: false,
     }),
   ).rejects.toBeInstanceOf(ConflictError)
 })
@@ -45,7 +47,7 @@ test('cannot bet on a closed market (BETTING_CLOSED)', async () => {
 test('cannot bet on an invalid selection (NOT_A_PARTICIPANT)', async () => {
   const repository = new BettingRepositoryInMemory()
   await expect(
-    new PlaceBet(repository).execute({
+    new PlaceBet(repository, repository).execute({
       marketId: 'm1',
       bettorId: 'u1',
       selectionId: 'Z',
@@ -72,7 +74,7 @@ test('settlement resolves winners and losers by the parimutuel share', async () 
 
 test('nobody backed the winner -> everyone loses (no refund)', async () => {
   const repository = new BettingRepositoryInMemory()
-  const place = new PlaceBet(repository)
+  const place = new PlaceBet(repository, repository)
   await place.execute({ marketId: 'm2', bettorId: 'u1', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
   await place.execute({ marketId: 'm2', bettorId: 'u2', selectionId: 'A', stake: 1000, ...OPEN_MATCH })
 
@@ -96,11 +98,12 @@ test('refund settles every open bet back to its stake', async () => {
 
 test('an outright (tournament champion) market settles like any other market', async () => {
   const repository = new BettingRepositoryInMemory()
-  const place = new PlaceBet(repository)
+  const place = new PlaceBet(repository, repository)
   const OPEN_OUTRIGHT = {
     marketType: 'tournament_outright' as const,
     marketOpen: true,
     selectionIds: ['p1', 'p2', 'p3'],
+    bettorSelfExcluded: false,
   }
   await place.execute({ marketId: 't1', bettorId: 'u1', selectionId: 'p1', stake: 1000, ...OPEN_OUTRIGHT })
   await place.execute({ marketId: 't1', bettorId: 'u2', selectionId: 'p2', stake: 1000, ...OPEN_OUTRIGHT })
