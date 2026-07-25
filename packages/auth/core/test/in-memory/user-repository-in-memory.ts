@@ -10,7 +10,8 @@ import { Role } from 'shared'
 interface UserRow {
   id: string
   email: string
-  password: string
+  // null for a user created via an OAuth provider (see LoginWithGoogle) — no password.
+  password: string | null
   role: Role
   active: boolean
   createdAt: Date
@@ -24,7 +25,7 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
     return new User({
       id: row.id,
       email: row.email,
-      password: row.password,
+      password: row.password ?? undefined,
       role: row.role,
       active: row.active,
     })
@@ -34,7 +35,7 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
     this.rows.push({
       id: user.id.value,
       email: user.email.value,
-      password: user.password!.value,
+      password: user.password?.value ?? null,
       role: user.role,
       active: user.active,
       createdAt: new Date(),
