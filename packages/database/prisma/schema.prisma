@@ -12,11 +12,13 @@ datasource db {
 
 // Identity/credential. `role` drives authorization (the owner is `admin`); the
 // rich domain `User` maps email/password/role to value objects. Money lives in
-// the wallet context, never here.
+// the wallet context, never here. `password` is nullable: a user created via an
+// OAuth provider (see OAuthAccount) has none — LoginUser (email+password)
+// already rejects a null password as invalid credentials.
 model User {
   id          String    @id @default(uuid())
   email       String    @unique
-  password    String
+  password    String?
   role        String    @default("user")
   active      Boolean   @default(true)
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -37,6 +39,25 @@ model AuthSession {
 
   @@index([userId])
   @@map("auth_sessions")
+}
+
+// Links a User to an external OAuth identity (provider + providerAccountId —
+// 'google' today, see GoogleTokenVerifier). Found by (provider,
+// providerAccountId) on a repeat login; on the first login the User is
+// resolved by email (auto-linked when the provider confirms the email is
+// verified) or created fresh (no password) — see LoginWithGoogle. userId is a
+// LOGICAL FK to User, same as AuthSession.
+model OAuthAccount {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  email             String
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
 }
 
 // --- wallet --------------------------------------------------------------------
