@@ -3,10 +3,13 @@ import {
   BettingSettlementRepository,
   BetQueryRepository,
   ComboBettingPlacementRepository,
+  StakeLimitRepository,
+  StakeLimitQueryRepository,
   BetDTO,
   MarketOddsDTO,
   LeaderboardEntryDTO,
   ComboBetDTO,
+  StakeLimitDTO,
   SettlementJob,
 } from '@betting/core'
 import {
@@ -18,8 +21,10 @@ import {
   GetLeaderboardController,
   PlaceComboBetController,
   ListMyComboBetsController,
+  SetStakeLimitController,
+  GetMyStakeLimitController,
 } from '../controllers'
-import { PlaceBetInput, PlaceComboBetLegInput } from '../@types'
+import { PlaceBetInput, PlaceComboBetLegInput, SetStakeLimitInput } from '../@types'
 
 /**
  * Single entry point the apps call. Optional ports in the constructor. The
@@ -33,6 +38,8 @@ export default class BettingFacade {
     private readonly settlementRepository?: BettingSettlementRepository,
     private readonly betQueryRepository?: BetQueryRepository,
     private readonly comboPlacementRepository?: ComboBettingPlacementRepository,
+    private readonly stakeLimitRepository?: StakeLimitRepository,
+    private readonly stakeLimitQueryRepository?: StakeLimitQueryRepository,
   ) {}
 
   async placeBet(
@@ -40,12 +47,14 @@ export default class BettingFacade {
     bettorId: string,
     marketOpen: boolean,
     selectionIds: string[],
+    bettorSelfExcluded: boolean,
   ): Promise<void> {
-    await new PlaceBetController(this.placementRepository!).execute(
+    await new PlaceBetController(this.placementRepository!, this.stakeLimitRepository!).execute(
       input,
       bettorId,
       marketOpen,
       selectionIds,
+      bettorSelfExcluded,
     )
   }
 
@@ -69,11 +78,29 @@ export default class BettingFacade {
     return new GetLeaderboardController(this.betQueryRepository!).execute(limit)
   }
 
-  async placeComboBet(stake: number, legs: PlaceComboBetLegInput[], bettorId: string): Promise<void> {
-    await new PlaceComboBetController(this.comboPlacementRepository!).execute(stake, legs, bettorId)
+  async placeComboBet(
+    stake: number,
+    legs: PlaceComboBetLegInput[],
+    bettorId: string,
+    bettorSelfExcluded: boolean,
+  ): Promise<void> {
+    await new PlaceComboBetController(this.comboPlacementRepository!, this.stakeLimitRepository!).execute(
+      stake,
+      legs,
+      bettorId,
+      bettorSelfExcluded,
+    )
   }
 
   async listMyComboBets(bettorId: string): Promise<ComboBetDTO[]> {
     return new ListMyComboBetsController(this.betQueryRepository!).execute(bettorId)
+  }
+
+  async setStakeLimit(input: SetStakeLimitInput, bettorId: string): Promise<void> {
+    await new SetStakeLimitController(this.stakeLimitRepository!).execute(input, bettorId)
+  }
+
+  async getMyStakeLimit(bettorId: string): Promise<StakeLimitDTO | null> {
+    return new GetMyStakeLimitController(this.stakeLimitQueryRepository!).execute(bettorId)
   }
 }

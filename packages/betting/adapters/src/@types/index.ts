@@ -1,3 +1,15 @@
-import { PlaceBetInput, ComboBetLegInput, PlaceComboBetInput, PlaceComboBetLegInput } from './inputs'
+import {
+  PlaceBetInput,
+  ComboBetLegInput,
+  PlaceComboBetInput,
+  PlaceComboBetLegInput,
+  SetStakeLimitInput,
+} from './inputs'
 
-export type { PlaceBetInput, ComboBetLegInput, PlaceComboBetInput, PlaceComboBetLegInput }
+export type {
+  PlaceBetInput,
+  ComboBetLegInput,
+  PlaceComboBetInput,
+  PlaceComboBetLegInput,
+  SetStakeLimitInput,
+}

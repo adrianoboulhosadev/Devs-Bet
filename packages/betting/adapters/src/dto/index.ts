@@ -8,6 +8,7 @@ import type {
   ComboBetDTO,
   ComboLegDTO,
   ComboLegResult,
+  StakeLimitDTO,
 } from '@betting/core'
 
 export type {
@@ -20,4 +21,5 @@ export type {
   ComboBetDTO,
   ComboLegDTO,
   ComboLegResult,
+  StakeLimitDTO,
 }

@@ -6,6 +6,8 @@ import ListMyBetsController from './list-my-bets-controller'
 import GetLeaderboardController from './get-leaderboard-controller'
 import PlaceComboBetController from './place-combo-bet-controller'
 import ListMyComboBetsController from './list-my-combo-bets-controller'
+import SetStakeLimitController from './set-stake-limit-controller'
+import GetMyStakeLimitController from './get-my-stake-limit-controller'
 
 export {
   PlaceBetController,
@@ -16,4 +18,6 @@ export {
   GetLeaderboardController,
   PlaceComboBetController,
   ListMyComboBetsController,
+  SetStakeLimitController,
+  GetMyStakeLimitController,
 }

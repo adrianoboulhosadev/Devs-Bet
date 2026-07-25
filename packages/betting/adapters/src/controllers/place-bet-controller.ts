@@ -1,19 +1,23 @@
-import { PlaceBet, BettingPlacementRepository } from '@betting/core'
+import { PlaceBet, BettingPlacementRepository, StakeLimitRepository } from '@betting/core'
 import { PlaceBetInput } from '../@types'
 
 export default class PlaceBetController {
-  constructor(private readonly placementRepository: BettingPlacementRepository) {}
+  constructor(
+    private readonly placementRepository: BettingPlacementRepository,
+    private readonly stakeLimitRepository: StakeLimitRepository,
+  ) {}
 
-  // bettorId from the JWT; marketOpen + selectionIds resolved from the owning
-  // context (match/tournament) by the backend and passed in (betting does not
-  // import those contexts).
+  // bettorId from the JWT; marketOpen/selectionIds resolved from the owning
+  // context (match/tournament) by the backend (betting does not import those
+  // contexts); bettorSelfExcluded resolved from the wallet context, same reason.
   async execute(
     input: PlaceBetInput,
     bettorId: string,
     marketOpen: boolean,
     selectionIds: string[],
+    bettorSelfExcluded: boolean,
   ): Promise<void> {
-    const useCase = new PlaceBet(this.placementRepository)
+    const useCase = new PlaceBet(this.placementRepository, this.stakeLimitRepository)
     await useCase.execute({
       marketType: input.marketType,
       marketId: input.marketId,
@@ -22,6 +26,7 @@ export default class PlaceBetController {
       bettorId,
       marketOpen,
       selectionIds,
+      bettorSelfExcluded,
     })
   }
 }

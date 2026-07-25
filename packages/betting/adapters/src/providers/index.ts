@@ -3,6 +3,8 @@ import type {
   BettingSettlementRepository,
   BetQueryRepository,
   ComboBettingPlacementRepository,
+  StakeLimitRepository,
+  StakeLimitQueryRepository,
   SettlementQueue,
   SettlementJob,
 } from '@betting/core'
@@ -12,6 +14,8 @@ export type {
   BettingSettlementRepository,
   BetQueryRepository,
   ComboBettingPlacementRepository,
+  StakeLimitRepository,
+  StakeLimitQueryRepository,
   SettlementQueue,
   SettlementJob,
 }

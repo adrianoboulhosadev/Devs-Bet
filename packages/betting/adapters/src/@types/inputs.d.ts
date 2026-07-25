@@ -34,3 +34,8 @@ export interface PlaceComboBetLegInput extends ComboBetLegInput {
   marketOpen: boolean
   selectionIds: string[]
 }
+
+/** Self-service daily stake cap. bettorId comes from the JWT, never the body. */
+export interface SetStakeLimitInput {
+  amount: number // cents
+}
