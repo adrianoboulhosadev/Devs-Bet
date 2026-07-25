@@ -254,6 +254,19 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   **Outright (campeão do torneio)**: aberto **só até o torneio começar** (trava no `scheduledAt`); liquida
   quando o campeão é decidido (paga bem mais — azarão), estorna se o torneio é cancelado. Quem resolve se o
   mercado está aberto + as seleções válidas é o **backend** (dado puro pro use-case), como no resto.
+  **Odds ao vivo com histórico**: `OddsSnapshot` (append-only, sem regra de domínio — é só um efeito
+  colateral de leitura) é gravado **dentro da própria transação do `PlaceBet`** (adapter, `PrismaBettingPlacementRepository`):
+  depois de inserir a aposta, relê todas as apostas abertas do mercado e roda o mesmo `OddsCalculator`
+  já existente, gravando uma linha por seleção com pool > 0 (`marketId`, `selectionId`, `pool`, `totalPool`,
+  `impliedOdd`, `recordedAt`). **Pernas de combo nunca geram snapshot** — não tocam esse pool (mesma razão
+  de sempre). Read-side: `BetQueryRepository.listOddsHistoryByMarket` + `GetOddsHistoryQuery`; rotas
+  `GET /bet/match/:id/odds/history` e `GET /bet/tournament/:id/odds/history`. Front
+  (`components/odds-history-chart.tsx`, reaproveitado por partida e outright): gráfico **em degrau** (odd só
+  muda quando alguém aposta, então a linha fica reta entre pontos e "pula" a cada evento) via SVG puro (sem
+  lib nova), paleta categórica validada da skill de dataviz (8 cores, só modo claro — o app não tem tema
+  escuro), com legenda, crosshair+tooltip no hover e alternância pra tabela (acessibilidade). **Cap de 8
+  séries**: mercados com mais seleções que isso (ex.: outright de torneio de 32) mostram só as **mais
+  apostadas** (maior pool), com aviso de quantas ficaram de fora — 32 linhas coloridas seria ilegível.
   **Ranking de apostadores**: domain service `LeaderboardCalculator.calculate(bets, limit)` (puro/estático,
   mesmo padrão do `OddsCalculator`) agrupa **todas** as apostas `won`/`lost` (de qualquer mercado) por
   `bettorId` e soma `netProfit = totalPayout − totalStaked`; apostas `open`/`refunded` são ignoradas (refund
@@ -343,7 +356,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/leaderboard` [ranking, `?limit=`, aberto a
   qualquer autenticado]; `POST /combo` e `/combo/mine` [bilhete múltiplo, odds fixas];
   `/stake-limit` [GET/POST, limite de aposta diário — jogo responsável]; `/match/:id` e
-  `/match/:id/odds`; `/tournament/:id` e `/tournament/:id/odds` [outright]),
+  `/match/:id/odds` e `/match/:id/odds/history`; `/tournament/:id`, `/tournament/:id/odds` e
+  `/tournament/:id/odds/history` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
@@ -380,7 +394,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `LedgerEntry`(ledger_entries), `Payment`(payments), `DepositLimit`(deposit_limits; `@@unique([userId, period])`),
   `SelfExclusion`(self_exclusions; append-only), `Match`(matches), `MatchParticipant`(match_participants),
   `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `StakeLimit`(stake_limits;
-  `bettorId` único — só janela diária), `ComboBet`(combo_bets),
+  `bettorId` único — só janela diária), `OddsSnapshot`(odds_snapshots; append-only, histórico de odds),
+  `ComboBet`(combo_bets),
   `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
   `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
