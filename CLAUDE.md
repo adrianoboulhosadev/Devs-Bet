@@ -172,7 +172,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
-`INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`.
+`INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
+`STAKE_LIMIT_EXCEEDED`.
 
 ## Contextos
 
@@ -207,6 +208,17 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   cria ou ajusta; `ListMyDepositLimitsQuery` lista os próprios). **Simplificação desta v1**: não há como
   remover um limite já definido (só ajustar o valor) — cobre o pedido do usuário (limite de
   depósito diário/semanal/mensal) sem o caso extra de "tirar o teto de vez".
+  **Jogo responsável — autoexclusão**: `SelfExclusion` (entidade rica, **append-only** — sem
+  método de cancelar/editar; o usuário busca sempre a linha mais recente) bloqueia depósito **e**
+  aposta por um período (`24h`/`7d`/`30d`/`permanent` — `until: null` é permanente). **Decisão de
+  produto travada**: uma vez iniciada, **não dá pra cancelar antes do prazo** (nem a permanente) —
+  é o ponto central da proteção contra impulsividade; só pode **começar uma nova** se não houver
+  nenhuma ativa no momento (`ConflictError`/`ALREADY_SELF_EXCLUDED` senão). `RequestDeposit` checa
+  a autoexclusão **antes** dos limites de depósito (`SELF_EXCLUDED`, mesma classificação de
+  `DEPOSIT_LIMIT_EXCEEDED`). Rotas self-service: `GET`/`POST /wallet/self-exclusion`
+  (`StartSelfExclusion`/`GetMySelfExclusionQuery`). O front (`useSelfExclusion`, hook global em
+  `apps/web/src/hooks`) é consultado por qualquer tela que deposita ou aposta (carteira, partida,
+  torneio, combo) só pra **desabilitar a UI** — quem garante a regra de verdade é sempre o backend.
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
   `open → locked → settled` / `cancelled`), `MatchParticipant`. **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
@@ -279,6 +291,16 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   seleção) e `GET /bet/combo/mine`. Front: `app/(private)/combo` monta o bilhete escolhendo partidas/torneios
   abertos + seleção, mostra uma odd combinada **estimada** (via as mesmas rotas de odds indicativas — o valor
   real só trava na confirmação) e lista o histórico de bilhetes do usuário.
+  **Jogo responsável — limite de aposta diária**: `StakeLimit` (mesmo padrão rico do `DepositLimit` do
+  wallet — diminuir aplica na hora, aumentar agenda com carência de 24h — mas **só janela diária**, sem
+  período configurável). Porta `StakeLimitRepository` (`findStakeLimit`/`saveStakeLimit`/
+  `sumStakedSince`) é **compartilhada** por `PlaceBet` e `PlaceComboBet` — aposta simples e bilhete
+  múltiplo **disputam o mesmo orçamento diário** (`sumStakedSince` soma `bets` + `combo_bets` do
+  apostador). Estourou → `ValidationError`/`STAKE_LIMIT_EXCEEDED`. Além do limite, os dois use-cases
+  também recebem `bettorSelfExcluded` (bool resolvido pelo backend via `PrismaWalletRepository` —
+  cross-context, igual ao padrão de `marketOpen`/`categoryIsLeaf`) e bloqueiam com `SELF_EXCLUDED` antes
+  de qualquer outra checagem. Rotas self-service: `GET`/`POST /bet/stake-limit`. Front: seção na página
+  `/bets`.
 - **category** — árvore auto-referente de categorias (`Category` com `parentId` opcional; ex.:
   games → e-sports → Counter Strike). CRUD **admin-only** (`Create/Update/Delete` estendem
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
@@ -313,11 +335,14 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
   `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`,
-  `wallet/deposit-limits` (GET lista os próprios; POST define/ajusta — jogo responsável), `match` (`/`, `/:id`
+  `wallet/deposit-limits` (GET lista os próprios; POST define/ajusta — jogo responsável),
+  `wallet/self-exclusion` (GET consulta a autoexclusão ativa; POST inicia — jogo responsável),
+  `match` (`/`, `/:id`
   [GET e PATCH], `/:id/lock`, `/:id/units` [registra o vencedor da próxima unidade do bestOf; devolve o
   `MatchDTO`, pode precisar ser chamada mais de uma vez], `/:id/cancel`),
   `bet` (`POST /` aposta em qualquer mercado; `/mine`; `/leaderboard` [ranking, `?limit=`, aberto a
-  qualquer autenticado]; `POST /combo` e `/combo/mine` [bilhete múltiplo, odds fixas]; `/match/:id` e
+  qualquer autenticado]; `POST /combo` e `/combo/mine` [bilhete múltiplo, odds fixas];
+  `/stake-limit` [GET/POST, limite de aposta diário — jogo responsável]; `/match/:id` e
   `/match/:id/odds`; `/tournament/:id` e `/tournament/:id/odds` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
@@ -353,8 +378,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `DepositLimit`(deposit_limits; `@@unique([userId, period])`),
-  `Match`(matches), `MatchParticipant`(match_participants),
-  `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `ComboBet`(combo_bets),
+  `SelfExclusion`(self_exclusions; append-only), `Match`(matches), `MatchParticipant`(match_participants),
+  `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `StakeLimit`(stake_limits;
+  `bettorId` único — só janela diária), `ComboBet`(combo_bets),
   `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
   `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
