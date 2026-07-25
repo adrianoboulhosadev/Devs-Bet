@@ -240,3 +240,74 @@ describe('Tournament bracket advancement', () => {
     }
   })
 })
+
+describe('Tournament group stage (> 32 participants)', () => {
+  test('a 32-participant tournament (the boundary) has no group stage', () => {
+    const tournament = newTournament(32)
+    expect(tournament.hasGroupStage).toBe(false)
+    expect(tournament.phase).toBe('knockout')
+    expect(tournament.groupMatches).toHaveLength(0)
+    expect(tournament.slots).toHaveLength(31)
+  })
+
+  test('bestOfByRound is sized to the knockout bracket (32 entrants), not the raw 64', () => {
+    const tournament = newTournament(64)
+    expect(tournament.bestOfByRound).toHaveLength(5)
+    expect(tournament.groupStageBestOf).toBe(tournament.bestOfByRound[0])
+  })
+
+  test('a group matchup winner must be one of its two players (NOT_A_PARTICIPANT)', () => {
+    const tournament = newTournament(64)
+    const slot = tournament.pendingGroupMatchSlots()[0]
+    tournament.attachGroupMatch(slot.groupIndex, slot.matchupIndex, 'gm')
+    try {
+      tournament.recordConfrontationResult('gm', 'Nobody', 2, 0)
+      fail('should have thrown')
+    } catch (error) {
+      expect((error as ValidationError).code).toBe(Errors.NOT_A_PARTICIPANT)
+    }
+  })
+
+  test('64 participants: 16 groups of 4 seed a 32-entrant knockout bracket, played to a champion', () => {
+    const tournament = newTournament(64)
+    expect(tournament.hasGroupStage).toBe(true)
+    expect(tournament.phase).toBe('group')
+    expect(tournament.groupMatches).toHaveLength(16 * 6)
+    expect(tournament.slots).toHaveLength(0)
+    expect(tournament.pendingMatchSlots()).toHaveLength(0)
+    expect(tournament.pendingGroupMatchSlots()).toHaveLength(16 * 6)
+    expect(tournament.roundCount).toBe(5) // the 32-entrant bracket's round count
+
+    // Play every group matchup, always letting the A-side player win.
+    for (const slot of tournament.pendingGroupMatchSlots()) {
+      const matchId = `gm-${slot.groupIndex}-${slot.matchupIndex}`
+      tournament.attachGroupMatch(slot.groupIndex, slot.matchupIndex, matchId)
+      const winnerName = tournament.participantName(slot.playerAId)!
+      tournament.recordConfrontationResult(matchId, winnerName, 2, 0)
+    }
+
+    // Every group is settled — the knockout bracket is now seeded from the
+    // qualifiers (top two of each group).
+    expect(tournament.phase).toBe('knockout')
+    expect(tournament.slots).toHaveLength(31) // 16 + 8 + 4 + 2 + 1
+    expect(tournament.pendingMatchSlots()).toHaveLength(16)
+
+    // Play the knockout bracket through to a champion, same as the plain case.
+    const playRound = () => {
+      for (const slot of tournament.pendingMatchSlots()) {
+        const matchId = `m-${slot.round}-${slot.position}`
+        tournament.attachMatch(slot.round, slot.position, matchId)
+        const winnerName = tournament.participantName(slot.playerAId)!
+        tournament.recordResult(matchId, winnerName)
+      }
+    }
+    playRound() // round 0 (16 matches) → round 1
+    playRound() // round 1 (8) → round 2
+    playRound() // round 2 (4) → round 3 (semis)
+    playRound() // round 3 (2) → the final
+    expect(tournament.pendingMatchSlots()).toHaveLength(1)
+    playRound() // final → champion
+    expect(tournament.status).toBe('finished')
+    expect(tournament.championParticipantId).not.toBeNull()
+  })
+})

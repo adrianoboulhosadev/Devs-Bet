@@ -4,6 +4,7 @@ import {
   Tournament,
   TournamentDTO,
   TournamentStatus,
+  GroupStandingsCalculator,
 } from '../../src'
 
 interface ParticipantRow {
@@ -23,6 +24,19 @@ interface SlotRow {
   playerBId: string | null
 }
 
+interface GroupMatchRow {
+  id: string
+  tournamentId: string
+  groupIndex: number
+  matchupIndex: number
+  playerAId: string
+  playerBId: string
+  matchId: string | null
+  winnerParticipantId: string | null
+  unitsWonByA: number
+  unitsWonByB: number
+}
+
 interface TournamentRow {
   id: string
   creatorId: string
@@ -38,6 +52,7 @@ interface TournamentRow {
   createdAt: Date
   participants: ParticipantRow[]
   slots: SlotRow[]
+  groupMatches: GroupMatchRow[]
 }
 
 export default class TournamentRepositoryInMemory
@@ -75,6 +90,18 @@ export default class TournamentRepositoryInMemory
         playerAId: slot.playerAId,
         playerBId: slot.playerBId,
       })),
+      groupMatches: tournament.groupMatches.map((match) => ({
+        id: match.id.value,
+        tournamentId: tournament.id.value,
+        groupIndex: match.groupIndex,
+        matchupIndex: match.matchupIndex,
+        playerAId: match.playerAId,
+        playerBId: match.playerBId,
+        matchId: match.matchId,
+        winnerParticipantId: match.winnerParticipantId,
+        unitsWonByA: match.unitsWonByA,
+        unitsWonByB: match.unitsWonByB,
+      })),
     }
   }
 
@@ -106,6 +133,18 @@ export default class TournamentRepositoryInMemory
         playerAId: slot.playerAId,
         playerBId: slot.playerBId,
       })),
+      groupMatches: row.groupMatches.map((match) => ({
+        id: match.id,
+        tournamentId: match.tournamentId,
+        groupIndex: match.groupIndex,
+        matchupIndex: match.matchupIndex,
+        playerAId: match.playerAId,
+        playerBId: match.playerBId,
+        matchId: match.matchId,
+        winnerParticipantId: match.winnerParticipantId,
+        unitsWonByA: match.unitsWonByA,
+        unitsWonByB: match.unitsWonByB,
+      })),
     })
   }
 
@@ -135,13 +174,40 @@ export default class TournamentRepositoryInMemory
   }
 
   private toDTO(row: TournamentRow): TournamentDTO {
-    const nameOf = (participantId: string | null) => {
-      if (!participantId) return null
+    const participantOf = (participantId: string) => {
       const participant = row.participants.find((current) => current.id === participantId)
       return participant
         ? { id: participant.id, userId: participant.userId, displayName: participant.displayName }
-        : null
+        : { id: participantId, userId: null, displayName: '—' }
     }
+    const nameOf = (participantId: string | null) => (participantId ? participantOf(participantId) : null)
+
+    const groupCount = row.size > 32 ? row.size / 4 : 0
+    const groups = Array.from({ length: groupCount }, (_, groupIndex) => {
+      const matches = row.groupMatches.filter((match) => match.groupIndex === groupIndex)
+      const memberIds = [...new Set(matches.flatMap((match) => [match.playerAId, match.playerBId]))]
+      const standings = GroupStandingsCalculator.calculate(memberIds, matches)
+      return {
+        groupIndex,
+        matches: matches.map((match) => ({
+          id: match.id,
+          groupIndex: match.groupIndex,
+          matchupIndex: match.matchupIndex,
+          matchId: match.matchId,
+          playerA: participantOf(match.playerAId),
+          playerB: participantOf(match.playerBId),
+          winnerParticipantId: match.winnerParticipantId,
+        })),
+        standings: standings.map((entry, index) => ({
+          participant: participantOf(entry.participantId),
+          wins: entry.wins,
+          unitsWon: entry.unitsWon,
+          unitsLost: entry.unitsLost,
+          rank: index + 1,
+        })),
+      }
+    })
+
     return {
       id: row.id,
       creatorId: row.creatorId,
@@ -159,6 +225,8 @@ export default class TournamentRepositoryInMemory
         userId: participant.userId,
         displayName: participant.displayName,
       })),
+      phase: groupCount > 0 && row.slots.length === 0 ? 'group' : 'knockout',
+      groups,
       bracket: row.slots.map((slot) => ({
         id: slot.id,
         round: slot.round,

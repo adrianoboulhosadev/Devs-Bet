@@ -1,4 +1,5 @@
 export * from './tournament-participant'
 export * from './bracket-slot'
+export * from './group-match-slot'
 export * from './tournament'
 export * from './tournament-dto'

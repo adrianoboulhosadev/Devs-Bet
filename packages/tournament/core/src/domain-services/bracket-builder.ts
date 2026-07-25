@@ -1,7 +1,10 @@
 import { ValidationError, Errors } from 'shared'
 
-/** A single-elimination bracket only supports these sizes (powers of 2). */
-export const VALID_TOURNAMENT_SIZES = [2, 4, 8, 16, 32] as const
+/** A single-elimination bracket only supports these sizes (powers of 2). Above
+ * GROUP_STAGE_THRESHOLD (32, see group-builder.ts) the knockout bracket is fed
+ * by a round-robin group stage instead of starting from the raw participants —
+ * see Tournament.hasGroupStage. */
+export const VALID_TOURNAMENT_SIZES = [2, 4, 8, 16, 32, 64, 128] as const
 
 /** Plain descriptor of a bracket slot, produced by the builder and turned into a
  * BracketSlot by the Tournament aggregate. Round 0 is the fullest round; the last

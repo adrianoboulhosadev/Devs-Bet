@@ -7,8 +7,11 @@ import {
 } from 'shared'
 import { TournamentParticipant, TournamentParticipantProps } from './tournament-participant'
 import { BracketSlot, BracketSlotProps } from './bracket-slot'
+import { GroupMatchSlot, GroupMatchSlotProps } from './group-match-slot'
 import { BracketBuilder, VALID_TOURNAMENT_SIZES } from '../domain-services/bracket-builder'
 import { BracketAdvancer } from '../domain-services/bracket-advancer'
+import { GroupBuilder, GROUP_STAGE_THRESHOLD } from '../domain-services/group-builder'
+import { GroupStandingsCalculator } from '../domain-services/group-standings-calculator'
 
 export type TournamentStatus = 'in_progress' | 'finished' | 'cancelled'
 
@@ -23,16 +26,21 @@ export interface TournamentProps extends EntityProps {
   status?: TournamentStatus
   size?: number
   rakeBasisPoints?: number
-  // How many units decide each confrontation, ONE ENTRY PER ROUND (index 0 =
-  // round 0, the fullest; last entry = the final) — so e.g. every round can be
-  // MD3 except an MD5 final. Each entry is 1, 3 or 5 (defaults to all 1s).
-  // Applied to the Match the backend creates for that round (see Match.bestOf);
-  // a bracket confrontation never allows a draw regardless.
+  // How many units decide each round's confrontations, ONE ENTRY PER KNOCKOUT
+  // ROUND (index 0 = fullest round, last = the final — see `qualifierCount`,
+  // NOT the raw `size`, when there's a group stage) — so e.g. every round can be
+  // MD3 except an MD5 final. Applied to the Match the backend creates for that
+  // round (see Match.bestOf); a confrontation never allows a draw regardless.
+  // The group stage itself reuses bestOfByRound[0] (see `groupStageBestOf`).
   bestOfByRound?: number[]
   championParticipantId?: string | null
   participants?: TournamentParticipantProps[]
   // Present on reconstitution (from the DB); absent for a brand-new tournament,
-  // where the constructor lays out the bracket from the participants.
+  // where the constructor lays out the group stage from the participants.
+  groupMatches?: GroupMatchSlotProps[]
+  // Present on reconstitution; absent for a brand-new tournament, where the
+  // constructor lays out the bracket immediately UNLESS there's a group stage
+  // (hasGroupStage) — then it starts empty until the group stage completes.
   slots?: BracketSlotProps[]
 }
 
@@ -42,12 +50,23 @@ const MAX_BASIS_POINTS = 10_000
 const VALID_BEST_OF = [1, 3, 5]
 
 /**
- * Rich tournament aggregate: a single-elimination bracket over 2..32 competitors
- * (powers of 2). It ORCHESTRATES matches without knowing the match context — each
- * confrontation is a plain Match created by the app layer; here we only hold the
- * bracket structure and advance winners. Invariants (valid size, exact number of
- * participants, unique names) live in the constructor; the bracket transitions
- * (attach a match, record a result, crown the champion) live in the methods.
+ * Rich tournament aggregate: a single-elimination bracket over 2..128
+ * competitors (powers of 2). It ORCHESTRATES matches without knowing the match
+ * context — each confrontation is a plain Match created by the app layer; here
+ * we only hold the bracket (and, above GROUP_STAGE_THRESHOLD, group) structure
+ * and advance winners. Invariants (valid size, exact number of participants,
+ * unique names) live in the constructor; the transitions (attach a match,
+ * record a result, crown the champion) live in the methods.
+ *
+ * Above GROUP_STAGE_THRESHOLD (32) the tournament ADDS a round-robin group
+ * stage in front of the knockout bracket: participants split into groups of 4,
+ * every group plays all 6 pairwise matchups, and each group's top two (by
+ * GroupStandingsCalculator) seed the knockout bracket once every group matchup
+ * is settled (`startKnockoutFromGroups`, called automatically from
+ * `recordConfrontationResult`) — e.g. 64 participants → 16 groups → 32
+ * qualifiers → the SAME round-of-32 knockout an ordinary 32-size tournament
+ * plays. At or below 32, behavior is exactly the pre-existing pure knockout
+ * (`hasGroupStage` is false, `groupMatches` is empty, `slots` built immediately).
  */
 export class Tournament extends Entity<Tournament, TournamentProps> {
   readonly creatorId: string
@@ -59,7 +78,10 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
   readonly bestOfByRound: number[]
   readonly size: number
   readonly participants: TournamentParticipant[]
-  readonly slots: BracketSlot[]
+  readonly groupMatches: GroupMatchSlot[]
+  // Not readonly: starts empty for a group-stage tournament until
+  // `startKnockoutFromGroups` builds it from the group qualifiers.
+  slots: BracketSlot[]
   status: TournamentStatus
   championParticipantId: string | null
 
@@ -99,7 +121,12 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
       ValidationError.throwError(Errors.INVALID_AMOUNT, rakeBasisPoints)
     }
 
-    const roundCount = BracketBuilder.roundCount(size)
+    const hasGroupStage = size > GROUP_STAGE_THRESHOLD
+    // The knockout bracket is sized to its actual entrants: everyone when there
+    // is no group stage, or each group's top two once it does (size / 2).
+    const qualifierCount = hasGroupStage ? size / 2 : size
+
+    const roundCount = BracketBuilder.roundCount(qualifierCount)
     const bestOfByRound = props.bestOfByRound ?? Array(roundCount).fill(1)
     if (bestOfByRound.length !== roundCount) {
       ValidationError.throwError(Errors.INVALID_BEST_OF, bestOfByRound.length)
@@ -108,13 +135,25 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
       if (!VALID_BEST_OF.includes(bestOf)) ValidationError.throwError(Errors.INVALID_BEST_OF, bestOf)
     }
 
-    // Reconstitute the bracket from the DB, or lay it out fresh from the players.
+    const participantIds = participants.map((participant) => participant.id.value)
+
+    // Reconstitute the group stage from the DB, or lay it out fresh from the
+    // players (only when this tournament actually has one).
+    const groupMatches = props.groupMatches
+      ? props.groupMatches.map((slot) => new GroupMatchSlot(slot))
+      : hasGroupStage
+        ? GroupBuilder.build(size, participantIds).map((seed) => new GroupMatchSlot(seed))
+        : []
+
+    // Reconstitute the bracket from the DB, or lay it out fresh from the
+    // players — UNLESS there's a group stage, in which case the knockout
+    // entrants aren't known yet; it starts empty and `startKnockoutFromGroups`
+    // builds it once every group matchup is settled.
     const slots = props.slots
       ? props.slots.map((slot) => new BracketSlot(slot))
-      : BracketBuilder.build(
-          size,
-          participants.map((participant) => participant.id.value),
-        ).map((seed) => new BracketSlot(seed))
+      : hasGroupStage
+        ? []
+        : BracketBuilder.build(size, participantIds).map((seed) => new BracketSlot(seed))
 
     this.creatorId = props.creatorId
     this.title = title
@@ -127,6 +166,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     this.status = props.status ?? 'in_progress'
     this.championParticipantId = props.championParticipantId ?? null
     this.participants = participants
+    this.groupMatches = groupMatches
     this.slots = slots
   }
 
@@ -140,16 +180,41 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     return scheduledAt
   }
 
-  /** Number of rounds in the bracket (log2 of the size). */
+  /** Whether this tournament runs a round-robin group stage before the
+   * knockout bracket (only above GROUP_STAGE_THRESHOLD participants). */
+  get hasGroupStage(): boolean {
+    return this.size > GROUP_STAGE_THRESHOLD
+  }
+
+  /** How many entrants actually reach the knockout bracket: everyone without a
+   * group stage, or each group's top two with one. */
+  get qualifierCount(): number {
+    return this.hasGroupStage ? this.size / 2 : this.size
+  }
+
+  /** 'group' until every group matchup is settled and the bracket is built from
+   * the qualifiers; 'knockout' from the start when there's no group stage. */
+  get phase(): 'group' | 'knockout' {
+    return this.hasGroupStage && this.slots.length === 0 ? 'group' : 'knockout'
+  }
+
+  /** bestOf applied to every group-stage matchup — reuses the knockout's
+   * fullest-round value (bestOfByRound[0]); the group stage has no rounds of
+   * its own to assign a value per round. */
+  get groupStageBestOf(): number {
+    return this.bestOfByRound[0]
+  }
+
+  /** Number of rounds in the knockout bracket (log2 of its entrant count). */
   get roundCount(): number {
-    return BracketBuilder.roundCount(this.size)
+    return BracketBuilder.roundCount(this.qualifierCount)
   }
 
   get isFinished(): boolean {
     return this.status === 'finished'
   }
 
-  /** bestOf for a given round (0 = fullest round; the last is the final). */
+  /** bestOf for a given KNOCKOUT round (0 = fullest round; the last is the final). */
   bestOfFor(round: number): number {
     return this.bestOfByRound[round]
   }
@@ -174,16 +239,112 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     return this.slots.filter((slot) => slot.needsMatch)
   }
 
+  /** Group matchups without a Match yet — every one is ready immediately (the
+   * whole group stage is scheduled at once, unlike the bracket's later rounds).
+   * The backend creates a Match for each and calls `attachGroupMatch`. */
+  pendingGroupMatchSlots(): GroupMatchSlot[] {
+    return this.groupMatches.filter((slot) => slot.needsMatch)
+  }
+
   /** Links the Match the backend created to its slot. */
   attachMatch(round: number, position: number, matchId: string): void {
     this.findSlot(round, position).matchId = matchId
   }
 
+  /** Links the Match the backend created to its group matchup. */
+  attachGroupMatch(groupIndex: number, matchupIndex: number, matchId: string): void {
+    const slot = this.groupMatches.find(
+      (current) => current.groupIndex === groupIndex && current.matchupIndex === matchupIndex,
+    )
+    if (!slot) ValidationError.throwError(Errors.BRACKET_SLOT_NOT_FOUND, `${groupIndex}:${matchupIndex}`)
+    slot.matchId = matchId
+  }
+
   /**
-   * Records the winner of a confrontation and advances the bracket. The winner
-   * arrives as a displayName (resolved from the settled Match) and must be one of
-   * the slot's two players; the winner moves to the parent slot, or is crowned
-   * champion (and the tournament finishes) when the final is decided.
+   * Records the result of ANY tournament confrontation — a group-stage matchup
+   * or a knockout confrontation, whichever `matchId` belongs to — and advances
+   * the tournament accordingly. This is the single entry point the backend
+   * calls; `unitsWonByWinner`/`unitsWonByLoser` (resolved from the settled
+   * Match) only matter for a group matchup (the knockout's standings-free
+   * bracket doesn't need them) but are always accepted for one uniform call.
+   */
+  recordConfrontationResult(
+    matchId: string,
+    winnerDisplayName: string,
+    unitsWonByWinner: number,
+    unitsWonByLoser: number,
+  ): void {
+    if (this.status === 'cancelled') ConflictError.throwError(Errors.TOURNAMENT_NOT_OPEN, this.status)
+    if (this.status === 'finished') {
+      ConflictError.throwError(Errors.TOURNAMENT_ALREADY_FINISHED, this.status)
+    }
+
+    const groupSlot = this.groupMatches.find((slot) => slot.matchId === matchId)
+    if (groupSlot) {
+      this.recordGroupMatchResult(groupSlot, winnerDisplayName, unitsWonByWinner, unitsWonByLoser)
+      return
+    }
+
+    this.recordResult(matchId, winnerDisplayName)
+  }
+
+  private recordGroupMatchResult(
+    slot: GroupMatchSlot,
+    winnerDisplayName: string,
+    unitsWonByWinner: number,
+    unitsWonByLoser: number,
+  ): void {
+    const nameA = this.participantName(slot.playerAId)
+    const nameB = this.participantName(slot.playerBId)
+    const winnerId =
+      winnerDisplayName === nameA
+        ? slot.playerAId
+        : winnerDisplayName === nameB
+          ? slot.playerBId
+          : null
+    if (!winnerId) ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerDisplayName)
+
+    slot.winnerParticipantId = winnerId
+    if (winnerId === slot.playerAId) {
+      slot.unitsWonByA = unitsWonByWinner
+      slot.unitsWonByB = unitsWonByLoser
+    } else {
+      slot.unitsWonByA = unitsWonByLoser
+      slot.unitsWonByB = unitsWonByWinner
+    }
+
+    const groupStageOngoing = this.groupMatches.some((match) => !match.isSettled)
+    if (groupStageOngoing) return
+
+    this.startKnockoutFromGroups()
+  }
+
+  /** Every group matchup is settled — rank each group, take its top two, and
+   * lay out the knockout bracket over the qualifiers (cross-seeded so a
+   * group's own pair cannot meet in the bracket's first round). Moves the
+   * tournament into its knockout phase. */
+  private startKnockoutFromGroups(): void {
+    const groupCount = GroupBuilder.groupCount(this.size)
+    const topTwoPerGroup: [string, string][] = []
+
+    for (let groupIndex = 0; groupIndex < groupCount; groupIndex++) {
+      const matches = this.groupMatches.filter((match) => match.groupIndex === groupIndex)
+      const memberIds = [...new Set(matches.flatMap((match) => [match.playerAId, match.playerBId]))]
+      const standings = GroupStandingsCalculator.calculate(memberIds, matches)
+      topTwoPerGroup.push([standings[0].participantId, standings[1].participantId])
+    }
+
+    const entrants = GroupBuilder.seedKnockoutEntrants(topTwoPerGroup)
+    this.slots = BracketBuilder.build(this.qualifierCount, entrants).map((seed) => new BracketSlot(seed))
+  }
+
+  /**
+   * Records the winner of a KNOCKOUT confrontation and advances the bracket.
+   * The winner arrives as a displayName (resolved from the settled Match) and
+   * must be one of the slot's two players; the winner moves to the parent
+   * slot, or is crowned champion (and the tournament finishes) when the final
+   * is decided. Called directly for a tournament with no group stage, or via
+   * `recordConfrontationResult` once the group stage has fed the bracket.
    */
   recordResult(matchId: string, winnerDisplayName: string): void {
     if (this.status === 'cancelled') ConflictError.throwError(Errors.TOURNAMENT_NOT_OPEN, this.status)
@@ -204,7 +365,7 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
           : null
     if (!winnerId) ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerDisplayName)
 
-    const parent = BracketAdvancer.parentOf(slot.round, slot.position, this.size)
+    const parent = BracketAdvancer.parentOf(slot.round, slot.position, this.qualifierCount)
     if (!parent) {
       // The final is decided — crown the champion.
       this.championParticipantId = winnerId
