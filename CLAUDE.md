@@ -438,12 +438,35 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (`secure` só em produção); `auth/refresh` lê o cookie e rotaciona.
 - **CORS com credenciais**: origin específica (`WEB_ORIGIN`) + `credentials: true`.
 - **Role admin** = o dono. Guard de role protege rotas de confirmação de depósito/saque e de settlement.
+- **Login social (Google) NÃO muda nada do que está acima** — é só mais uma forma de chegar ao
+  MESMO `accessToken`/`refreshToken`/cookie httpOnly de sempre. O NextAuth (`apps/web`) roda **só**
+  o handshake OAuth com o Google (`/api/auth/[...nextauth]`, `lib/auth/options.ts`) — a sessão que
+  ele cria é **descartável**, nunca a fonte de verdade: assim que autentica, o front lê o `idToken`
+  da sessão do NextAuth (`useGoogleOAuthBridge`) e manda pro **backend** via `POST
+  /auth/oauth/google` (chamada comum do navegador, `withCredentials: true`, igual o `/auth/login`)
+  — e aí descarta a sessão do NextAuth (`signOut({ redirect: false })`), já com o token nosso em
+  mãos. O backend **verifica o `idToken`** contra a JWKS do Google (`GoogleOAuthVerifier`,
+  `google-auth-library`, porta `GoogleTokenVerifier` em `@auth/core` — nunca confia no que o
+  client alega) e só então roda `LoginWithGoogle` (`@auth/core`), que emite a MESMA `AuthSession` +
+  access/refresh do `LoginUser` — resposta idêntica (`{ accessToken }` + cookie). `User.password`
+  é **opcional** (já era, na entidade) — vira `null` no banco pra quem só tem login social.
+  **Vínculo de conta**: resolvido por `(provider, providerAccountId)` numa tabela própria
+  (`OAuthAccount`) — no primeiro login com aquela conta Google, vincula (auto-link) a um `User` já
+  existente com o MESMO e-mail **só se** o Google confirma `email_verified`, ou cria um `User` novo
+  (sem senha) se não existir nenhum; um login seguinte já acha o `OAuthAccount` direto, sem tocar
+  no e-mail de novo. Variáveis: `GOOGLE_CLIENT_ID` no backend (é o `audience` esperado do token) +
+  `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`NEXTAUTH_URL`/`NEXTAUTH_SECRET` no `apps/web` (ver
+  `.env.example` dos dois). **Apple ficou de fora** (Apple Developer Program é pago — decisão de
+  não usar nada pago no projeto); o mesmo desenho (verificador de token + `LoginWithX` + tabela
+  `OAuthAccount` reaproveitada) serve de molde se for adicionado depois.
 
 ## Banco de dados
 
 - Prisma em **`packages/database`**: `prisma/schema.prisma` + client gerado em `generated/` (gitignored).
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
-- **Models/tabelas previstas**: `User`(users), `AuthSession`(auth_sessions), `Wallet`(wallets),
+- **Models/tabelas previstas**: `User`(users; `password` nullable — null pra quem só entra via
+  Google), `AuthSession`(auth_sessions), `OAuthAccount`(oauth_accounts; `@@unique([provider,
+  providerAccountId])`, `userId` FK lógica igual `AuthSession`), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `DepositLimit`(deposit_limits; `@@unique([userId, period])`),
   `SelfExclusion`(self_exclusions; append-only), `Match`(matches), `MatchParticipant`(match_participants),
   `MatchUnit`(match_units; `unit_number` único por match), `Bet`(bets), `StakeLimit`(stake_limits;
