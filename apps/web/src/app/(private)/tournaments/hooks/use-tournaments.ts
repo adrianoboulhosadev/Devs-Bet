@@ -12,11 +12,21 @@ import { useCategories } from '@/hooks/use-categories'
 
 const TOURNAMENTS_KEY = ['tournaments']
 
-export const TOURNAMENT_SIZES = [2, 4, 8, 16, 32]
+// Above 32, a round-robin group stage (groups of 4, top 2 advance) seeds the
+// knockout bracket instead of starting from it directly — see
+// GROUP_STAGE_THRESHOLD in @tournament/adapters and CLAUDE.md.
+export const TOURNAMENT_SIZES = [2, 4, 8, 16, 32, 64, 128]
+export const GROUP_STAGE_THRESHOLD = 32
 // bestOf option for a single round. Must match Match.VALID_BEST_OF.
 export const TOURNAMENT_BEST_OF_OPTIONS = [1, 3, 5] as const
 // Round labels by distance to the final (mirrors use-tournament-detail's).
-export const ROUND_LABELS = ['Final', 'Semifinal', 'Quartas', 'Oitavas', '16-avos']
+// '32-avos' only shows up for a 128-size tournament's 64-entrant bracket.
+export const ROUND_LABELS = ['Final', 'Semifinal', 'Quartas', 'Oitavas', '16-avos', '32-avos']
+
+// The knockout bracket's actual entrant count: everyone below the group-stage
+// threshold, or each group's top two above it (see Tournament.qualifierCount).
+const qualifierCountOf = (size: number): number =>
+  size > GROUP_STAGE_THRESHOLD ? size / 2 : size
 
 // Mirrors CreateTournamentInput minus the wire concerns: image is an optional
 // FileList; size drives how many participant fields are shown; bestOfByRound has
@@ -60,7 +70,10 @@ export function useTournaments() {
   const form = useForm<TournamentForm>({ defaultValues: emptyForm() })
   const participants = useFieldArray({ control: form.control, name: 'participants' })
   const size = Number(form.watch('size'))
-  const roundCount = TOURNAMENT_SIZES.includes(size) ? Math.log2(size) : 0
+  // bestOfByRound has one entry per KNOCKOUT round, not per raw participant —
+  // above the group-stage threshold the bracket only starts once the group
+  // stage narrows the field to its qualifiers (size / 2).
+  const roundCount = TOURNAMENT_SIZES.includes(size) ? Math.log2(qualifierCountOf(size)) : 0
 
   // Keep exactly `size` participant fields, preserving any names already typed.
   useEffect(() => {

@@ -7,6 +7,7 @@ import { mediaUrl } from '@/lib/media'
 import { formatDateTime } from '@/lib/date'
 import { useTournamentDetail } from '../hooks/use-tournament-detail'
 import { BracketSlotCard } from './bracket-slot-card'
+import { GroupStage } from './group-stage'
 import { OutrightCard } from './outright-card'
 
 export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
@@ -75,27 +76,41 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
         championParticipantId={tournament.championParticipantId}
       />
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex min-w-max gap-4">
-          {rounds.map((round) => (
-            <div key={round} className="flex w-56 shrink-0 flex-col gap-3">
-              <h2 className="text-sm font-medium text-slate-500">
-                {roundLabel(round)}
-                {tournament.bestOfByRound[round] > 1 && ` · MD${tournament.bestOfByRound[round]}`}
-              </h2>
-              {slotsOfRound(round).map((slot) => (
-                <BracketSlotCard
-                  key={slot.id}
-                  slot={slot}
-                  isAdmin={isAdmin}
-                  declaring={declaring}
-                  onDeclare={declareResult}
-                />
-              ))}
-            </div>
-          ))}
+      <GroupStage
+        groups={tournament.groups}
+        phase={tournament.phase}
+        isAdmin={isAdmin}
+        declaring={declaring}
+        onDeclare={declareResult}
+      />
+
+      {tournament.phase === 'group' ? (
+        <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-500">
+          O mata-mata começa assim que a fase de grupos terminar.
+        </p>
+      ) : (
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-4">
+            {rounds.map((round) => (
+              <div key={round} className="flex w-56 shrink-0 flex-col gap-3">
+                <h2 className="text-sm font-medium text-slate-500">
+                  {roundLabel(round)}
+                  {tournament.bestOfByRound[round] > 1 && ` · MD${tournament.bestOfByRound[round]}`}
+                </h2>
+                {slotsOfRound(round).map((slot) => (
+                  <BracketSlotCard
+                    key={slot.id}
+                    slot={slot}
+                    isAdmin={isAdmin}
+                    declaring={declaring}
+                    onDeclare={declareResult}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {canCancel && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
