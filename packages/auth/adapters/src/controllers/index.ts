@@ -5,6 +5,7 @@ import ChangePasswordController from './change-password-controller'
 import LogoutUserController from './logout-user-controller'
 import DeactivateUserController from './deactivate-user-controller'
 import RefreshTokenController from './refresh-token-controller'
+import LoginWithGoogleController from './login-with-google-controller'
 
 export {
   RegisterUserController,
@@ -14,4 +15,5 @@ export {
   LogoutUserController,
   DeactivateUserController,
   RefreshTokenController,
+  LoginWithGoogleController,
 }

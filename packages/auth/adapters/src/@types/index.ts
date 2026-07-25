@@ -1,3 +1,3 @@
-import { RegisterUserInput, LoginUserInput, ChangePasswordInput } from './inputs'
+import { RegisterUserInput, LoginUserInput, ChangePasswordInput, LoginWithGoogleInput } from './inputs'
 
-export type { RegisterUserInput, LoginUserInput, ChangePasswordInput }
+export type { RegisterUserInput, LoginUserInput, ChangePasswordInput, LoginWithGoogleInput }

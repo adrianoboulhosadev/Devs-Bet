@@ -6,6 +6,9 @@ import type {
   JwtProvider,
   JwtTokens,
   JwtPayload,
+  OAuthAccountRepository,
+  GoogleTokenVerifier,
+  GoogleProfile,
 } from '@auth/core'
 
 export type {
@@ -16,4 +19,7 @@ export type {
   JwtProvider,
   JwtTokens,
   JwtPayload,
+  OAuthAccountRepository,
+  GoogleTokenVerifier,
+  GoogleProfile,
 }

@@ -13,3 +13,10 @@ export interface ChangePasswordInput {
   oldPassword: string
   newPassword: string
 }
+
+/** The idToken is the Google-issued ID token the front got back after the
+ * NextAuth handshake completed — see LoginWithGoogle (the backend verifies it
+ * against Google's JWKS, never trusting the client's claim). */
+export interface LoginWithGoogleInput {
+  idToken: string
+}

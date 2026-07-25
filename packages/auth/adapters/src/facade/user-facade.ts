@@ -6,6 +6,8 @@ import {
   JwtTokens,
   UserDTO,
   AuthSessionRepository,
+  OAuthAccountRepository,
+  GoogleTokenVerifier,
 } from '@auth/core'
 import {
   RegisterUserController,
@@ -15,8 +17,14 @@ import {
   LogoutUserController,
   DeactivateUserController,
   RefreshTokenController,
+  LoginWithGoogleController,
 } from '../controllers'
-import { RegisterUserInput, LoginUserInput, ChangePasswordInput } from '../@types'
+import {
+  RegisterUserInput,
+  LoginUserInput,
+  ChangePasswordInput,
+  LoginWithGoogleInput,
+} from '../@types'
 
 /**
  * Single entry point that the backend (NestJS) calls. Receives the driven
@@ -31,6 +39,8 @@ export default class UserFacade {
     private readonly hashProvider?: HashProvider,
     private readonly jwtProvider?: JwtProvider,
     private readonly sessionRepository?: AuthSessionRepository,
+    private readonly oauthAccountRepository?: OAuthAccountRepository,
+    private readonly googleVerifier?: GoogleTokenVerifier,
   ) {}
 
   async registerUser(input: RegisterUserInput): Promise<void> {
@@ -76,5 +86,17 @@ export default class UserFacade {
   async deactivateUser(userId: string): Promise<void> {
     const controller = new DeactivateUserController(this.userRepository!)
     await controller.execute(userId)
+  }
+
+  async loginWithGoogle(input: LoginWithGoogleInput): Promise<JwtTokens> {
+    const controller = new LoginWithGoogleController(
+      this.userRepository!,
+      this.oauthAccountRepository!,
+      this.googleVerifier!,
+      this.hashProvider!,
+      this.jwtProvider!,
+      this.sessionRepository!,
+    )
+    return controller.execute(input)
   }
 }
