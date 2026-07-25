@@ -5,8 +5,10 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useWallet } from '../hooks/use-wallet'
 import { DepositLimits } from './deposit-limits'
+import { SelfExclusion } from './self-exclusion'
 
 export function Wallet() {
   const {
@@ -28,6 +30,7 @@ export function Wallet() {
     depositing,
     withdrawing,
   } = useWallet()
+  const { isSelfExcluded } = useSelfExclusion()
 
   if (loading || !wallet) return <Loading />
 
@@ -56,7 +59,11 @@ export function Wallet() {
         <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Depositar via Pix</h2>
 
-          {depositStep === 'amount' ? (
+          {isSelfExcluded ? (
+            <p className="text-sm text-slate-500">
+              Depósitos estão bloqueados enquanto sua autoexclusão estiver ativa.
+            </p>
+          ) : depositStep === 'amount' ? (
             <form onSubmit={onChooseAmount} className="space-y-3">
               <p className="text-sm text-slate-500">Quanto você deseja adicionar à carteira?</p>
               <Field
@@ -137,6 +144,7 @@ export function Wallet() {
       </div>
 
       <DepositLimits />
+      <SelfExclusion />
 
       <div className="rounded-lg border border-slate-200 bg-white">
         <h2 className="border-b border-slate-100 px-5 py-3 font-medium">Histórico</h2>

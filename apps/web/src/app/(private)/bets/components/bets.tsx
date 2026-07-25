@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
 import { useBets } from '../hooks/use-bets'
+import { StakeLimit } from './stake-limit'
 
 export function Bets() {
   const { bets, loading } = useBets()
@@ -14,6 +15,8 @@ export function Bets() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Minhas apostas</h1>
+
+      <StakeLimit />
 
       {bets.length === 0 ? (
         <p className="text-sm text-slate-500">Você ainda não apostou.</p>

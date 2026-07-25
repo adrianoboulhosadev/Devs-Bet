@@ -5,6 +5,7 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useCombo } from '../hooks/use-combo'
 
 export function Combo() {
@@ -29,6 +30,7 @@ export function Combo() {
     marketLabel,
     selectionLabel,
   } = useCombo()
+  const { isSelfExcluded } = useSelfExclusion()
 
   if (loading) return <Loading />
 
@@ -45,7 +47,13 @@ export function Combo() {
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+      {isSelfExcluded && (
+        <p className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-600">
+          Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.
+        </p>
+      )}
+
+      <div className={`space-y-3 rounded-lg border border-slate-200 bg-white p-5 ${isSelfExcluded ? 'opacity-50' : ''}`}>
         <h2 className="font-medium">Adicionar seleção</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1">
@@ -85,7 +93,7 @@ export function Combo() {
           type="button"
           variant="secondary"
           onClick={addLeg}
-          disabled={!pickedMarket || !pickedSelectionId}
+          disabled={isSelfExcluded || !pickedMarket || !pickedSelectionId}
         >
           Adicionar ao bilhete
         </Button>
@@ -127,7 +135,7 @@ export function Combo() {
           <div className="w-40">
             <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...stakeForm.register('amount')} />
           </div>
-          <Button type="submit" disabled={placing || legs.length < 2}>
+          <Button type="submit" disabled={isSelfExcluded || placing || legs.length < 2}>
             {placing ? 'Confirmando…' : 'Confirmar bilhete'}
           </Button>
         </form>

@@ -4,6 +4,7 @@ import type { TournamentParticipantDTO } from '@tournament/adapters'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { formatBRL } from '@/lib/money'
+import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useOutright } from '../hooks/use-outright'
 
 interface OutrightCardProps {
@@ -25,6 +26,7 @@ export function OutrightCard({
   championParticipantId,
 }: OutrightCardProps) {
   const { odds, form, onSubmit, placing, error } = useOutright(tournamentId, open)
+  const { isSelfExcluded } = useSelfExclusion()
 
   const poolOf = (participantId: string) =>
     odds?.entries.find((entry) => entry.selectionId === participantId)
@@ -54,7 +56,11 @@ export function OutrightCard({
         })}
       </ul>
 
-      {open ? (
+      {open && isSelfExcluded ? (
+        <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
+          Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.
+        </p>
+      ) : open ? (
         <form onSubmit={onSubmit} className="space-y-3 border-t border-slate-100 p-5">
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <label className="block space-y-1">

@@ -8,6 +8,7 @@ import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { CategoryPicker } from '@/components/category-picker'
+import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useMatchDetail, MATCH_DRAW_SELECTION_ID } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
@@ -34,6 +35,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     categories,
     pathOf,
   } = useMatchDetail(matchId)
+  const { isSelfExcluded } = useSelfExclusion()
 
   if (loading || !match) return <Loading />
 
@@ -133,28 +135,36 @@ export function MatchDetail({ matchId }: { matchId: string }) {
       </div>
 
       {isOpen && (
-        <form onSubmit={onPlaceBet} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Apostar</h2>
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Resultado</span>
-            <select
-              required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-              {...betForm.register('participantId')}
-            >
-              <option value="">Selecione…</option>
-              {selections.map((selection) => (
-                <option key={selection.id} value={selection.id}>
-                  {selection.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...betForm.register('amount')} />
-          <Button type="submit" disabled={placing}>
-            {placing ? 'Apostando…' : 'Confirmar aposta'}
-          </Button>
-        </form>
+          {isSelfExcluded ? (
+            <p className="text-sm text-slate-500">
+              Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.
+            </p>
+          ) : (
+            <form onSubmit={onPlaceBet} className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">Resultado</span>
+                <select
+                  required
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                  {...betForm.register('participantId')}
+                >
+                  <option value="">Selecione…</option>
+                  {selections.map((selection) => (
+                    <option key={selection.id} value={selection.id}>
+                      {selection.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...betForm.register('amount')} />
+              <Button type="submit" disabled={placing}>
+                {placing ? 'Apostando…' : 'Confirmar aposta'}
+              </Button>
+            </form>
+          )}
+        </div>
       )}
 
       {isAdmin && match.status !== 'settled' && match.status !== 'cancelled' && (
