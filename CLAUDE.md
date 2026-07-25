@@ -320,10 +320,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
   match aponta pra uma **folha**.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
-  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32} — potência de 2;
-  **`bestOfByRound: number[]`** — **um valor por rodada** (índice 0 = rodada mais cheia, último = final;
-  cada valor 1/3/5, default todos 1) — permite, por exemplo, todo o torneio em MD3 com a **final em MD5**;
-  `bestOfFor(round)` resolve o valor da rodada; `championParticipantId` ao decidir a final),
+  (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32,64,128} — potência de 2;
+  **`bestOfByRound: number[]`** — **um valor por rodada do MATA-MATA** (índice 0 = rodada mais cheia do
+  bracket, último = final; cada valor 1/3/5, default todos 1; seu tamanho é `log2(qualifierCount)`, **não**
+  `log2(size)` quando há fase de grupos — ver abaixo) — permite, por exemplo, todo o torneio em MD3 com a
+  **final em MD5**; `bestOfFor(round)` resolve o valor da rodada; `championParticipantId` ao decidir a final),
   `TournamentParticipant` (displayName **único** = chave natural), `BracketSlot`
   (`round`/`position`/`matchId?`/`playerAId?`/`playerBId?`; round 0 = mais cheia, última = final). Domain
   services `BracketBuilder` (monta os slots: round 0 pareia os participantes, demais vazios) e `BracketAdvancer`
@@ -337,12 +338,42 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   declarado unidade por unidade numa **rota dedicada do tournament**
   (`/tournament/:id/matches/:matchId/result`, chamável mais de uma vez por confronto se `bestOf > 1`) que
   trava+registra a unidade via `MatchFacade`; só quando a match chega a `settled` (maioria atingida) é que
-  a rota enfileira o pagamento das apostas e avança o bracket, criando as matches da próxima rodada.
+  a rota enfileira o pagamento das apostas e avança o torneio (bracket ou grupo, o que o `matchId` for —
+  `Tournament.recordConfrontationResult` resolve), criando as matches da próxima rodada (ou, na primeira
+  vez, o round 0 do mata-mata recém-montado pela fase de grupos).
   Matches do round 0 travam no `scheduledAt` do torneio; as das rodadas seguintes abrem quando a anterior
   encerra e travam após uma janela padrão. Reaproveita o worker (`settlement` + `match-lock`). Além da aposta
   por confronto, há a aposta **outright no campeão** (mercado `tournament_outright` do `betting`): quando a
   final é decidida, a rota de resultado enfileira o settlement do outright (`marketId` = torneio,
   `winningSelectionId` = campeão); cancelar o torneio estorna o outright.
+  **Fase de grupos (> 32 participantes)**: acima de `GROUP_STAGE_THRESHOLD` (32 — pedido explícito: com 32
+  já é mata-mata puro desde o 16-avos, então só 64 e 128 entram em grupos) o torneio **ganha** uma fase de
+  grupos **antes** do bracket, sem alterar em nada o comportamento de 2/4/8/16/32 (`Tournament.hasGroupStage
+  = size > 32`, tudo abaixo cai direto no bracket puro de sempre). Participantes divididos em **grupos de 4**
+  (`GROUP_SIZE`, na ordem recebida — sem seeding), cada grupo joga **todos-contra-todos** (as 6 combinações,
+  `GroupBuilder.build`, agendadas **todas de uma vez na criação** do torneio — ao contrário do bracket, o
+  grupo inteiro é conhecido de antemão, sem depender de resultado anterior). Cada confronto de grupo também É
+  uma `Match` normal (`bestOf` = `Tournament.groupStageBestOf`, que reaproveita `bestOfByRound[0]` — o grupo
+  não tem rodadas próprias pra ter seu próprio valor —, `allowsDraw: false`) e é apostável/liquidável
+  exatamente como um confronto de bracket, sem código extra no lado de apostas. `GroupMatchSlot`
+  (`groupIndex`/`matchupIndex`/`playerAId`/`playerBId`/`matchId?`/`winnerParticipantId?`/`unitsWonByA`/
+  `unitsWonByB` — os dois últimos alimentam o desempate) é parte do agregado, igual ao `BracketSlot`.
+  **Classificação** (domain service `GroupStandingsCalculator.calculate`, puro/estático, mesmo padrão do
+  `PayoutCalculator`): ordena por vitórias; empate desempata por **confronto direto** (só entre os empatados,
+  não o grupo todo) e, se ainda inconclusivo (ex.: empate a 3), por **saldo de unidades** (`unitsWon −
+  unitsLost`) do grupo inteiro; SE AINDA empatado (simetria total), por id do participante (ordem
+  determinística, igual ao `LeaderboardCalculator`). Também serve de **classificação ao vivo** durante a fase
+  de grupos (ignora confrontos ainda não resolvidos). Os **2 primeiros de cada grupo** avançam
+  (`Tournament.startKnockoutFromGroups`, chamado automaticamente de dentro de
+  `recordConfrontationResult` assim que o ÚLTIMO confronto de grupo se liquida): `GroupBuilder
+  .seedKnockoutEntrants` pareia grupos consecutivos **cruzado** (1º do grupo N vs 2º do grupo N+1, 1º do
+  N+1 vs 2º do N) pra garantir que os dois classificados do mesmo grupo nunca se enfrentem logo no round 0 —
+  o resultado alimenta o mesmo `BracketBuilder.build` de sempre, sobre `qualifierCount = size / 2`
+  (64 → 32 classificados → **o mesmo mata-mata de 16-avos** que um torneio de 32 já joga hoje; 128 → 64
+  classificados → mais uma rodada, "32-avos"). Até a fase de grupos terminar, `Tournament.slots` fica
+  **vazio** (`phase: 'group'`; vira `'knockout'` quando o bracket é montado) — sem linhas de bracket
+  persistidas ainda, por isso o `update()` do repositório Prisma faz **upsert** nos slots (podem nascer só
+  depois da criação do torneio, ao contrário do grupo, sempre criado por inteiro já na criação).
 
 ## Rotas HTTP
 
@@ -399,7 +430,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
   `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
-  `player_b_id` são FKs lógicas). FKs entre contextos são **lógicas**
+  `player_b_id` são FKs lógicas), `TournamentGroupMatch`(tournament_group_matches; fase de grupos —
+  `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
   intra-contexto, então tem relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
 - **Greenfield**: schema do zero; cada contexto adiciona seu(s) `model`. `npm run db:sync` = `prisma db push`.
