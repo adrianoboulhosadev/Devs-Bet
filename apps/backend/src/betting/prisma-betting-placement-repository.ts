@@ -4,8 +4,11 @@ import {
   ComboBettingPlacementRepository,
   StakeLimitRepository,
   Bet,
+  BetMarketType,
+  BetStatus,
   ComboBet,
   StakeLimit,
+  OddsCalculator,
 } from '@betting/adapters'
 import { Wallet } from '@wallet/adapters'
 import { PrismaService } from '../db/prisma.service'
@@ -69,6 +72,35 @@ export class PrismaBettingPlacementRepository
           amount: bet.stake.cents,
           referenceId: bet.id.value,
         },
+      })
+
+      // Odds-history point: this bet just moved the market's pool, so record
+      // where every selection's implied odd stands right now (combo legs never
+      // reach here — they don't touch this pool).
+      const openBetRows = await tx.bet.findMany({ where: { marketId: bet.marketId, status: 'open' } })
+      const openBets = openBetRows.map(
+        (row) =>
+          new Bet({
+            id: row.id,
+            marketType: row.marketType as BetMarketType,
+            marketId: row.marketId,
+            bettorId: row.bettorId,
+            selectionId: row.selectionId,
+            stake: row.stake,
+            status: row.status as BetStatus,
+            payout: row.payout,
+            settledAt: row.settledAt,
+          }),
+      )
+      const odds = OddsCalculator.calculate(bet.marketId, openBets)
+      await tx.oddsSnapshot.createMany({
+        data: odds.entries.map((entry) => ({
+          marketId: bet.marketId,
+          selectionId: entry.selectionId,
+          pool: entry.pool,
+          totalPool: odds.totalPool,
+          impliedOdd: entry.impliedOdd,
+        })),
       })
     })
   }

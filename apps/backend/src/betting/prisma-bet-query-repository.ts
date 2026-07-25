@@ -9,6 +9,7 @@ import {
   ComboBetDTO,
   ComboLegResult,
   StakeLimitDTO,
+  OddsSnapshotDTO,
 } from '@betting/adapters'
 import { PrismaService } from '../db/prisma.service'
 
@@ -90,6 +91,20 @@ export class PrismaBetQueryRepository implements BetQueryRepository, StakeLimitQ
       pendingAmount: due ? null : row.pendingAmount,
       effectiveAt: due ? null : row.effectiveAt,
     }
+  }
+
+  async listOddsHistoryByMarket(marketId: string): Promise<OddsSnapshotDTO[]> {
+    const rows = await this.prisma.oddsSnapshot.findMany({
+      where: { marketId },
+      orderBy: { recordedAt: 'asc' },
+    })
+    return rows.map((row) => ({
+      selectionId: row.selectionId,
+      pool: row.pool,
+      totalPool: row.totalPool,
+      impliedOdd: row.impliedOdd,
+      recordedAt: row.recordedAt,
+    }))
   }
 
   private toComboDTO(row: ComboBetRow): ComboBetDTO {

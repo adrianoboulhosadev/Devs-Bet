@@ -9,6 +9,7 @@ import {
   MarketOddsDTO,
   LeaderboardEntryDTO,
   StakeLimitDTO,
+  OddsSnapshotDTO,
   BetMarketType,
   BettingFacade,
 } from '@betting/adapters'
@@ -154,6 +155,11 @@ export class BetController {
     return this.facade().getMarketOdds(id)
   }
 
+  @Get('match/:id/odds/history')
+  matchOddsHistory(@Param('id') id: string): Promise<OddsSnapshotDTO[]> {
+    return this.facade().getOddsHistory(id)
+  }
+
   @Get('tournament/:id')
   tournamentBook(@Param('id') id: string): Promise<BetDTO[]> {
     return this.facade().listBetsByMarket(id)
@@ -162,5 +168,10 @@ export class BetController {
   @Get('tournament/:id/odds')
   tournamentOdds(@Param('id') id: string): Promise<MarketOddsDTO> {
     return this.facade().getMarketOdds(id)
+  }
+
+  @Get('tournament/:id/odds/history')
+  tournamentOddsHistory(@Param('id') id: string): Promise<OddsSnapshotDTO[]> {
+    return this.facade().getOddsHistory(id)
   }
 }
