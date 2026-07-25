@@ -5,6 +5,7 @@ import {
   Tournament,
   TournamentDTO,
   TournamentStatus,
+  GroupStandingsCalculator,
 } from '@tournament/adapters'
 import { PrismaService } from '../db/prisma.service'
 
@@ -16,6 +17,17 @@ type SlotRow = {
   matchId: string | null
   playerAId: string | null
   playerBId: string | null
+}
+type GroupMatchRow = {
+  id: string
+  groupIndex: number
+  matchupIndex: number
+  playerAId: string
+  playerBId: string
+  matchId: string | null
+  winnerParticipantId: string | null
+  unitsWonByA: number
+  unitsWonByB: number
 }
 type TournamentRow = {
   id: string
@@ -32,6 +44,7 @@ type TournamentRow = {
   createdAt: Date
   participants: ParticipantRow[]
   slots: SlotRow[]
+  groupMatches: GroupMatchRow[]
 }
 
 @Injectable()
@@ -43,6 +56,7 @@ export class PrismaTournamentRepository
   private static readonly INCLUDE = {
     participants: true,
     slots: { orderBy: [{ round: 'asc' as const }, { position: 'asc' as const }] },
+    groupMatches: { orderBy: [{ groupIndex: 'asc' as const }, { matchupIndex: 'asc' as const }] },
   }
 
   private reconstitute(row: TournamentRow): Tournament {
@@ -72,6 +86,18 @@ export class PrismaTournamentRepository
         matchId: slot.matchId,
         playerAId: slot.playerAId,
         playerBId: slot.playerBId,
+      })),
+      groupMatches: row.groupMatches.map((match) => ({
+        id: match.id,
+        tournamentId: row.id,
+        groupIndex: match.groupIndex,
+        matchupIndex: match.matchupIndex,
+        playerAId: match.playerAId,
+        playerBId: match.playerBId,
+        matchId: match.matchId,
+        winnerParticipantId: match.winnerParticipantId,
+        unitsWonByA: match.unitsWonByA,
+        unitsWonByB: match.unitsWonByB,
       })),
     })
   }
@@ -115,13 +141,30 @@ export class PrismaTournamentRepository
             playerBId: slot.playerBId,
           })),
         },
+        groupMatches: {
+          create: tournament.groupMatches.map((match) => ({
+            id: match.id.value,
+            groupIndex: match.groupIndex,
+            matchupIndex: match.matchupIndex,
+            playerAId: match.playerAId,
+            playerBId: match.playerBId,
+            matchId: match.matchId,
+            winnerParticipantId: match.winnerParticipantId,
+            unitsWonByA: match.unitsWonByA,
+            unitsWonByB: match.unitsWonByB,
+          })),
+        },
       },
     })
   }
 
   async update(tournament: Tournament): Promise<void> {
-    // Persist the mutable state atomically: the tournament (status/champion) and
-    // each slot (players advanced + attached match). Participants are immutable.
+    // Persist the mutable state atomically: the tournament (status/champion),
+    // each group matchup (result) and each slot (players advanced + attached
+    // match). Slots are UPSERTED — a group-stage tournament's knockout bracket
+    // doesn't exist as rows until the group stage completes and builds it
+    // (Tournament.startKnockoutFromGroups), unlike a plain tournament's slots,
+    // which are always created upfront. Participants are immutable.
     await this.prisma.$transaction([
       this.prisma.tournament.update({
         where: { id: tournament.id.value },
@@ -131,12 +174,32 @@ export class PrismaTournamentRepository
         },
       }),
       ...tournament.slots.map((slot) =>
-        this.prisma.tournamentSlot.update({
+        this.prisma.tournamentSlot.upsert({
           where: { id: slot.id.value },
-          data: {
+          create: {
+            id: slot.id.value,
+            tournamentId: tournament.id.value,
+            round: slot.round,
+            position: slot.position,
             matchId: slot.matchId,
             playerAId: slot.playerAId,
             playerBId: slot.playerBId,
+          },
+          update: {
+            matchId: slot.matchId,
+            playerAId: slot.playerAId,
+            playerBId: slot.playerBId,
+          },
+        }),
+      ),
+      ...tournament.groupMatches.map((match) =>
+        this.prisma.tournamentGroupMatch.update({
+          where: { id: match.id.value },
+          data: {
+            matchId: match.matchId,
+            winnerParticipantId: match.winnerParticipantId,
+            unitsWonByA: match.unitsWonByA,
+            unitsWonByB: match.unitsWonByB,
           },
         }),
       ),
@@ -160,13 +223,40 @@ export class PrismaTournamentRepository
   }
 
   private toDTO(row: TournamentRow): TournamentDTO {
-    const nameOf = (participantId: string | null) => {
-      if (!participantId) return null
+    const participantOf = (participantId: string) => {
       const participant = row.participants.find((current) => current.id === participantId)
       return participant
         ? { id: participant.id, userId: participant.userId, displayName: participant.displayName }
-        : null
+        : { id: participantId, userId: null, displayName: '—' }
     }
+    const nameOf = (participantId: string | null) => (participantId ? participantOf(participantId) : null)
+
+    const groupCount = row.size > 32 ? row.size / 4 : 0
+    const groups = Array.from({ length: groupCount }, (_, groupIndex) => {
+      const matches = row.groupMatches.filter((match) => match.groupIndex === groupIndex)
+      const memberIds = [...new Set(matches.flatMap((match) => [match.playerAId, match.playerBId]))]
+      const standings = GroupStandingsCalculator.calculate(memberIds, matches)
+      return {
+        groupIndex,
+        matches: matches.map((match) => ({
+          id: match.id,
+          groupIndex: match.groupIndex,
+          matchupIndex: match.matchupIndex,
+          matchId: match.matchId,
+          playerA: participantOf(match.playerAId),
+          playerB: participantOf(match.playerBId),
+          winnerParticipantId: match.winnerParticipantId,
+        })),
+        standings: standings.map((entry, index) => ({
+          participant: participantOf(entry.participantId),
+          wins: entry.wins,
+          unitsWon: entry.unitsWon,
+          unitsLost: entry.unitsLost,
+          rank: index + 1,
+        })),
+      }
+    })
+
     return {
       id: row.id,
       creatorId: row.creatorId,
@@ -184,6 +274,8 @@ export class PrismaTournamentRepository
         userId: participant.userId,
         displayName: participant.displayName,
       })),
+      phase: groupCount > 0 && row.slots.length === 0 ? 'group' : 'knockout',
+      groups,
       bracket: row.slots.map((slot) => ({
         id: slot.id,
         round: slot.round,

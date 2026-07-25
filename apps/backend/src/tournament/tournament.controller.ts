@@ -106,6 +106,49 @@ export class TournamentController {
     await this.tournamentRepository.update(tournament)
   }
 
+  /**
+   * Creates a real Match for every group-stage matchup that has none yet.
+   * Unlike bracket rounds, the WHOLE group stage is known upfront (round-
+   * robin), so this only ever needs to run once, right after creation — never
+   * from the result route. No-ops for a tournament with no group stage.
+   */
+  private async createPendingGroupMatches(tournamentId: string, actor: AuthenticatedActor): Promise<void> {
+    const tournament = await this.tournamentRepository.findAggregate(tournamentId)
+    if (!tournament) return
+
+    const pending = tournament.pendingGroupMatchSlots()
+    if (pending.length === 0) return
+
+    for (const slot of pending) {
+      const matchId = Id.create()
+      const nameA = tournament.participantName(slot.playerAId)!
+      const nameB = tournament.participantName(slot.playerBId)!
+
+      await this.matchFacade().createMatch(
+        {
+          title: `${nameA} vs ${nameB} (Grupo ${slot.groupIndex + 1})`,
+          categoryId: tournament.categoryId,
+          imageUrl: null,
+          // Group matches all open together and lock at the tournament's start,
+          // same as a round-0 knockout confrontation.
+          scheduledAt: tournament.scheduledAt.toISOString(),
+          rakeBasisPoints: tournament.rakeBasisPoints,
+          bestOf: tournament.groupStageBestOf,
+          // A group matchup must always produce a real winner (feeds the
+          // standings) — it never offers the draw selection.
+          allowsDraw: false,
+          participants: [{ displayName: nameA }, { displayName: nameB }],
+        },
+        actor,
+        true,
+        matchId,
+      )
+      tournament.attachGroupMatch(slot.groupIndex, slot.matchupIndex, matchId)
+    }
+
+    await this.tournamentRepository.update(tournament)
+  }
+
   @Get()
   list(): Promise<TournamentDTO[]> {
     return this.tournamentFacade().listTournaments()
@@ -125,6 +168,10 @@ export class TournamentController {
     // Pre-generate the id so we can create the round-0 matches right after.
     const tournamentId = Id.create()
     await this.tournamentFacade().createTournament(input, actor, categoryIsLeaf, tournamentId)
+    // Only one of these ever does anything for a given tournament: the group
+    // stage (if any) is scheduled all at once here; without one, round 0 of
+    // the knockout bracket is.
+    await this.createPendingGroupMatches(tournamentId, actor)
     await this.createPendingMatches(tournamentId, actor)
     return { id: tournamentId }
   }
@@ -175,13 +222,24 @@ export class TournamentController {
       winningSelectionId: match.winnerParticipantId,
       rakeBasisPoints: match.rakeBasisPoints,
     })
-    // 3. Advance the bracket by the winner's name (the tournament's natural key).
+    // 3. Advance the tournament by the winner's name (the tournament's natural
+    // key) — a group matchup (feeds its group's standings) or a knockout
+    // confrontation (feeds the bracket), whichever this matchId is. Units won
+    // by each side only matter for a group matchup, but are cheap to resolve
+    // from the settled Match either way (never allows a draw, so every unit
+    // has a winner).
     const winnerName = match.participants.find(
       (participant) => participant.id === match.winnerParticipantId,
     )?.displayName
     if (!winnerName) return match
-    await this.tournamentFacade().recordResult(id, matchId, winnerName)
-    // 4. Create the matches for whatever slots just became ready (next round).
+    const unitsWonByWinner = match.units.filter(
+      (unit) => unit.winnerParticipantId === match.winnerParticipantId,
+    ).length
+    const unitsWonByLoser = match.units.length - unitsWonByWinner
+    await this.tournamentFacade().recordResult(id, matchId, winnerName, unitsWonByWinner, unitsWonByLoser)
+    // 4. Create the matches for whatever slots just became ready (next round,
+    // or — the first time — the knockout bracket's round 0, once the group
+    // stage above just completed).
     await this.createPendingMatches(id, actor)
     // 5. If that was the final, settle the outright (champion) market too.
     const tournament = await this.tournamentFacade().getTournament(id)
