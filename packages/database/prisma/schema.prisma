@@ -109,6 +109,21 @@ model DepositLimit {
   @@map("deposit_limits")
 }
 
+// Self-imposed block on depositing/betting (responsible gambling). Append-only
+// (never updated/cancelled — see the SelfExclusion model): a user may have
+// several rows over time, the most recent one is what's checked. `until` null
+// means permanent (never ends).
+model SelfExclusion {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  period    String
+  startedAt DateTime  @default(now()) @map("started_at")
+  until     DateTime? @map("until")
+
+  @@index([userId])
+  @@map("self_exclusions")
+}
+
 // --- match ---------------------------------------------------------------------
 
 // A contest between 2+ participants. status: open → locked → settled | cancelled.
@@ -191,6 +206,20 @@ model Bet {
   @@index([marketId])
   @@index([bettorId])
   @@map("bets")
+}
+
+// Responsible-gambling self-imposed daily stake cap (one row per bettor — unlike
+// DepositLimit there is only one rolling window here: the last 24h). `amount` is
+// the currently EFFECTIVE cap; a raise is only scheduled (`pendingAmount`/
+// `effectiveAt`, 24h grace period) — a lower cap always applies immediately.
+model StakeLimit {
+  id            String    @id @default(uuid())
+  bettorId      String    @unique @map("bettor_id")
+  amount        Int
+  pendingAmount Int?      @map("pending_amount")
+  effectiveAt   DateTime? @map("effective_at")
+
+  @@map("stake_limits")
 }
 
 // A combo (parlay/accumulator) ticket: FIXED odds locked at placement, unlike
