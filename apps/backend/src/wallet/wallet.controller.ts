@@ -3,10 +3,12 @@ import {
   DepositInput,
   WithdrawalInput,
   SetDepositLimitInput,
+  StartSelfExclusionInput,
   WalletDTO,
   PaymentDTO,
   DepositInstructions,
   DepositLimitDTO,
+  SelfExclusionDTO,
   WalletFacade,
 } from '@wallet/adapters'
 import { UserDTO } from '@auth/adapters'
@@ -70,5 +72,16 @@ export class WalletController {
   @HttpCode(201)
   async setDepositLimit(@Body() input: SetDepositLimitInput, @authenticatedUser() user: UserDTO) {
     await this.facade().setDepositLimit(input, user.id)
+  }
+
+  @Get('self-exclusion')
+  selfExclusion(@authenticatedUser() user: UserDTO): Promise<SelfExclusionDTO | null> {
+    return this.facade().getMySelfExclusion(user.id)
+  }
+
+  @Post('self-exclusion')
+  @HttpCode(201)
+  async startSelfExclusion(@Body() input: StartSelfExclusionInput, @authenticatedUser() user: UserDTO) {
+    await this.facade().startSelfExclusion(input, user.id)
   }
 }

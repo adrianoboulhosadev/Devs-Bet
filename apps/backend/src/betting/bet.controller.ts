@@ -3,10 +3,12 @@ import {
   PlaceBetInput,
   PlaceComboBetInput,
   PlaceComboBetLegInput,
+  SetStakeLimitInput,
   BetDTO,
   ComboBetDTO,
   MarketOddsDTO,
   LeaderboardEntryDTO,
+  StakeLimitDTO,
   BetMarketType,
   BettingFacade,
 } from '@betting/adapters'
@@ -17,6 +19,7 @@ import { PrismaBettingPlacementRepository } from './prisma-betting-placement-rep
 import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
+import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 
 // A combo leg's fixed odd, when nobody has backed that selection yet (so there
@@ -35,6 +38,7 @@ export class BetController {
     private readonly betQueryRepository: PrismaBetQueryRepository,
     private readonly matchRepository: PrismaMatchRepository,
     private readonly tournamentRepository: PrismaTournamentRepository,
+    private readonly walletRepository: PrismaWalletRepository,
   ) {}
 
   private facade(): BettingFacade {
@@ -43,7 +47,16 @@ export class BetController {
       undefined,
       this.betQueryRepository,
       this.placementRepository,
+      this.placementRepository,
+      this.betQueryRepository,
     )
+  }
+
+  // Responsible gambling: resolved from the wallet context (cross-context —
+  // betting does not import wallet's core/domain, just reads this one fact).
+  private async isSelfExcluded(userId: string): Promise<boolean> {
+    const exclusion = await this.walletRepository.findActiveSelfExclusion(userId)
+    return !!exclusion?.isActive
   }
 
   // Resolve whether the market accepts bets right now and its valid selections.
@@ -81,21 +94,27 @@ export class BetController {
   @Post()
   @HttpCode(201)
   async place(@Body() input: PlaceBetInput, @authenticatedUser() user: UserDTO) {
-    const { marketOpen, selectionIds } = await this.resolveMarket(input)
-    await this.facade().placeBet(input, user.id, marketOpen, selectionIds)
+    const [{ marketOpen, selectionIds }, bettorSelfExcluded] = await Promise.all([
+      this.resolveMarket(input),
+      this.isSelfExcluded(user.id),
+    ])
+    await this.facade().placeBet(input, user.id, marketOpen, selectionIds, bettorSelfExcluded)
   }
 
   @Post('combo')
   @HttpCode(201)
   async placeCombo(@Body() input: PlaceComboBetInput, @authenticatedUser() user: UserDTO) {
-    const legs: PlaceComboBetLegInput[] = await Promise.all(
-      input.legs.map(async (leg) => {
-        const { marketOpen, selectionIds } = await this.resolveMarket(leg)
-        const odd = await this.resolveLegOdd(leg.marketId, leg.selectionId)
-        return { ...leg, marketOpen, selectionIds, odd }
-      }),
-    )
-    await this.facade().placeComboBet(input.stake, legs, user.id)
+    const [legs, bettorSelfExcluded] = await Promise.all([
+      Promise.all(
+        input.legs.map(async (leg) => {
+          const { marketOpen, selectionIds } = await this.resolveMarket(leg)
+          const odd = await this.resolveLegOdd(leg.marketId, leg.selectionId)
+          return { ...leg, marketOpen, selectionIds, odd }
+        }),
+      ),
+      this.isSelfExcluded(user.id),
+    ])
+    await this.facade().placeComboBet(input.stake, legs, user.id, bettorSelfExcluded)
   }
 
   @Get('mine')
@@ -112,6 +131,17 @@ export class BetController {
   leaderboard(@Query('limit') limit?: string): Promise<LeaderboardEntryDTO[]> {
     const parsed = Number(limit)
     return this.facade().getLeaderboard(Number.isInteger(parsed) && parsed > 0 ? parsed : 10)
+  }
+
+  @Get('stake-limit')
+  stakeLimit(@authenticatedUser() user: UserDTO): Promise<StakeLimitDTO | null> {
+    return this.facade().getMyStakeLimit(user.id)
+  }
+
+  @Post('stake-limit')
+  @HttpCode(201)
+  async setStakeLimit(@Body() input: SetStakeLimitInput, @authenticatedUser() user: UserDTO) {
+    await this.facade().setStakeLimit(input, user.id)
   }
 
   @Get('match/:id')

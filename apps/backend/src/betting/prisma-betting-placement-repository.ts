@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import { BettingPlacementRepository, ComboBettingPlacementRepository, Bet, ComboBet } from '@betting/adapters'
+import {
+  BettingPlacementRepository,
+  ComboBettingPlacementRepository,
+  StakeLimitRepository,
+  Bet,
+  ComboBet,
+  StakeLimit,
+} from '@betting/adapters'
 import { Wallet } from '@wallet/adapters'
 import { PrismaService } from '../db/prisma.service'
 
@@ -8,11 +15,12 @@ import { PrismaService } from '../db/prisma.service'
  * the stake on the bettor's wallet (Wallet.hold — raises INSUFFICIENT_BALANCE and
  * aborts the transaction if funds are short), inserts the bet and writes the
  * `bet_hold` ledger entry. Also places combo (parlay) tickets the same way,
- * inserting every leg alongside it.
+ * inserting every leg alongside it. Also serves the daily StakeLimit port
+ * (responsible gambling) both PlaceBet and PlaceComboBet enforce.
  */
 @Injectable()
 export class PrismaBettingPlacementRepository
-  implements BettingPlacementRepository, ComboBettingPlacementRepository
+  implements BettingPlacementRepository, ComboBettingPlacementRepository, StakeLimitRepository
 {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -120,5 +128,50 @@ export class PrismaBettingPlacementRepository
         },
       })
     })
+  }
+
+  async findStakeLimit(bettorId: string): Promise<StakeLimit | null> {
+    const row = await this.prisma.stakeLimit.findUnique({ where: { bettorId } })
+    return row
+      ? new StakeLimit({
+          id: row.id,
+          bettorId: row.bettorId,
+          amount: row.amount,
+          pendingAmount: row.pendingAmount,
+          effectiveAt: row.effectiveAt,
+        })
+      : null
+  }
+
+  async saveStakeLimit(limit: StakeLimit): Promise<void> {
+    await this.prisma.stakeLimit.upsert({
+      where: { bettorId: limit.bettorId },
+      create: {
+        id: limit.id.value,
+        bettorId: limit.bettorId,
+        amount: limit.amount,
+        pendingAmount: limit.pendingAmount,
+        effectiveAt: limit.effectiveAt,
+      },
+      update: {
+        amount: limit.amount,
+        pendingAmount: limit.pendingAmount,
+        effectiveAt: limit.effectiveAt,
+      },
+    })
+  }
+
+  async sumStakedSince(bettorId: string, since: Date): Promise<number> {
+    const [bets, combos] = await Promise.all([
+      this.prisma.bet.aggregate({
+        where: { bettorId, createdAt: { gte: since } },
+        _sum: { stake: true },
+      }),
+      this.prisma.comboBet.aggregate({
+        where: { bettorId, createdAt: { gte: since } },
+        _sum: { stake: true },
+      }),
+    ])
+    return (bets._sum.stake ?? 0) + (combos._sum.stake ?? 0)
   }
 }

@@ -10,6 +10,9 @@ import {
   DepositLimit,
   DepositLimitPeriod,
   DepositLimitDTO,
+  SelfExclusion,
+  SelfExclusionPeriod,
+  SelfExclusionDTO,
   WalletDTO,
   PaymentDTO,
   PaymentDirection,
@@ -225,6 +228,56 @@ export class PrismaWalletRepository
         effectiveAt: due ? null : row.effectiveAt,
       }
     })
+  }
+
+  private reconstituteSelfExclusion(row: {
+    id: string
+    userId: string
+    period: string
+    startedAt: Date
+    until: Date | null
+  }): SelfExclusion {
+    return new SelfExclusion({
+      id: row.id,
+      userId: row.userId,
+      period: row.period as SelfExclusionPeriod,
+      startedAt: row.startedAt,
+      until: row.until,
+    })
+  }
+
+  async findActiveSelfExclusion(userId: string): Promise<SelfExclusion | null> {
+    const row = await this.prisma.selfExclusion.findFirst({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+    })
+    if (!row) return null
+    const exclusion = this.reconstituteSelfExclusion(row)
+    return exclusion.isActive ? exclusion : null
+  }
+
+  async saveSelfExclusion(exclusion: SelfExclusion): Promise<void> {
+    await this.prisma.selfExclusion.create({
+      data: {
+        id: exclusion.id.value,
+        userId: exclusion.userId,
+        period: exclusion.period,
+        startedAt: exclusion.startedAt,
+        until: exclusion.until,
+      },
+    })
+  }
+
+  async findActiveSelfExclusionQuery(userId: string): Promise<SelfExclusionDTO | null> {
+    const row = await this.prisma.selfExclusion.findFirst({
+      where: { userId },
+      orderBy: { startedAt: 'desc' },
+    })
+    if (!row) return null
+    const isActive = row.until === null || row.until.getTime() > Date.now()
+    return isActive
+      ? { period: row.period as SelfExclusionPeriod, startedAt: row.startedAt, until: row.until }
+      : null
   }
 
   async findByUserIdQuery(userId: string): Promise<WalletDTO | null> {

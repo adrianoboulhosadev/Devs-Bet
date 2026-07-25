@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common'
 import {
   BetQueryRepository,
+  StakeLimitQueryRepository,
   Bet,
   BetDTO,
   BetStatus,
   BetMarketType,
   ComboBetDTO,
   ComboLegResult,
+  StakeLimitDTO,
 } from '@betting/adapters'
 import { PrismaService } from '../db/prisma.service'
 
@@ -44,7 +46,7 @@ type ComboBetRow = {
 }
 
 @Injectable()
-export class PrismaBetQueryRepository implements BetQueryRepository {
+export class PrismaBetQueryRepository implements BetQueryRepository, StakeLimitQueryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async listByMarketQuery(marketId: string): Promise<BetDTO[]> {
@@ -74,6 +76,20 @@ export class PrismaBetQueryRepository implements BetQueryRepository {
       orderBy: { createdAt: 'desc' },
     })
     return rows.map((row) => this.toComboDTO(row))
+  }
+
+  async getMyStakeLimitQuery(bettorId: string): Promise<StakeLimitDTO | null> {
+    const row = await this.prisma.stakeLimit.findUnique({ where: { bettorId } })
+    if (!row) return null
+    // Read-side resolves a due pending increase inline — no domain logic needed
+    // here, same numbers StakeLimit.effectiveAmount() would produce.
+    const now = Date.now()
+    const due = row.pendingAmount !== null && row.effectiveAt !== null && row.effectiveAt.getTime() <= now
+    return {
+      amount: due ? row.pendingAmount! : row.amount,
+      pendingAmount: due ? null : row.pendingAmount,
+      effectiveAt: due ? null : row.effectiveAt,
+    }
   }
 
   private toComboDTO(row: ComboBetRow): ComboBetDTO {
