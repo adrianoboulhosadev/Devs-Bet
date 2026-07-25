@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import {
   CreateMatchInput,
+  MatchParticipantSnapshot,
   UpdateMatchInput,
   RecordUnitResultInput,
   MatchDTO,
@@ -15,6 +16,7 @@ import { AdminGuard } from '../shared/admin.guard'
 import { BullMqSettlementQueue } from '../betting/bullmq-settlement-queue'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
+import { PrismaParticipantRepository } from '../participant/prisma-participant-repository'
 
 // Protected by the AuthMiddleware (see match.module). Reading (list/detail) is
 // open to any authenticated user; creating a match and every lifecycle
@@ -27,6 +29,7 @@ export class MatchController {
     private readonly settlementQueue: BullMqSettlementQueue,
     private readonly lockQueue: BullMqMatchLockQueue,
     private readonly categoryRepository: PrismaCategoryRepository,
+    private readonly participantRepository: PrismaParticipantRepository,
   ) {}
 
   private facade(): MatchFacade {
@@ -45,6 +48,23 @@ export class MatchController {
     return category.isLeaf
   }
 
+  // Cross-context: resolve each participantId against the catalog (must exist)
+  // into the snapshot the match use case needs — match never imports
+  // @participant/core. Preserves the order the admin picked.
+  private async resolveParticipants(participantIds: string[]): Promise<MatchParticipantSnapshot[]> {
+    const catalog = await this.participantRepository.findByIdsQuery(participantIds)
+    return participantIds.map((participantId) => {
+      const participant = catalog.find((entry) => entry.id === participantId)
+      if (!participant) NotFoundError.throwError(Errors.PARTICIPANT_NOT_FOUND, participantId)
+      return {
+        participantId: participant.id,
+        displayName: participant.name,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
+      }
+    })
+  }
+
   @Get()
   list(): Promise<MatchDTO[]> {
     return this.facade().listMatches()
@@ -60,7 +80,8 @@ export class MatchController {
   @UseGuards(AdminGuard)
   async create(@Body() input: CreateMatchInput, @authenticatedUser() user: UserDTO) {
     const categoryIsLeaf = await this.resolveCategoryIsLeaf(input.categoryId)
-    await this.facade().createMatch(input, this.actor(user), categoryIsLeaf)
+    const participants = await this.resolveParticipants(input.participantIds)
+    await this.facade().createMatch(input, this.actor(user), categoryIsLeaf, participants)
   }
 
   @Patch(':id')

@@ -17,7 +17,13 @@ type MatchRowWithParticipants = {
   createdAt: Date
   lockedAt: Date | null
   settledAt: Date | null
-  participants: { id: string; userId: string | null; displayName: string }[]
+  participants: {
+    id: string
+    participantId: string
+    displayName: string
+    nickname: string | null
+    imageUrl: string | null
+  }[]
   units: { unitNumber: number; winnerParticipantId: string | null }[]
 }
 
@@ -48,8 +54,10 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       participants: row.participants.map((participant) => ({
         id: participant.id,
         matchId: row.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       units: row.units.map((unit) => ({
         matchId: row.id,
@@ -81,8 +89,10 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         participants: {
           create: match.participants.map((participant) => ({
             id: participant.id.value,
-            userId: participant.userId,
+            participantId: participant.participantId,
             displayName: participant.displayName,
+            nickname: participant.nickname,
+            imageUrl: participant.imageUrl,
           })),
         },
       },
@@ -147,8 +157,10 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
         id: participant.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       units: row.units.map((unit) => ({
         unitNumber: unit.unitNumber,

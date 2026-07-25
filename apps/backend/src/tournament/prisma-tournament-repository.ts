@@ -9,7 +9,13 @@ import {
 } from '@tournament/adapters'
 import { PrismaService } from '../db/prisma.service'
 
-type ParticipantRow = { id: string; userId: string | null; displayName: string }
+type ParticipantRow = {
+  id: string
+  participantId: string
+  displayName: string
+  nickname: string | null
+  imageUrl: string | null
+}
 type SlotRow = {
   id: string
   round: number
@@ -75,8 +81,10 @@ export class PrismaTournamentRepository
       participants: row.participants.map((participant) => ({
         id: participant.id,
         tournamentId: row.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       slots: row.slots.map((slot) => ({
         id: slot.id,
@@ -127,8 +135,10 @@ export class PrismaTournamentRepository
         participants: {
           create: tournament.participants.map((participant) => ({
             id: participant.id.value,
-            userId: participant.userId,
+            participantId: participant.participantId,
             displayName: participant.displayName,
+            nickname: participant.nickname,
+            imageUrl: participant.imageUrl,
           })),
         },
         slots: {
@@ -226,8 +236,14 @@ export class PrismaTournamentRepository
     const participantOf = (participantId: string) => {
       const participant = row.participants.find((current) => current.id === participantId)
       return participant
-        ? { id: participant.id, userId: participant.userId, displayName: participant.displayName }
-        : { id: participantId, userId: null, displayName: '—' }
+        ? {
+            id: participant.id,
+            participantId: participant.participantId,
+            displayName: participant.displayName,
+            nickname: participant.nickname,
+            imageUrl: participant.imageUrl,
+          }
+        : { id: participantId, participantId: '', displayName: '—', nickname: null, imageUrl: null }
     }
     const nameOf = (participantId: string | null) => (participantId ? participantOf(participantId) : null)
 
@@ -271,8 +287,10 @@ export class PrismaTournamentRepository
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
         id: participant.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       phase: groupCount > 0 && row.slots.length === 0 ? 'group' : 'knockout',
       groups,

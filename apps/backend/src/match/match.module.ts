@@ -7,9 +7,10 @@ import { PrismaMatchRepository } from './prisma-match-repository'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 import { QueueModule } from '../betting/queue.module'
 import { CategoryModule } from '../category/category.module'
+import { ParticipantModule } from '../participant/participant.module'
 
 @Module({
-  imports: [DbModule, AuthModule, QueueModule, CategoryModule],
+  imports: [DbModule, AuthModule, QueueModule, CategoryModule, ParticipantModule],
   controllers: [MatchController],
   providers: [PrismaMatchRepository, BullMqMatchLockQueue],
   // Exported so the tournament module can create/settle its bracket matches

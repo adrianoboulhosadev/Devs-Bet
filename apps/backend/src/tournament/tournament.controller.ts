@@ -1,11 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
 import {
   CreateTournamentInput,
+  TournamentParticipantSnapshot,
   RecordBracketResultInput,
   TournamentDTO,
   TournamentFacade,
+  TournamentParticipant,
 } from '@tournament/adapters'
-import { MatchFacade, MatchDTO } from '@match/adapters'
+import { MatchFacade, MatchDTO, MatchParticipantSnapshot } from '@match/adapters'
 import { UserDTO } from '@auth/adapters'
 import { AuthenticatedActor, Id, NotFoundError, Errors } from 'shared'
 import { PrismaTournamentRepository } from './prisma-tournament-repository'
@@ -13,6 +15,7 @@ import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { BullMqMatchLockQueue } from '../match/bullmq-match-lock-queue'
 import { BullMqSettlementQueue } from '../betting/bullmq-settlement-queue'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
+import { PrismaParticipantRepository } from '../participant/prisma-participant-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
 
@@ -40,6 +43,7 @@ export class TournamentController {
     private readonly lockQueue: BullMqMatchLockQueue,
     private readonly settlementQueue: BullMqSettlementQueue,
     private readonly categoryRepository: PrismaCategoryRepository,
+    private readonly participantRepository: PrismaParticipantRepository,
   ) {}
 
   private tournamentFacade(): TournamentFacade {
@@ -54,10 +58,41 @@ export class TournamentController {
     return { id: user.id, role: user.role }
   }
 
+  // The tournament's own participants already carry the catalog snapshot (taken
+  // when the tournament was created) — reused as-is for the Match this
+  // confrontation creates, no extra catalog lookup needed.
+  private snapshotOf(participant: TournamentParticipant): MatchParticipantSnapshot {
+    return {
+      participantId: participant.participantId,
+      displayName: participant.displayName,
+      nickname: participant.nickname,
+      imageUrl: participant.imageUrl,
+    }
+  }
+
   private async resolveCategoryIsLeaf(categoryId: string): Promise<boolean> {
     const category = await this.categoryRepository.findByIdQuery(categoryId)
     if (!category) NotFoundError.throwError(Errors.CATEGORY_NOT_FOUND, categoryId)
     return category.isLeaf
+  }
+
+  // Cross-context: resolve each participantId against the catalog (must exist)
+  // into the snapshot the tournament use case needs — tournament never imports
+  // @participant/core. Preserves the order the admin picked.
+  private async resolveParticipants(
+    participantIds: string[],
+  ): Promise<TournamentParticipantSnapshot[]> {
+    const catalog = await this.participantRepository.findByIdsQuery(participantIds)
+    return participantIds.map((participantId) => {
+      const participant = catalog.find((entry) => entry.id === participantId)
+      if (!participant) NotFoundError.throwError(Errors.PARTICIPANT_NOT_FOUND, participantId)
+      return {
+        participantId: participant.id,
+        displayName: participant.name,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
+      }
+    })
   }
 
   /**
@@ -75,8 +110,8 @@ export class TournamentController {
 
     for (const slot of pending) {
       const matchId = Id.create()
-      const nameA = tournament.participantName(slot.playerAId)!
-      const nameB = tournament.participantName(slot.playerBId)!
+      const playerA = tournament.participants.find((participant) => participant.id.value === slot.playerAId)!
+      const playerB = tournament.participants.find((participant) => participant.id.value === slot.playerBId)!
       const scheduledAt =
         slot.round === 0
           ? tournament.scheduledAt
@@ -84,7 +119,7 @@ export class TournamentController {
 
       await this.matchFacade().createMatch(
         {
-          title: `${nameA} vs ${nameB}`,
+          title: `${playerA.displayName} vs ${playerB.displayName}`,
           categoryId: tournament.categoryId,
           imageUrl: null,
           scheduledAt: scheduledAt.toISOString(),
@@ -93,11 +128,14 @@ export class TournamentController {
           // A bracket confrontation must always produce a real winner to
           // advance the tournament — it never offers the draw selection.
           allowsDraw: false,
-          participants: [{ displayName: nameA }, { displayName: nameB }],
+          participantIds: [playerA.participantId, playerB.participantId],
         },
         actor,
         // The tournament's category was validated as a leaf at creation.
         true,
+        // Already resolved on the tournament's own participants (snapshotted
+        // when the tournament was created) — no extra catalog lookup needed.
+        [this.snapshotOf(playerA), this.snapshotOf(playerB)],
         matchId,
       )
       tournament.attachMatch(slot.round, slot.position, matchId)
@@ -121,12 +159,12 @@ export class TournamentController {
 
     for (const slot of pending) {
       const matchId = Id.create()
-      const nameA = tournament.participantName(slot.playerAId)!
-      const nameB = tournament.participantName(slot.playerBId)!
+      const playerA = tournament.participants.find((participant) => participant.id.value === slot.playerAId)!
+      const playerB = tournament.participants.find((participant) => participant.id.value === slot.playerBId)!
 
       await this.matchFacade().createMatch(
         {
-          title: `${nameA} vs ${nameB} (Grupo ${slot.groupIndex + 1})`,
+          title: `${playerA.displayName} vs ${playerB.displayName} (Grupo ${slot.groupIndex + 1})`,
           categoryId: tournament.categoryId,
           imageUrl: null,
           // Group matches all open together and lock at the tournament's start,
@@ -137,10 +175,11 @@ export class TournamentController {
           // A group matchup must always produce a real winner (feeds the
           // standings) — it never offers the draw selection.
           allowsDraw: false,
-          participants: [{ displayName: nameA }, { displayName: nameB }],
+          participantIds: [playerA.participantId, playerB.participantId],
         },
         actor,
         true,
+        [this.snapshotOf(playerA), this.snapshotOf(playerB)],
         matchId,
       )
       tournament.attachGroupMatch(slot.groupIndex, slot.matchupIndex, matchId)
@@ -165,9 +204,16 @@ export class TournamentController {
   async create(@Body() input: CreateTournamentInput, @authenticatedUser() user: UserDTO) {
     const actor = this.actor(user)
     const categoryIsLeaf = await this.resolveCategoryIsLeaf(input.categoryId)
+    const participants = await this.resolveParticipants(input.participantIds)
     // Pre-generate the id so we can create the round-0 matches right after.
     const tournamentId = Id.create()
-    await this.tournamentFacade().createTournament(input, actor, categoryIsLeaf, tournamentId)
+    await this.tournamentFacade().createTournament(
+      input,
+      actor,
+      categoryIsLeaf,
+      participants,
+      tournamentId,
+    )
     // Only one of these ever does anything for a given tournament: the group
     // stage (if any) is scheduled all at once here; without one, round 0 of
     // the knockout bracket is.
