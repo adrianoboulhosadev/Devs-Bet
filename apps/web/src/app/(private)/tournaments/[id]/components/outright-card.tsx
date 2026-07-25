@@ -4,6 +4,7 @@ import type { TournamentParticipantDTO } from '@tournament/adapters'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { formatBRL } from '@/lib/money'
+import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useOutright } from '../hooks/use-outright'
 
@@ -25,11 +26,13 @@ export function OutrightCard({
   open,
   championParticipantId,
 }: OutrightCardProps) {
-  const { odds, form, onSubmit, placing, error } = useOutright(tournamentId, open)
+  const { odds, oddsHistory, form, onSubmit, placing, error } = useOutright(tournamentId, open)
   const { isSelfExcluded } = useSelfExclusion()
 
   const poolOf = (participantId: string) =>
     odds?.entries.find((entry) => entry.selectionId === participantId)
+  const participantLabel = (participantId: string) =>
+    participants.find((participant) => participant.id === participantId)?.displayName ?? '—'
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
@@ -55,6 +58,11 @@ export function OutrightCard({
           )
         })}
       </ul>
+
+      <div className="border-t border-slate-100 p-5">
+        <h3 className="mb-3 text-sm font-medium">Histórico de odds</h3>
+        <OddsHistoryChart snapshots={oddsHistory} selectionLabel={participantLabel} />
+      </div>
 
       {open && isSelfExcluded ? (
         <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">

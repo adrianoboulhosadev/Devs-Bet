@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import type { MarketOddsDTO } from '@betting/adapters'
+import type { MarketOddsDTO, OddsSnapshotDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { toCents } from '@/lib/money'
@@ -31,6 +31,14 @@ export function useOutright(tournamentId: string, open: boolean) {
     refetchInterval: open ? 5000 : false,
   })
 
+  const oddsHistoryKey = ['outright-odds-history', tournamentId]
+  const oddsHistory = useQuery({
+    queryKey: oddsHistoryKey,
+    queryFn: async (): Promise<OddsSnapshotDTO[]> =>
+      (await api.get<OddsSnapshotDTO[]>(`/bet/tournament/${tournamentId}/odds/history`)).data,
+    refetchInterval: open ? 5000 : false,
+  })
+
   const form = useForm<OutrightBetFields>({ defaultValues: { selectionId: '', amount: '' } })
 
   const place = useMutation({
@@ -44,6 +52,7 @@ export function useOutright(tournamentId: string, open: boolean) {
     onSuccess: () => {
       form.reset()
       queryClient.invalidateQueries({ queryKey: oddsKey })
+      queryClient.invalidateQueries({ queryKey: oddsHistoryKey })
       queryClient.invalidateQueries({ queryKey: ['wallet'] })
       queryClient.invalidateQueries({ queryKey: ['my-bets'] })
     },
@@ -55,5 +64,12 @@ export function useOutright(tournamentId: string, open: boolean) {
     place.mutate(fields)
   })
 
-  return { odds: odds.data, form, onSubmit, placing: place.isPending, error }
+  return {
+    odds: odds.data,
+    oddsHistory: oddsHistory.data ?? [],
+    form,
+    onSubmit,
+    placing: place.isPending,
+    error,
+  }
 }

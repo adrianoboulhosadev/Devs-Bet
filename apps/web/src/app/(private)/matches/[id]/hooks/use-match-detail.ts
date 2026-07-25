@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { MatchDTO } from '@match/adapters'
-import type { MarketOddsDTO, BetDTO } from '@betting/adapters'
+import type { MarketOddsDTO, BetDTO, OddsSnapshotDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { toCents } from '@/lib/money'
@@ -58,10 +58,19 @@ export function useMatchDetail(matchId: string) {
     queryFn: async (): Promise<BetDTO[]> => (await api.get<BetDTO[]>(`/bet/match/${matchId}`)).data,
   })
 
+  const oddsHistoryKey = ['odds-history', matchId]
+  const oddsHistory = useQuery({
+    queryKey: oddsHistoryKey,
+    queryFn: async (): Promise<OddsSnapshotDTO[]> =>
+      (await api.get<OddsSnapshotDTO[]>(`/bet/match/${matchId}/odds/history`)).data,
+    refetchInterval: isOpen ? 5000 : false,
+  })
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: matchKey })
     queryClient.invalidateQueries({ queryKey: oddsKey })
     queryClient.invalidateQueries({ queryKey: bookKey })
+    queryClient.invalidateQueries({ queryKey: oddsHistoryKey })
     queryClient.invalidateQueries({ queryKey: ['wallet'] })
   }
 
@@ -144,6 +153,7 @@ export function useMatchDetail(matchId: string) {
   return {
     match: match.data,
     odds: odds.data,
+    oddsHistory: oddsHistory.data ?? [],
     book: book.data ?? [],
     loading: match.isLoading,
     isAdmin,

@@ -8,6 +8,7 @@ import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { CategoryPicker } from '@/components/category-picker'
+import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useMatchDetail, MATCH_DRAW_SELECTION_ID } from '../hooks/use-match-detail'
 
@@ -15,6 +16,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
   const {
     match,
     odds,
+    oddsHistory,
     book,
     loading,
     isAdmin,
@@ -132,6 +134,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
             )
           })}
         </ul>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 font-medium">Histórico de odds</h2>
+        <OddsHistoryChart snapshots={oddsHistory} selectionLabel={selectionLabel} />
       </div>
 
       {isOpen && (
