@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import type { TournamentDTO, CreateTournamentInput } from '@tournament/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
+import { useParticipants } from '@/hooks/use-participants'
 
 const TOURNAMENTS_KEY = ['tournaments']
 
@@ -29,8 +30,9 @@ const qualifierCountOf = (size: number): number =>
   size > GROUP_STAGE_THRESHOLD ? size / 2 : size
 
 // Mirrors CreateTournamentInput minus the wire concerns: image is an optional
-// FileList; size drives how many participant fields are shown; bestOfByRound has
-// one entry per round (index 0 = fullest round, last = the final) so e.g. every
+// FileList; participants are picked from the catalog (see ParticipantPicker),
+// not typed — size caps how many the picker accepts; bestOfByRound has one
+// entry per round (index 0 = fullest round, last = the final) so e.g. every
 // round can be MD3 except an MD5 final; categoryId is the chosen LEAF (set by
 // the CategoryPicker).
 interface TournamentForm {
@@ -40,7 +42,7 @@ interface TournamentForm {
   size: number
   bestOfByRound: number[]
   image?: FileList
-  participants: { displayName: string }[]
+  participantIds: string[]
 }
 
 const DEFAULT_SIZE = 8
@@ -51,7 +53,7 @@ const emptyForm = (): TournamentForm => ({
   scheduledAt: '',
   size: DEFAULT_SIZE,
   bestOfByRound: Array(Math.log2(DEFAULT_SIZE)).fill(1),
-  participants: Array.from({ length: DEFAULT_SIZE }, () => ({ displayName: '' })),
+  participantIds: [],
 })
 
 export function useTournaments() {
@@ -59,6 +61,7 @@ export function useTournaments() {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { categories, pathOf } = useCategories()
+  const { participants } = useParticipants()
   const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
@@ -68,23 +71,19 @@ export function useTournaments() {
   })
 
   const form = useForm<TournamentForm>({ defaultValues: emptyForm() })
-  const participants = useFieldArray({ control: form.control, name: 'participants' })
   const size = Number(form.watch('size'))
   // bestOfByRound has one entry per KNOCKOUT round, not per raw participant —
   // above the group-stage threshold the bracket only starts once the group
   // stage narrows the field to its qualifiers (size / 2).
   const roundCount = TOURNAMENT_SIZES.includes(size) ? Math.log2(qualifierCountOf(size)) : 0
 
-  // Keep exactly `size` participant fields, preserving any names already typed.
+  // Drop any already-picked participants beyond the new size (the picker caps
+  // further additions at `size`).
   useEffect(() => {
     if (!TOURNAMENT_SIZES.includes(size)) return
-    const current = form.getValues('participants') ?? []
-    if (current.length === size) return
-    const next = Array.from({ length: size }, (_, index) => ({
-      displayName: current[index]?.displayName ?? '',
-    }))
-    participants.replace(next)
-  }, [size, form, participants])
+    const current = form.getValues('participantIds')
+    if (current.length > size) form.setValue('participantIds', current.slice(0, size))
+  }, [size, form])
 
   // Keep exactly `roundCount` bestOf fields, preserving any choices already made.
   useEffect(() => {
@@ -117,9 +116,7 @@ export function useTournaments() {
         scheduledAt: new Date(data.scheduledAt).toISOString(),
         size: Number(data.size),
         bestOfByRound: data.bestOfByRound.map(Number),
-        participants: data.participants
-          .map((participant) => ({ displayName: participant.displayName.trim() }))
-          .filter((participant) => participant.displayName),
+        participantIds: data.participantIds,
       }
       return (await api.post<{ id: string }>('/tournament', input)).data
     },
@@ -137,6 +134,10 @@ export function useTournaments() {
       setError('Selecione a categoria (até o nível mais específico).')
       return
     }
+    if (data.participantIds.length !== data.size) {
+      setError(`Escolha exatamente ${data.size} participantes.`)
+      return
+    }
     creation.mutate(data)
   })
 
@@ -146,8 +147,8 @@ export function useTournaments() {
     loading: query.isLoading,
     categories,
     pathOf,
-    form,
     participants,
+    form,
     roundCount,
     roundLabel,
     onSubmit,

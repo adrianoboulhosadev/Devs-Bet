@@ -6,12 +6,13 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
+import { ParticipantPicker } from '@/components/participant-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useMatches, MATCH_BEST_OF_OPTIONS } from '../hooks/use-matches'
 
 export function Matches() {
-  const { isAdmin, matches, loading, categories, pathOf, form, participants, onSubmit, submitting, error } =
+  const { isAdmin, matches, loading, categories, pathOf, participants, form, onSubmit, submitting, error } =
     useMatches()
   const bestOf = form.watch('bestOf')
 
@@ -56,26 +57,11 @@ export function Matches() {
             só disponível em MD1)
           </label>
 
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Participantes</span>
-            {participants.fields.map((fieldItem, index) => (
-              <div key={fieldItem.id} className="flex items-center gap-2">
-                <input
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-                  placeholder={`Jogador ${index + 1}`}
-                  {...form.register(`participants.${index}.displayName` as const)}
-                />
-                {participants.fields.length > 2 && (
-                  <Button variant="secondary" onClick={() => participants.remove(index)}>
-                    Remover
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button variant="secondary" onClick={() => participants.append({ displayName: '' })}>
-              + Participante
-            </Button>
-          </div>
+          <ParticipantPicker
+            participants={participants}
+            value={form.watch('participantIds')}
+            onChange={(ids) => form.setValue('participantIds', ids)}
+          />
 
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Criando…' : 'Criar partida'}

@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import type { MatchDTO, CreateMatchInput } from '@match/adapters'
 import { api } from '@/lib/api'
 import { errorMessage } from '@/lib/api/errors'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
+import { useParticipants } from '@/hooks/use-participants'
 
 const MATCHES_KEY = ['matches']
 
@@ -15,9 +16,10 @@ const MATCHES_KEY = ['matches']
 // always decisive). Must match Match.VALID_BEST_OF in packages/match/core.
 export const MATCH_BEST_OF_OPTIONS = [1, 3, 5] as const
 
-// The form mirrors CreateMatchInput but the userId of a participant is not set
-// here. scheduledAt comes from <input type="datetime-local">; categoryId is the
-// chosen LEAF (set by the CategoryPicker); image is an optional FileList.
+// The form mirrors CreateMatchInput but participants are picked from the
+// catalog (see ParticipantPicker), not typed. scheduledAt comes from
+// <input type="datetime-local">; categoryId is the chosen LEAF (set by the
+// CategoryPicker); image is an optional FileList.
 interface MatchForm {
   title: string
   categoryId: string
@@ -25,7 +27,7 @@ interface MatchForm {
   image?: FileList
   bestOf: number
   allowsDraw: boolean
-  participants: { displayName: string }[]
+  participantIds: string[]
 }
 
 const emptyForm: MatchForm = {
@@ -34,13 +36,14 @@ const emptyForm: MatchForm = {
   scheduledAt: '',
   bestOf: 1,
   allowsDraw: true,
-  participants: [{ displayName: '' }, { displayName: '' }],
+  participantIds: [],
 }
 
 export function useMatches() {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { categories, pathOf } = useCategories()
+  const { participants } = useParticipants()
   const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
@@ -49,7 +52,6 @@ export function useMatches() {
   })
 
   const form = useForm<MatchForm>({ defaultValues: emptyForm })
-  const participants = useFieldArray({ control: form.control, name: 'participants' })
 
   const creation = useMutation({
     mutationFn: async (data: MatchForm) => {
@@ -73,9 +75,7 @@ export function useMatches() {
         // A draw is only possible in a single-unit match (an odd bestOf > 1
         // always has a majority winner).
         allowsDraw: data.bestOf === 1 && data.allowsDraw,
-        participants: data.participants
-          .map((participant) => ({ displayName: participant.displayName.trim() }))
-          .filter((participant) => participant.displayName),
+        participantIds: data.participantIds,
       }
       await api.post('/match', input)
     },
@@ -92,6 +92,10 @@ export function useMatches() {
       setError('Selecione a categoria (até o nível mais específico).')
       return
     }
+    if (data.participantIds.length < 2) {
+      setError('Escolha pelo menos dois participantes.')
+      return
+    }
     creation.mutate(data)
   })
 
@@ -101,8 +105,8 @@ export function useMatches() {
     loading: query.isLoading,
     categories,
     pathOf,
-    form,
     participants,
+    form,
     onSubmit,
     submitting: creation.isPending,
     error,

@@ -6,6 +6,7 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
+import { ParticipantPicker } from '@/components/participant-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useTournaments, TOURNAMENT_SIZES, TOURNAMENT_BEST_OF_OPTIONS } from '../hooks/use-tournaments'
@@ -17,14 +18,15 @@ export function Tournaments() {
     loading,
     categories,
     pathOf,
-    form,
     participants,
+    form,
     roundCount,
     roundLabel,
     onSubmit,
     submitting,
     error,
   } = useTournaments()
+  const size = Number(form.watch('size'))
 
   return (
     <div className="space-y-8">
@@ -81,16 +83,12 @@ export function Tournaments() {
 
           <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
 
-          <div className="space-y-2">
-            {participants.fields.map((fieldItem, index) => (
-              <input
-                key={fieldItem.id}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-                placeholder={`Participante ${index + 1}`}
-                {...form.register(`participants.${index}.displayName` as const)}
-              />
-            ))}
-          </div>
+          <ParticipantPicker
+            participants={participants}
+            value={form.watch('participantIds')}
+            onChange={(ids) => form.setValue('participantIds', ids)}
+            max={size}
+          />
 
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Criando…' : 'Criar torneio'}

@@ -22,7 +22,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, isAdmin, logout } = useAuth()
 
   const items = isAdmin
-    ? [...NAV_ITEMS, { href: '/categories', label: 'Categorias' }, { href: '/admin', label: 'Admin' }]
+    ? [
+        ...NAV_ITEMS,
+        { href: '/categories', label: 'Categorias' },
+        { href: '/participants', label: 'Participantes' },
+        { href: '/admin', label: 'Admin' },
+      ]
     : NAV_ITEMS
 
   return (
