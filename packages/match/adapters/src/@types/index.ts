@@ -1,8 +1,8 @@
 import {
   CreateMatchInput,
-  CreateMatchParticipantInput,
+  MatchParticipantSnapshot,
   UpdateMatchInput,
   RecordUnitResultInput,
 } from './inputs'
 
-export type { CreateMatchInput, CreateMatchParticipantInput, UpdateMatchInput, RecordUnitResultInput }
+export type { CreateMatchInput, MatchParticipantSnapshot, UpdateMatchInput, RecordUnitResultInput }

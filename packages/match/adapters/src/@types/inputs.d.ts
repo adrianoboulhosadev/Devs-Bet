@@ -1,10 +1,18 @@
-export interface CreateMatchParticipantInput {
+// A participant snapshot ready for the domain: the backend resolves each
+// participantId against the catalog (packages/participant) and fills in
+// displayName/nickname/imageUrl — match never imports @participant/core.
+export interface MatchParticipantSnapshot {
+  participantId: string
   displayName: string
-  userId?: string | null
+  nickname?: string | null
+  imageUrl?: string | null
 }
 
 // creatorId comes from the JWT, never the body. scheduledAt is an ISO 8601
 // string on the wire; the controller turns it into a Date for the domain.
+// participantIds are catalog ids picked in the admin's create-match form — the
+// backend resolves them into MatchParticipantSnapshot[] before calling the use
+// case (see CreateMatchController.execute).
 export interface CreateMatchInput {
   title: string
   // Leaf category the match belongs to (its id). Required.
@@ -19,7 +27,7 @@ export interface CreateMatchInput {
   // bestOf is 1. A tournament confrontation is created with this false — it
   // must always advance the bracket with a real winner.
   allowsDraw?: boolean
-  participants: CreateMatchParticipantInput[]
+  participantIds: string[]
 }
 
 // All fields optional (patch). scheduledAt is an ISO 8601 string on the wire.

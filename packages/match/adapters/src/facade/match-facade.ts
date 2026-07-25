@@ -10,7 +10,12 @@ import {
   GetMatchController,
   ListMatchesController,
 } from '../controllers'
-import { CreateMatchInput, UpdateMatchInput, RecordUnitResultInput } from '../@types'
+import {
+  CreateMatchInput,
+  MatchParticipantSnapshot,
+  UpdateMatchInput,
+  RecordUnitResultInput,
+} from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -28,12 +33,14 @@ export default class MatchFacade {
     input: CreateMatchInput,
     actor: AuthenticatedActor,
     categoryIsLeaf: boolean,
+    participants: MatchParticipantSnapshot[],
     matchId?: string,
   ): Promise<void> {
     await new CreateMatchController(this.matchRepository!, this.lockQueue).execute(
       input,
       actor,
       categoryIsLeaf,
+      participants,
       matchId,
     )
   }
