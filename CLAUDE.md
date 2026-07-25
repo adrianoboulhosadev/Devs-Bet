@@ -27,7 +27,7 @@ Monorepo **Turborepo + npm workspaces** em TypeScript. Arquitetura **hexagonal (
 por bounded context**, com **modelagem RICA** (entidades com comportamento e invariantes + value
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
-Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `tournament`. O `auth` é a **referência canônica**
+Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `participant`, `tournament`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -51,7 +51,7 @@ apps/
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
 
-Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@tournament/*`. `core` e
+Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@participant/*`, `@tournament/*`. `core` e
 `adapters` são **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
@@ -221,7 +221,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   torneio, combo) só pra **desabilitar a UI** — quem garante a regra de verdade é sempre o backend.
 - **match** — `Match` (2+ participantes; `scheduledAt` obrigatório e no futuro na criação; `imageUrl`
   opcional; status
-  `open → locked → settled` / `cancelled`), `MatchParticipant`. **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
+  `open → locked → settled` / `cancelled`), `MatchParticipant`. Participantes são **escolhidos do catálogo**
+  (`participant`, ver seção própria) — `MatchParticipant` carrega `participantId` (FK lógica, obrigatória)
+  + `displayName`/`nickname`/`imageUrl` **snapshotados** na criação (o backend resolve o catálogo por id e
+  passa os dados já prontos pro use-case; `match` nunca importa `@participant/core`). Duplicar o mesmo
+  `participantId` na mesma match é rejeitado (`DUPLICATE_PARTICIPANT_NAME`). **`bestOf`** (1, 3 ou 5 — `VALID_BEST_OF`;
   defaults a 1) decide a match por maioria de **`MatchUnit`** (unidade sport-agnostic: mapa/leg/round/luta
   — não é "game" porque nem toda categoria é um jogo, ex.: luta de boxe). Métodos: `lockBetting()`,
   `recordUnitResult(unitNumber, winnerParticipantId)`, `cancel()` (invariantes de transição no modelo).
@@ -319,6 +323,22 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `AdminUseCase`); listar é aberto (usado no cadastro da match). `isLeaf` é do read model. Delete só
   em nó sem filhos (`CATEGORY_HAS_CHILDREN`); dedup de nome por pai (`CATEGORY_ALREADY_EXISTS`). A
   match aponta pra uma **folha**.
+- **participant** — catálogo reaproveitável de competidores: `Participant` (`name` obrigatório e
+  **único no catálogo inteiro** — sem escopo por categoria, é uma lista global —, `nickname` e
+  `imageUrl` opcionais). Resolve o pedido de não digitar o mesmo nome toda vez que cria uma
+  match/torneio: o admin cadastra o participante **uma vez** (`/participants`) e, na hora de criar
+  a match/torneio, só **escolhe** (`ParticipantPicker`, front) quem entra — **não existe mais campo
+  de texto livre pro nome do jogador**. CRUD **admin-only** (`Create/Update/DeleteParticipant`
+  estendem `AdminUseCase`); listar é aberto (alimenta o picker). **Editar é livre** (renomear/trocar
+  apelido/foto a qualquer momento) — não reescreve o histórico, porque `MatchParticipant`/
+  `TournamentParticipant` guardam sua própria **cópia** (`displayName`/`nickname`/`imageUrl`)
+  tirada no instante da criação da match/torneio, não uma referência ao dado atual. **Excluir só se
+  nunca foi usado** (`PARTICIPANT_IN_USE` senão) — quem resolve "já foi usado" é o **backend**
+  (`ParticipantController` consulta `match_participants`/`tournament_participants` por
+  `participantId`, cross-context, igual ao padrão de `categoryIsLeaf`), não o próprio contexto
+  `participant` (que nunca importa `match`/`tournament`). Upload de foto: `/upload/participants`
+  (admin-only, mesmo padrão de `/upload/matchs`). Rotas: `GET`/`POST /participant`, `PATCH`/`DELETE
+  /participant/:id`.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
   (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32,64,128} — potência de 2;
   **`bestOfByRound: number[]`** — **um valor por rodada do MATA-MATA** (índice 0 = rodada mais cheia do
@@ -390,9 +410,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `/match/:id/odds` e `/match/:id/odds/history`; `/tournament/:id`, `/tournament/:id/odds` e
   `/tournament/:id/odds/history` [outright]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
+  `participant` (`/` [GET aberto — alimenta o picker; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
-  `admin/{deposits,withdrawals}`, `upload/{matchs [admin], receipts [usuário autenticado]}`.
+  `admin/{deposits,withdrawals}`,
+  `upload/{matchs [admin], receipts [usuário autenticado], participants [admin]}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
@@ -428,12 +450,14 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `bettorId` único — só janela diária), `OddsSnapshot`(odds_snapshots; append-only, histórico de odds),
   `ComboBet`(combo_bets),
   `ComboLeg`(combo_legs; relation Prisma intra-contexto pra `ComboBet`, mesmo padrão de `MatchUnit`),
-  `Category`(categories, self-relation `parent_id`), `Tournament`(tournaments),
+  `Category`(categories, self-relation `parent_id`), `Participant`(participants; `name` `@unique`),
+  `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
   `player_b_id` são FKs lógicas), `TournamentGroupMatch`(tournament_group_matches; fase de grupos —
   `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas). FKs entre contextos são **lógicas**
-  (sem relation Prisma cruzando contexto — ex.: `matches.category_id`); a self-relation da `Category` é
-  intra-contexto, então tem relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
+  (sem relation Prisma cruzando contexto — ex.: `matches.category_id`, `match_participants.participant_id`,
+  `tournament_participants.participant_id`); a self-relation da `Category` é intra-contexto, então tem
+  relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
 - **Greenfield**: schema do zero; cada contexto adiciona seu(s) `model`. `npm run db:sync` = `prisma db push`.
 
 ## Worker e fila (settlement assíncrono)
@@ -468,6 +492,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (`POST /upload/receipts`, só `AuthMiddleware`, sem `AdminGuard`) aceita `image/*` **ou**
   `application/pdf`, limite de 10 MB, mesmo padrão de nome (`uuid.ext`) e devolve
   `{ url: '/uploads/receipts/<arquivo>' }`, guardado em `Payment.receiptUrl` (ver seção wallet).
+- Upload de **foto de participante é admin-only**, mesmo padrão do de match: `POST
+  /upload/participants` (`UploadController`, mesma classe do de match — só mais um `@Post`), devolve
+  `{ url: '/uploads/participants/<arquivo>' }`, guardado em `Participant.imageUrl`.
 - Novo tema = nova subpasta em `UPLOADS_SUBDIRS` (+ constante `<TEMA>_UPLOAD_DIR`) + controller (decidir
   se é admin-only ou do próprio usuário autenticado, caso a caso).
 
