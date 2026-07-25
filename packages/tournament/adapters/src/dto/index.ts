@@ -2,7 +2,18 @@ import type {
   TournamentDTO,
   TournamentParticipantDTO,
   BracketSlotDTO,
+  GroupMatchDTO,
+  GroupStandingDTO,
+  GroupDTO,
   TournamentStatus,
 } from '@tournament/core'
 
-export type { TournamentDTO, TournamentParticipantDTO, BracketSlotDTO, TournamentStatus }
+export type {
+  TournamentDTO,
+  TournamentParticipantDTO,
+  BracketSlotDTO,
+  GroupMatchDTO,
+  GroupStandingDTO,
+  GroupDTO,
+  TournamentStatus,
+}

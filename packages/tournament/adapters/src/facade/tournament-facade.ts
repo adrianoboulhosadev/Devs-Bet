@@ -40,16 +40,21 @@ export default class TournamentFacade {
     await new CancelTournamentController(this.tournamentRepository!).execute(tournamentId, actor)
   }
 
-  /** Advances the bracket after a confrontation is settled (system path). */
+  /** Advances the tournament after a confrontation (group or knockout) is
+   * settled (system path). unitsWon* only matter for a group matchup. */
   async recordResult(
     tournamentId: string,
     matchId: string,
     winnerDisplayName: string,
+    unitsWonByWinner?: number,
+    unitsWonByLoser?: number,
   ): Promise<void> {
     await new RecordBracketResultController(this.tournamentRepository!).execute(
       tournamentId,
       matchId,
       winnerDisplayName,
+      unitsWonByWinner,
+      unitsWonByLoser,
     )
   }
 
