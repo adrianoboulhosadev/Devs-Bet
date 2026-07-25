@@ -11,6 +11,7 @@ import {
   ComboBetDTO,
   StakeLimit,
   StakeLimitDTO,
+  OddsSnapshotDTO,
 } from '../../src'
 
 /**
@@ -33,6 +34,10 @@ export default class BettingRepositoryInMemory
   readonly bets: Bet[] = []
   readonly combos: ComboBet[] = []
   readonly stakeLimits: StakeLimit[] = []
+  // Odds snapshots are recorded by the real Prisma adapter's placeBet
+  // transaction (a persistence side-effect, not a domain rule) — this fake
+  // just holds whatever a test seeds directly, for the read side to serve.
+  readonly oddsSnapshots: (OddsSnapshotDTO & { marketId: string })[] = []
   private readonly createdAt = new Map<string, Date>()
 
   async placeBet(bet: Bet): Promise<void> {
@@ -107,6 +112,19 @@ export default class BettingRepositoryInMemory
     return limit
       ? { amount: limit.effectiveAmount(), pendingAmount: limit.pendingAmount, effectiveAt: limit.effectiveAt }
       : null
+  }
+
+  async listOddsHistoryByMarket(marketId: string): Promise<OddsSnapshotDTO[]> {
+    return this.oddsSnapshots
+      .filter((snapshot) => snapshot.marketId === marketId)
+      .sort((a, b) => a.recordedAt.getTime() - b.recordedAt.getTime())
+      .map(({ selectionId, pool, totalPool, impliedOdd, recordedAt }) => ({
+        selectionId,
+        pool,
+        totalPool,
+        impliedOdd,
+        recordedAt,
+      }))
   }
 
   private toDTO(bet: Bet): BetDTO {

@@ -1,4 +1,4 @@
-import { Bet, BetDTO, ComboBetDTO } from '../model'
+import { Bet, BetDTO, ComboBetDTO, OddsSnapshotDTO } from '../model'
 
 /** Bet READ port (query side of CQRS). */
 export interface BetQueryRepository {
@@ -10,4 +10,7 @@ export interface BetQueryRepository {
   // read model (LeaderboardCalculator).
   findSettledBets(): Promise<Bet[]>
   listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]>
+  // Every odds snapshot recorded for a market (chronological), for the
+  // odds-history chart.
+  listOddsHistoryByMarket(marketId: string): Promise<OddsSnapshotDTO[]>
 }
