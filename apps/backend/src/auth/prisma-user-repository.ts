@@ -7,18 +7,19 @@ import { PrismaService } from '../db/prisma.service'
 export class PrismaUserRepository implements UserRepository, UserQueryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Reconstitutes the rich entity from a row (via its constructor).
+  // Reconstitutes the rich entity from a row (via its constructor). password is
+  // null for a user created via an OAuth provider (see LoginWithGoogle).
   private reconstitute(row: {
     id: string
     email: string
-    password: string
+    password: string | null
     role: string
     active: boolean
   }): User {
     return new User({
       id: row.id,
       email: row.email,
-      password: row.password,
+      password: row.password ?? undefined,
       role: row.role as Role,
       active: row.active,
     })
@@ -29,7 +30,7 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
       data: {
         id: user.id.value,
         email: user.email.value,
-        password: user.password!.value,
+        password: user.password?.value ?? null,
         role: user.role,
         active: user.active,
         // createdAt/lastLoginAt are infra: the DB handles them (default/update).

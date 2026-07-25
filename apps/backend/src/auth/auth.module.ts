@@ -3,8 +3,10 @@ import { DbModule } from '../db/db.module'
 import { AuthController } from './auth.controller'
 import { PrismaUserRepository } from './prisma-user-repository'
 import { PrismaAuthSessionRepository } from './prisma-auth-session-repository'
+import { PrismaOAuthAccountRepository } from './prisma-oauth-account-repository'
 import { BcryptHashProvider } from './bcrypt-hash-provider'
 import { JsonWebTokenProvider } from './jsonwebtoken-jwt-provider'
+import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { AuthMiddleware } from './auth.middleware'
 
 @Module({
@@ -13,15 +15,19 @@ import { AuthMiddleware } from './auth.middleware'
   providers: [
     PrismaUserRepository,
     PrismaAuthSessionRepository,
+    PrismaOAuthAccountRepository,
     BcryptHashProvider,
     JsonWebTokenProvider,
+    GoogleOAuthVerifier,
     AuthMiddleware,
   ],
   exports: [
     PrismaUserRepository,
     PrismaAuthSessionRepository,
+    PrismaOAuthAccountRepository,
     BcryptHashProvider,
     JsonWebTokenProvider,
+    GoogleOAuthVerifier,
     AuthMiddleware,
   ],
 })
