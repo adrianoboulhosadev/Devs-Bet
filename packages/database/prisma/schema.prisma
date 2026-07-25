@@ -323,6 +323,7 @@ model Tournament {
   updatedAt             DateTime                @updatedAt @map("updated_at")
   participants          TournamentParticipant[]
   slots                 TournamentSlot[]
+  groupMatches          TournamentGroupMatch[]
 
   @@index([creatorId])
   @@index([categoryId])
@@ -359,4 +360,26 @@ model TournamentSlot {
   @@index([tournamentId])
   @@index([matchId])
   @@map("tournament_slots")
+}
+
+// One round-robin matchup within a group (see Tournament.hasGroupStage, only
+// for a > 32-participant tournament) — both players are always known upfront,
+// unlike a TournamentSlot's later rounds. unitsWonByA/B feed the group's
+// unit-differential standings tiebreak once the matchup settles.
+model TournamentGroupMatch {
+  id                  String     @id @default(uuid())
+  tournamentId        String     @map("tournament_id")
+  groupIndex          Int        @map("group_index")
+  matchupIndex        Int        @map("matchup_index")
+  playerAId           String     @map("player_a_id")
+  playerBId           String     @map("player_b_id")
+  matchId             String?    @map("match_id")
+  winnerParticipantId String?    @map("winner_participant_id")
+  unitsWonByA         Int        @default(0) @map("units_won_by_a")
+  unitsWonByB         Int        @default(0) @map("units_won_by_b")
+  tournament          Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId])
+  @@index([matchId])
+  @@map("tournament_group_matches")
 }
