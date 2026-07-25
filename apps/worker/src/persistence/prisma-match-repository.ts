@@ -13,7 +13,13 @@ type MatchRowWithParticipants = {
   scheduledAt: Date
   lockedAt: Date | null
   settledAt: Date | null
-  participants: { id: string; userId: string | null; displayName: string }[]
+  participants: {
+    id: string
+    participantId: string
+    displayName: string
+    nickname: string | null
+    imageUrl: string | null
+  }[]
 }
 
 /**
@@ -40,8 +46,10 @@ export class PrismaMatchRepository implements MatchRepository {
       participants: row.participants.map((participant) => ({
         id: participant.id,
         matchId: row.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
     })
   }
@@ -66,8 +74,10 @@ export class PrismaMatchRepository implements MatchRepository {
         participants: {
           create: match.participants.map((participant) => ({
             id: participant.id.value,
-            userId: participant.userId,
+            participantId: participant.participantId,
             displayName: participant.displayName,
+            nickname: participant.nickname,
+            imageUrl: participant.imageUrl,
           })),
         },
       },
