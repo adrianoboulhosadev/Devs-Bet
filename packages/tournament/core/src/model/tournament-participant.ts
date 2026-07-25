@@ -2,9 +2,14 @@ import { Entity, EntityProps, ValidationError, Errors } from 'shared'
 
 export interface TournamentParticipantProps extends EntityProps {
   tournamentId?: string
-  // A registered user (logical FK) or null for someone off-platform.
-  userId?: string | null
+  // Logical FK to the participant catalog (packages/participant). Required —
+  // creating a tournament always picks existing catalog entries.
+  participantId?: string
+  // Snapshotted from the catalog at tournament-creation time (immutable
+  // afterwards, even if the catalog entry is later renamed).
   displayName?: string
+  nickname?: string | null
+  imageUrl?: string | null
 }
 
 /**
@@ -15,15 +20,22 @@ export interface TournamentParticipantProps extends EntityProps {
  */
 export class TournamentParticipant extends Entity<TournamentParticipant, TournamentParticipantProps> {
   readonly tournamentId: string | null
-  readonly userId: string | null
+  readonly participantId: string
   readonly displayName: string
+  readonly nickname: string | null
+  readonly imageUrl: string | null
 
   constructor(props: TournamentParticipantProps) {
     super(props)
     const displayName = props.displayName?.trim() ?? ''
     if (!displayName) ValidationError.throwError(Errors.REQUIRED_FIELD, 'displayName')
+    const participantId = props.participantId?.trim() ?? ''
+    if (!participantId) ValidationError.throwError(Errors.REQUIRED_FIELD, 'participantId')
+
     this.tournamentId = props.tournamentId ?? null
-    this.userId = props.userId ?? null
+    this.participantId = participantId
     this.displayName = displayName
+    this.nickname = props.nickname ?? null
+    this.imageUrl = props.imageUrl ?? null
   }
 }

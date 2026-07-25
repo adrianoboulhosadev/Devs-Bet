@@ -111,8 +111,8 @@ export class Tournament extends Entity<Tournament, TournamentProps> {
     if (participants.length !== size) {
       ValidationError.throwError(Errors.NOT_ENOUGH_TOURNAMENT_PARTICIPANTS, participants.length)
     }
-    const uniqueNames = new Set(participants.map((participant) => participant.displayName))
-    if (uniqueNames.size !== participants.length) {
+    const uniqueParticipantIds = new Set(participants.map((participant) => participant.participantId))
+    if (uniqueParticipantIds.size !== participants.length) {
       ValidationError.throwError(Errors.DUPLICATE_PARTICIPANT_NAME, participants.length)
     }
 

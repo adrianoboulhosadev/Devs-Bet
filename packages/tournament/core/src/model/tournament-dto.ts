@@ -2,8 +2,10 @@ import { TournamentStatus } from './tournament'
 
 export interface TournamentParticipantDTO {
   id: string
-  userId: string | null
+  participantId: string
   displayName: string
+  nickname: string | null
+  imageUrl: string | null
 }
 
 /** A bracket node in the read model. `playerA`/`playerB` are resolved (id +

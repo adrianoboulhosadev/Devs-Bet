@@ -19,10 +19,10 @@ const createInput = (overrides: Partial<Parameters<CreateTournament['execute']>[
   scheduledAt: inOneHour(),
   size: 4,
   participants: [
-    { displayName: 'A' },
-    { displayName: 'B' },
-    { displayName: 'C' },
-    { displayName: 'D' },
+    { displayName: 'A', participantId: 'p-A' },
+    { displayName: 'B', participantId: 'p-B' },
+    { displayName: 'C', participantId: 'p-C' },
+    { displayName: 'D', participantId: 'p-D' },
   ],
   ...overrides,
 })

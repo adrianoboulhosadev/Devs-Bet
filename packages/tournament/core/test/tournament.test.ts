@@ -4,7 +4,7 @@ import { Tournament } from '../src'
 const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000)
 
 const names = (count: number) =>
-  Array.from({ length: count }, (_, index) => ({ displayName: `P${index}` }))
+  Array.from({ length: count }, (_, index) => ({ displayName: `P${index}`, participantId: `p${index}` }))
 
 function newTournament(size = 8) {
   return new Tournament({
@@ -68,10 +68,10 @@ describe('Tournament invariants', () => {
         scheduledAt: inOneHour(),
         size: 4,
         participants: [
-          { displayName: 'A' },
-          { displayName: 'A' },
-          { displayName: 'B' },
-          { displayName: 'C' },
+          { displayName: 'A', participantId: 'p-A' },
+          { displayName: 'A', participantId: 'p-A' },
+          { displayName: 'B', participantId: 'p-B' },
+          { displayName: 'C', participantId: 'p-C' },
         ],
       })
       fail('should have thrown')
@@ -107,6 +107,7 @@ describe('Tournament invariants', () => {
       size: 4,
       participants: built.participants.map((participant) => ({
         id: participant.id.value,
+        participantId: participant.participantId,
         displayName: participant.displayName,
       })),
       slots: built.slots.map((slot) => ({

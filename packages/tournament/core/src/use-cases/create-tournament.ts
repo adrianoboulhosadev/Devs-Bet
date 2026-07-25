@@ -3,8 +3,12 @@ import { Tournament } from '../model'
 import { TournamentRepository } from '../providers'
 
 interface ParticipantInput {
+  // Resolved by the backend from the participant catalog (by participantId) —
+  // tournament never imports @participant/core.
+  participantId: string
   displayName: string
-  userId?: string | null
+  nickname?: string | null
+  imageUrl?: string | null
 }
 
 interface Input {

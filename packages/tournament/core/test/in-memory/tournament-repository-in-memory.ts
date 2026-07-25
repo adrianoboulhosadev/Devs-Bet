@@ -10,8 +10,10 @@ import {
 interface ParticipantRow {
   id: string
   tournamentId: string
-  userId: string | null
+  participantId: string
   displayName: string
+  nickname: string | null
+  imageUrl: string | null
 }
 
 interface SlotRow {
@@ -78,8 +80,10 @@ export default class TournamentRepositoryInMemory
       participants: tournament.participants.map((participant) => ({
         id: participant.id.value,
         tournamentId: tournament.id.value,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       slots: tournament.slots.map((slot) => ({
         id: slot.id.value,
@@ -121,8 +125,10 @@ export default class TournamentRepositoryInMemory
       participants: row.participants.map((participant) => ({
         id: participant.id,
         tournamentId: participant.tournamentId,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       slots: row.slots.map((slot) => ({
         id: slot.id,
@@ -177,8 +183,14 @@ export default class TournamentRepositoryInMemory
     const participantOf = (participantId: string) => {
       const participant = row.participants.find((current) => current.id === participantId)
       return participant
-        ? { id: participant.id, userId: participant.userId, displayName: participant.displayName }
-        : { id: participantId, userId: null, displayName: '—' }
+        ? {
+            id: participant.id,
+            participantId: participant.participantId,
+            displayName: participant.displayName,
+            nickname: participant.nickname,
+            imageUrl: participant.imageUrl,
+          }
+        : { id: participantId, participantId: '', displayName: '—', nickname: null, imageUrl: null }
     }
     const nameOf = (participantId: string | null) => (participantId ? participantOf(participantId) : null)
 
@@ -222,8 +234,10 @@ export default class TournamentRepositoryInMemory
       scheduledAt: row.scheduledAt,
       participants: row.participants.map((participant) => ({
         id: participant.id,
-        userId: participant.userId,
+        participantId: participant.participantId,
         displayName: participant.displayName,
+        nickname: participant.nickname,
+        imageUrl: participant.imageUrl,
       })),
       phase: groupCount > 0 && row.slots.length === 0 ? 'group' : 'knockout',
       groups,
