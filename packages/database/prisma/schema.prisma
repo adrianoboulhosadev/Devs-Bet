@@ -208,6 +208,23 @@ model Bet {
   @@map("bets")
 }
 
+// One point of the odds-history chart: the live parimutuel odds of a selection
+// at the moment a bet changed its market's pool. Recorded append-only inside
+// PlaceBet's transaction (one row per selection with a pool, every time) — combo
+// legs never touch the pool, so they never generate a point here.
+model OddsSnapshot {
+  id          String   @id @default(uuid())
+  marketId    String   @map("market_id")
+  selectionId String   @map("selection_id")
+  pool        Int
+  totalPool   Int      @map("total_pool")
+  impliedOdd  Float    @map("implied_odd")
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  @@index([marketId, recordedAt])
+  @@map("odds_snapshots")
+}
+
 // Responsible-gambling self-imposed daily stake cap (one row per bettor — unlike
 // DepositLimit there is only one rolling window here: the last 24h). `amount` is
 // the currently EFFECTIVE cap; a raise is only scheduled (`pendingAmount`/
