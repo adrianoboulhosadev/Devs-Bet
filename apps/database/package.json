@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "docker compose -f ../../docker-compose.yml up -d --wait db redis",
-    "stop": "docker compose -f ../../docker-compose.yml stop db redis"
+    "start": "docker compose --file=../../docker-compose.yml up -d --wait db redis",
+    "stop": "docker compose --file=../../docker-compose.yml stop db redis"
   }
 }
