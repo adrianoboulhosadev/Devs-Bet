@@ -1,0 +1,96 @@
+name: devs-bet
+
+services:
+  db:
+    build:
+      context: ./apps/database
+    container_name: devs-bet-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Bound to localhost only: reachable from the host itself (e.g. `psql`),
+      # never from outside. Backend/worker reach this over the internal
+      # compose network via the `db` hostname, not this port.
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7
+    container_name: devs-bet-redis
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: devs-bet-backend
+    restart: unless-stopped
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      # Overrides the host-dev values from the env file above: inside the
+      # compose network, Postgres/Redis are reached by service name.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '127.0.0.1:5000:5000'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: devs-bet-worker
+    restart: unless-stopped
+    env_file:
+      - ./apps/worker/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+    container_name: devs-bet-web
+    restart: unless-stopped
+    # NEXTAUTH_URL/NEXTAUTH_SECRET/GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are
+    # read at RUNTIME by the /api/auth/[...nextauth] route (unlike
+    # NEXT_PUBLIC_API_URL above, which Next.js inlines at build time) — so
+    # this service needs the env file too, not just the build arg.
+    env_file:
+      - ./apps/web/.env
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
