@@ -40,10 +40,44 @@ pode ser trocado por um PSP real (Mercado Pago, Efí, Asaas…) sem mexer no dom
 
 Monorepo Turborepo + npm workspaces, TypeScript, **hexagonal (ports & adapters) por
 bounded context**, com **modelagem rica** (entidades com comportamento + value objects;
-invariantes no modelo). Contextos: `auth`, `wallet`, `match`, `betting`.
+invariantes no modelo). Contextos: `auth`, `wallet`, `match`, `betting`, `category`,
+`participant`, `tournament`.
 
 Deployables de produção: **backend** (API NestJS) e **worker** (settlement assíncrono
 via BullMQ). O **web** é o front (Next.js). `database` (Postgres + Redis) sobe via docker
 no dev.
+
+## Rodando localmente
+
+Precisa de **Docker** em execução. Copie os `.env.example` (raiz + cada `apps/*`) pra
+`.env` e ajuste os valores; um único comando sobe o resto:
+
+```bash
+npm install
+npm run dev
+```
+
+`npm run dev` sobe o Postgres + Redis (docker) e espera ficar pronto, roda
+`prisma db push` (cria as tabelas) e inicia backend + worker + web em watch:
+
+- Web: http://localhost:3000
+- Backend: http://localhost:5000
+
+O primeiro usuário criado (`/register`) nasce com role `user` — pra testar as telas de
+admin (categorias, participantes, partidas/torneios, confirmar depósito/saque), promova
+manualmente pra `admin` na tabela `users` (ex.: `npx prisma studio --schema
+packages/database/prisma/schema.prisma`).
+
+Outros comandos:
+
+```bash
+npm run build                        # build de todo o monorepo
+npx turbo run check-types test build # valida tudo (tipos, testes, build)
+npm run db:stop                      # para os containers de Postgres/Redis
+```
+
+Também dá pra rodar o stack inteiro containerizado (backend/worker/web incluídos), útil
+pra simular produção: `docker compose up --build` (usa o `docker-compose.yml` da raiz e
+o `.env`/`.env` de cada app via `env_file`).
 
 Detalhes de engenharia e regras travadas: veja `CLAUDE.md`.

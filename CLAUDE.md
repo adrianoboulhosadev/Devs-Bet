@@ -545,7 +545,16 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 ## Dev e verificação
 
-- `npm run dev` = `db:up` (Postgres + Redis no docker) → `db:sync` (prisma db push) → `turbo run dev`.
+- `npm run dev` = `db:up` (Postgres + Redis no docker, via `apps/database` = workspace `container-db`,
+  que só chama `docker compose -f docker-compose.yml up/stop db redis`) → `db:sync` (prisma db push) →
+  `turbo run dev`.
+- **Stack inteiro containerizado** (`docker-compose.yml` na raiz + um `Dockerfile` por app em
+  `apps/{backend,worker,web}`, build context = raiz do repo): `docker compose up --build` sobe
+  Postgres, Redis, backend, worker e web juntos — útil pra simular produção ou rodar sem instalar
+  Node localmente. `NEXT_PUBLIC_API_URL` é `ARG` (Next.js inline em build time); as demais variáveis
+  (incl. `NEXTAUTH_*`/`GOOGLE_CLIENT_*` do web, lidas em runtime pela rota do NextAuth) vêm do
+  `env_file` de cada app. `.env.example` na raiz cobre as credenciais do Postgres
+  (`POSTGRES_USER`/`PASSWORD`/`DB`) que o compose interpola no `DATABASE_URL` de backend/worker.
 - **Antes de declarar pronto** (não bootar servidor — precisa de Postgres/Redis):
   ```bash
   npx turbo run check-types test build
