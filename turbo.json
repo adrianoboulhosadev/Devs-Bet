@@ -1,6 +1,10 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "envMode": "loose",
+  // Every context's core/adapters + the 3 apps each run a persistent "dev"
+  // watcher — comfortably above turbo's default concurrency of 10. Bumped
+  // with headroom for contexts still to come.
+  "concurrency": "30",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
