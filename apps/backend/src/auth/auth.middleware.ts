@@ -1,7 +1,8 @@
-import { HttpException, HttpStatus, Injectable, NestMiddleware } from '@nestjs/common'
+import { Injectable, NestMiddleware } from '@nestjs/common'
 import { NextFunction, Request, Response } from 'express'
 import { JwtPayload, UserDTO } from '@auth/adapters'
 import * as jwt from 'jsonwebtoken'
+import { UnauthorizedError, Errors } from 'shared'
 import { PrismaUserRepository } from './prisma-user-repository'
 
 export interface RequestWithUser extends Request {
@@ -20,16 +21,19 @@ export class AuthMiddleware implements NestMiddleware {
   async use(req: Request, _res: Response, next: NextFunction) {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '')
-      if (!token) throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED)
+      if (!token) UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
 
       const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload
 
       const user = await this.userRepository.findByIdQuery(payload.userId)
-      if (!user) throw new HttpException('User not found', HttpStatus.UNAUTHORIZED)
+      if (!user) UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
 
       ;(req as RequestWithUser).user = user
     } catch {
-      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED)
+      // Every failure (missing/expired/tampered token, unknown user) answers the
+      // SAME typed error, so the DomainExceptionFilter renders the standard
+      // { statusCode, errors: [{ code }] } envelope like the rest of the API.
+      UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
     }
     next()
   }

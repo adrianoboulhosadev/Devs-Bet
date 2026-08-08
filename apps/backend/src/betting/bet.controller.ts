@@ -22,6 +22,7 @@ import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
 import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
+import { requireFields } from '../shared/require-fields'
 
 // A combo leg's fixed odd, when nobody has backed that selection yet (so there
 // is no pool to derive an indicative odd from) — a neutral "evens" starting
@@ -95,6 +96,7 @@ export class BetController {
   @Post()
   @HttpCode(201)
   async place(@Body() input: PlaceBetInput, @authenticatedUser() user: UserDTO) {
+    requireFields(input, ['marketType', 'marketId', 'selectionId', 'stake'])
     const [{ marketOpen, selectionIds }, bettorSelfExcluded] = await Promise.all([
       this.resolveMarket(input),
       this.isSelfExcluded(user.id),
@@ -105,6 +107,8 @@ export class BetController {
   @Post('combo')
   @HttpCode(201)
   async placeCombo(@Body() input: PlaceComboBetInput, @authenticatedUser() user: UserDTO) {
+    requireFields(input, ['stake', 'legs'])
+    input.legs.forEach((leg) => requireFields(leg, ['marketType', 'marketId', 'selectionId']))
     const [legs, bettorSelfExcluded] = await Promise.all([
       Promise.all(
         input.legs.map(async (leg) => {

@@ -18,6 +18,7 @@ import { PrismaCategoryRepository } from '../category/prisma-category-repository
 import { PrismaParticipantRepository } from '../participant/prisma-participant-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
+import { requireFields } from '../shared/require-fields'
 
 // Betting window for a match created for a non-first bracket round: the previous
 // round has just settled, so the match opens now and auto-locks after this delay.
@@ -202,6 +203,7 @@ export class TournamentController {
   @HttpCode(201)
   @UseGuards(AdminGuard)
   async create(@Body() input: CreateTournamentInput, @authenticatedUser() user: UserDTO) {
+    requireFields(input, ['title', 'categoryId', 'scheduledAt', 'size', 'participantIds'])
     const actor = this.actor(user)
     const categoryIsLeaf = await this.resolveCategoryIsLeaf(input.categoryId)
     const participants = await this.resolveParticipants(input.participantIds)

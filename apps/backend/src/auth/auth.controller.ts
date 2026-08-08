@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, HttpException, HttpStatus, Post, Req, Res } from '@nestjs/common'
+import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common'
 import { Request, Response } from 'express'
+import { UnauthorizedError, Errors } from 'shared'
 import { LoginUserInput, RegisterUserInput, LoginWithGoogleInput, UserFacade } from '@auth/adapters'
 import { PrismaUserRepository } from './prisma-user-repository'
 import { PrismaAuthSessionRepository } from './prisma-auth-session-repository'
@@ -50,7 +51,7 @@ export class AuthController {
   @HttpCode(200)
   async refresh(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const currentToken = request.cookies?.['refreshToken']
-    if (!currentToken) throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED)
+    if (!currentToken) UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
 
     // Rotation: issue a new pair and update the cookie with the rotated refresh.
     const { accessToken, refreshToken } = await this.facade().refreshToken(

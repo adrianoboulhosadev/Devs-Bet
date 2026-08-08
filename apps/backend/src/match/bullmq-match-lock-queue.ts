@@ -29,8 +29,9 @@ export class BullMqMatchLockQueue implements MatchLockQueue, OnModuleDestroy {
     await this.queue.add(
       MATCH_LOCK_JOB,
       { matchId: command.matchId },
-      // A stable jobId de-duplicates re-scheduling for the same match.
-      { delay, jobId: `lock:${command.matchId}` },
+      // A stable jobId de-duplicates re-scheduling for the same match. BullMQ
+      // rejects a custom id containing ':' (its own key separator), hence '-'.
+      { delay, jobId: `lock-${command.matchId}` },
     )
   }
 

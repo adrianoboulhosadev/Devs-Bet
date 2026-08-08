@@ -13,6 +13,7 @@ import { AuthenticatedActor, NotFoundError, Errors } from 'shared'
 import { PrismaMatchRepository } from './prisma-match-repository'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
+import { requireFields } from '../shared/require-fields'
 import { BullMqSettlementQueue } from '../betting/bullmq-settlement-queue'
 import { BullMqMatchLockQueue } from './bullmq-match-lock-queue'
 import { PrismaCategoryRepository } from '../category/prisma-category-repository'
@@ -79,6 +80,7 @@ export class MatchController {
   @HttpCode(201)
   @UseGuards(AdminGuard)
   async create(@Body() input: CreateMatchInput, @authenticatedUser() user: UserDTO) {
+    requireFields(input, ['title', 'categoryId', 'scheduledAt', 'participantIds'])
     const categoryIsLeaf = await this.resolveCategoryIsLeaf(input.categoryId)
     const participants = await this.resolveParticipants(input.participantIds)
     await this.facade().createMatch(input, this.actor(user), categoryIsLeaf, participants)
