@@ -23,12 +23,16 @@ export default class UpdateParticipant extends AdminUseCase<Input, void> {
     const participant = await this.participantRepository.findById(participantId)
     if (!participant) NotFoundError.throwError(Errors.PARTICIPANT_NOT_FOUND, participantId)
 
+    const previousName = participant.name
     participant.edit({ name, nickname, imageUrl })
 
-    // The row still carries its OLD name in storage, so a hit here is a real
-    // clash with some other participant (never itself).
-    if (name !== undefined && (await this.participantRepository.existsByName(participant.name))) {
-      ConflictError.throwError(Errors.PARTICIPANT_ALREADY_EXISTS, participant.name)
+    // Only a name that actually CHANGED can clash. Re-sending the current name
+    // (editing just the nickname/image, which is what the form always does)
+    // would otherwise match this very row in storage and self-conflict.
+    if (participant.name !== previousName) {
+      if (await this.participantRepository.existsByName(participant.name)) {
+        ConflictError.throwError(Errors.PARTICIPANT_ALREADY_EXISTS, participant.name)
+      }
     }
 
     await this.participantRepository.update(participant)

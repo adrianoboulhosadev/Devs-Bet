@@ -58,6 +58,21 @@ test('admin renames a participant, keeping uniqueness', async () => {
   expect(repository.participants[1].name).toBe('Chovy Jeong')
 })
 
+test('re-sending the SAME name (editing only nickname/image) does not self-conflict', async () => {
+  const repository = new ParticipantRepositoryInMemory()
+  await new CreateParticipant(repository).execute({ name: 'Faker' }, admin)
+  const faker = repository.participants[0].id
+
+  // The edit form always resends `name`, so an unchanged name must be accepted.
+  await new UpdateParticipant(repository).execute(
+    { participantId: faker, name: 'Faker', nickname: 'Demon King' },
+    admin,
+  )
+
+  expect(repository.participants[0].name).toBe('Faker')
+  expect(repository.participants[0].nickname).toBe('Demon King')
+})
+
 test('updating a missing participant fails (PARTICIPANT_NOT_FOUND)', async () => {
   const repository = new ParticipantRepositoryInMemory()
   const update = new UpdateParticipant(repository).execute({ participantId: 'ghost', name: 'x' }, admin)
