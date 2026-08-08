@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import type { MatchDTO } from '@match/adapters'
 import type { MarketOddsDTO, BetDTO, OddsSnapshotDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
@@ -31,7 +31,6 @@ export function useMatchDetail(matchId: string) {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { categories, pathOf } = useCategories()
-  const [error, setError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
   const matchKey = ['match', matchId]
@@ -66,6 +65,31 @@ export function useMatchDetail(matchId: string) {
     refetchInterval: isOpen ? 5000 : false,
   })
 
+  // The live-odds endpoint only sees OPEN bets, so once the market settles it
+  // reports an empty pool. The closing pool is the last odds snapshot (all rows
+  // share the recordedAt of the bet that produced them) — see OddsSnapshotDTO.
+  const closingOdds = ((): MarketOddsDTO | undefined => {
+    const snapshots = oddsHistory.data
+    if (!snapshots?.length) return undefined
+    const lastRecordedAt = snapshots.reduce(
+      (latest, snapshot) => Math.max(latest, new Date(snapshot.recordedAt).getTime()),
+      0,
+    )
+    const closing = snapshots.filter(
+      (snapshot) => new Date(snapshot.recordedAt).getTime() === lastRecordedAt,
+    )
+    return {
+      marketId: matchId,
+      totalPool: closing[0]?.totalPool ?? 0,
+      entries: closing.map((snapshot) => ({
+        selectionId: snapshot.selectionId,
+        pool: snapshot.pool,
+        bettors: 0,
+        impliedOdd: snapshot.impliedOdd,
+      })),
+    }
+  })()
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: matchKey })
     queryClient.invalidateQueries({ queryKey: oddsKey })
@@ -87,19 +111,20 @@ export function useMatchDetail(matchId: string) {
     onSuccess: () => {
       betForm.reset()
       invalidate()
+      notify.success('Aposta confirmada.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível apostar.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível apostar.'),
   })
 
-  const onPlaceBet = betForm.handleSubmit((fields) => {
-    setError(null)
-    placeBet.mutate(fields)
-  })
+  const onPlaceBet = betForm.handleSubmit((fields) => placeBet.mutate(fields))
 
   const lock = useMutation({
     mutationFn: () => api.post(`/match/${matchId}/lock`),
-    onSuccess: invalidate,
-    onError: (failure) => setError(errorMessage(failure)),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Apostas travadas.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível travar as apostas.'),
   })
 
   // Records the winner of the match's next unit (map/leg/round/fight). A bestOf-1
@@ -107,14 +132,20 @@ export function useMatchDetail(matchId: string) {
   const recordUnitResult = useMutation({
     mutationFn: (winnerParticipantId: string | null) =>
       api.post(`/match/${matchId}/units`, { winnerParticipantId }),
-    onSuccess: invalidate,
-    onError: (failure) => setError(errorMessage(failure)),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Resultado registrado.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível registrar o resultado.'),
   })
 
   const cancel = useMutation({
     mutationFn: () => api.post(`/match/${matchId}/cancel`),
-    onSuccess: invalidate,
-    onError: (failure) => setError(errorMessage(failure)),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Partida cancelada — as apostas foram estornadas.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível cancelar a partida.'),
   })
 
   // Edit (admin, only while open): title / gameType / scheduledAt.
@@ -127,7 +158,6 @@ export function useMatchDetail(matchId: string) {
       categoryId: match.data.categoryId,
       scheduledAt: toDateTimeLocalValue(match.data.scheduledAt),
     })
-    setError(null)
     setIsEditing(true)
   }
 
@@ -141,24 +171,22 @@ export function useMatchDetail(matchId: string) {
     onSuccess: () => {
       setIsEditing(false)
       invalidate()
+      notify.success('Partida atualizada.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível salvar a partida.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível salvar a partida.'),
   })
 
-  const onEditSubmit = editForm.handleSubmit((fields) => {
-    setError(null)
-    update.mutate(fields)
-  })
+  const onEditSubmit = editForm.handleSubmit((fields) => update.mutate(fields))
 
   return {
     match: match.data,
-    odds: odds.data,
+    odds: isOpen ? odds.data : (closingOdds ?? odds.data),
+    marketClosed: !isOpen,
     oddsHistory: oddsHistory.data ?? [],
     book: book.data ?? [],
     loading: match.isLoading,
     isAdmin,
     isOpen,
-    error,
     betForm,
     onPlaceBet,
     placing: placeBet.isPending,

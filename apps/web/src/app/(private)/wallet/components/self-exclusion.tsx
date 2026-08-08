@@ -10,7 +10,6 @@ export function SelfExclusion() {
     loading,
     exclusion,
     isSelfExcluded,
-    error,
     period,
     setPeriod,
     confirmed,
@@ -51,8 +50,6 @@ export function SelfExclusion() {
           nem permanente pode ser desfeita.
         </p>
       </div>
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
         {SELF_EXCLUSION_PERIODS.map((option) => (

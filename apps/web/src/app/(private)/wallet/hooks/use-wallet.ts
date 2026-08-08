@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import QRCode from 'qrcode'
 import type { WalletDTO, PaymentDTO, DepositInstructions } from '@wallet/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 import { buildPixPayload } from '@/lib/pix'
 
@@ -28,7 +28,6 @@ type DepositStep = 'amount' | 'pay'
 
 export function useWallet() {
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const [depositStep, setDepositStep] = useState<DepositStep>('amount')
   const [depositAmountCents, setDepositAmountCents] = useState(0)
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
@@ -77,8 +76,9 @@ export function useWallet() {
       setDepositAmountCents(0)
       setQrDataUrl(null)
       invalidate()
+      notify.success('Depósito enviado. O saldo entra após o administrador conferir o comprovante.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível concluir o depósito.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível concluir o depósito.'),
   })
 
   const withdraw = useMutation({
@@ -86,17 +86,25 @@ export function useWallet() {
     onSuccess: () => {
       withdrawForm.reset()
       invalidate()
+      notify.success('Saque solicitado. O valor fica reservado até o administrador efetuar o pagamento.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível solicitar o saque.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível solicitar o saque.'),
   })
 
   const onChooseAmount = depositForm.handleSubmit(async (data) => {
-    setError(null)
     const cents = toCents(data.amount)
-    if (cents <= 0 || !instructions.data) return
+    if (cents <= 0) {
+      notify.error('Informe um valor maior que zero.')
+      return
+    }
+    if (!instructions.data) {
+      notify.error('Não foi possível carregar os dados do Pix. Tente de novo.')
+      return
+    }
 
     const payload = buildPixPayload({
       pixKey: instructions.data.pixKey,
+      pixKeyType: instructions.data.pixKeyType,
       beneficiaryName: instructions.data.beneficiaryName,
       beneficiaryCity: instructions.data.beneficiaryCity,
       amountCents: cents,
@@ -113,17 +121,15 @@ export function useWallet() {
   }
 
   const onConfirmDeposit = receiptForm.handleSubmit((data) => {
-    setError(null)
     const receipt = data.receipt?.[0]
     if (!receipt) {
-      setError('Envie o comprovante de pagamento para concluir o depósito.')
+      notify.error('Envie o comprovante de pagamento para concluir o depósito.')
       return
     }
     deposit.mutate(receipt)
   })
 
   const onWithdraw = withdrawForm.handleSubmit((data) => {
-    setError(null)
     withdraw.mutate(toCents(data.amount))
   })
 
@@ -132,7 +138,6 @@ export function useWallet() {
     payments: payments.data ?? [],
     instructions: instructions.data,
     loading: wallet.isLoading,
-    error,
     depositStep,
     depositAmountCents,
     qrDataUrl,

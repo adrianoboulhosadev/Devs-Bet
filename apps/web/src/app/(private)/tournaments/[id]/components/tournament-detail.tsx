@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Loading } from '@/components/loading'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/button'
@@ -9,13 +10,13 @@ import { useTournamentDetail } from '../hooks/use-tournament-detail'
 import { BracketSlotCard } from './bracket-slot-card'
 import { GroupStage } from './group-stage'
 import { OutrightCard } from './outright-card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 
 export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
   const {
     tournament,
     loading,
     isAdmin,
-    error,
     pathOf,
     roundCount,
     roundLabel,
@@ -24,6 +25,7 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
     declaring,
     cancel,
   } = useTournamentDetail(tournamentId)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (loading || !tournament) return <Loading />
 
@@ -60,8 +62,6 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
           className="max-h-64 w-full rounded-lg object-cover"
         />
       )}
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       {tournament.status === 'finished' && (
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -115,11 +115,23 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
       {canCancel && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
           <h2 className="mb-3 font-medium">Admin</h2>
-          <Button variant="danger" onClick={cancel}>
+          <Button variant="danger" onClick={() => setConfirmingCancel(true)}>
             Cancelar torneio
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Cancelar o torneio?"
+        description="Todas as apostas abertas (por confronto e no campeão) são estornadas. Não dá pra desfazer."
+        confirmLabel="Cancelar torneio"
+        onConfirm={() => {
+          cancel()
+          setConfirmingCancel(false)
+        }}
+        onCancel={() => setConfirmingCancel(false)}
+      />
     </div>
   )
 }

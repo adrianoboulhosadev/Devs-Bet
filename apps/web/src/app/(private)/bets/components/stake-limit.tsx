@@ -8,7 +8,7 @@ import { formatDateTime } from '@/lib/date'
 import { useStakeLimit } from '../hooks/use-stake-limit'
 
 export function StakeLimit() {
-  const { loading, limit, error, editing, startEditing, cancelEditing, form, onSubmit, saving } =
+  const { loading, limit, editing, startEditing, cancelEditing, form, onSubmit, saving } =
     useStakeLimit()
 
   if (loading) return <Loading />
@@ -22,8 +22,6 @@ export function StakeLimit() {
           bilhetes) nas últimas 24h. Diminuir vale na hora; aumentar só entra em vigor 24h depois.
         </p>
       </div>
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="flex items-center justify-between text-sm">
         <div>

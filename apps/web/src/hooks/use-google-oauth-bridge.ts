@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 
 /**
@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/auth-context'
  * same access/refresh contract as a normal login) and then discards NextAuth's
  * own session (signOut) — it never becomes the app's source of truth.
  */
-export function useGoogleOAuthBridge(onSuccess: () => void, onError: (message: string) => void) {
+export function useGoogleOAuthBridge(onSuccess: () => void) {
   const { data: session, status } = useSession()
   const { loginWithGoogle } = useAuth()
   const handled = useRef(false)
@@ -27,10 +27,10 @@ export function useGoogleOAuthBridge(onSuccess: () => void, onError: (message: s
         await loginWithGoogle(session.idToken!)
         onSuccess()
       } catch (failure) {
-        onError(errorMessage(failure, 'Não foi possível entrar com o Google.'))
+        notify.failure(failure, 'Não foi possível entrar com o Google.')
       } finally {
         await signOut({ redirect: false })
       }
     })()
-  }, [status, session, loginWithGoogle, onSuccess, onError])
+  }, [status, session, loginWithGoogle, onSuccess])
 }

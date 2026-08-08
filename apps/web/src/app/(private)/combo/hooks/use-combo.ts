@@ -8,7 +8,7 @@ import { MATCH_DRAW_SELECTION_ID } from '@match/adapters'
 import type { TournamentDTO } from '@tournament/adapters'
 import type { ComboBetDTO, ComboBetLegInput, BetMarketType, MarketOddsDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 
 // Neutral "evens" price the backend falls back to when nobody has backed a
@@ -39,7 +39,6 @@ interface StakeForm {
 
 export function useCombo() {
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const [legs, setLegs] = useState<SelectedLeg[]>([])
   const [pickedMarketKey, setPickedMarketKey] = useState('')
   const [pickedSelectionId, setPickedSelectionId] = useState('')
@@ -116,10 +115,9 @@ export function useCombo() {
   )
 
   const addLeg = () => {
-    setError(null)
     if (!pickedMarket || !pickedSelectionId) return
     if (legs.some((leg) => leg.marketId === pickedMarket.marketId)) {
-      setError('Você já tem uma seleção desta partida/torneio no bilhete.')
+      notify.error('Você já tem uma seleção desta partida/torneio no bilhete.')
       return
     }
     const selection = pickedMarket.selections.find((candidate) => candidate.id === pickedSelectionId)!
@@ -182,14 +180,14 @@ export function useCombo() {
       setLegs([])
       stakeForm.reset()
       invalidate()
+      notify.success('Bilhete confirmado.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível confirmar o bilhete.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível confirmar o bilhete.'),
   })
 
   const onSubmit = stakeForm.handleSubmit((fields) => {
-    setError(null)
     if (legs.length < 2) {
-      setError('Adicione pelo menos 2 seleções ao bilhete.')
+      notify.error('Adicione pelo menos 2 seleções ao bilhete.')
       return
     }
     placeCombo.mutate(fields)
@@ -197,7 +195,6 @@ export function useCombo() {
 
   return {
     loading: matches.isLoading || tournaments.isLoading,
-    error,
     pickableMarkets,
     pickedMarketKey,
     setPickedMarketKey: (key: string) => {

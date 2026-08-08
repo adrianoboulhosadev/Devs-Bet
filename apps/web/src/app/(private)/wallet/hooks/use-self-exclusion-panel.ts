@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { SelfExclusionPeriod } from '@wallet/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 
 export const SELF_EXCLUSION_PERIODS: { period: SelfExclusionPeriod; label: string }[] = [
@@ -17,20 +17,21 @@ export const SELF_EXCLUSION_PERIODS: { period: SelfExclusionPeriod; label: strin
 export function useSelfExclusionPanel() {
   const queryClient = useQueryClient()
   const { exclusion, isSelfExcluded, loading } = useSelfExclusion()
-  const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<SelfExclusionPeriod>('24h')
   const [confirmed, setConfirmed] = useState(false)
 
   const start = useMutation({
     mutationFn: () => api.post('/wallet/self-exclusion', { period }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['self-exclusion'] }),
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível iniciar a autoexclusão.')),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['self-exclusion'] })
+      notify.success('Autoexclusão iniciada.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível iniciar a autoexclusão.'),
   })
 
   const onSubmit = () => {
-    setError(null)
     if (!confirmed) {
-      setError('Confirme que você entende que essa ação não pode ser desfeita.')
+      notify.error('Confirme que você entende que essa ação não pode ser desfeita.')
       return
     }
     start.mutate()
@@ -40,7 +41,6 @@ export function useSelfExclusionPanel() {
     loading,
     exclusion,
     isSelfExcluded,
-    error,
     period,
     setPeriod,
     confirmed,

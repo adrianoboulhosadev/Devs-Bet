@@ -85,7 +85,7 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
                   disabled={declaring}
                   onClick={() => onDeclare(slot.matchId!, participant.id)}
                 >
-                  {participant.displayName} venceu{match.data!.bestOf > 1 ? ' o game' : ''}
+                  {participant.displayName} venceu{match.data!.bestOf > 1 ? ' a unidade' : ''}
                 </Button>
               ))}
             </div>

@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { MatchDTO, CreateMatchInput } from '@match/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
 import { useParticipants } from '@/hooks/use-participants'
@@ -44,7 +43,6 @@ export function useMatches() {
   const { isAdmin } = useAuth()
   const { categories, pathOf } = useCategories()
   const { participants } = useParticipants()
-  const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: MATCHES_KEY,
@@ -82,18 +80,18 @@ export function useMatches() {
     onSuccess: () => {
       form.reset(emptyForm)
       queryClient.invalidateQueries({ queryKey: MATCHES_KEY })
+      notify.success('Partida criada.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível criar a partida.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível criar a partida.'),
   })
 
   const onSubmit = form.handleSubmit((data) => {
-    setError(null)
     if (!data.categoryId) {
-      setError('Selecione a categoria (até o nível mais específico).')
+      notify.error('Selecione a categoria (até o nível mais específico).')
       return
     }
     if (data.participantIds.length < 2) {
-      setError('Escolha pelo menos dois participantes.')
+      notify.error('Escolha pelo menos dois participantes.')
       return
     }
     creation.mutate(data)
@@ -109,6 +107,5 @@ export function useMatches() {
     form,
     onSubmit,
     submitting: creation.isPending,
-    error,
   }
 }

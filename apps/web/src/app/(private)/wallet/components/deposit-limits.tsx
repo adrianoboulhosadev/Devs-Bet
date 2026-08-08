@@ -8,7 +8,7 @@ import { formatDateTime } from '@/lib/date'
 import { useDepositLimits, DEPOSIT_LIMIT_PERIODS } from '../hooks/use-deposit-limits'
 
 export function DepositLimits() {
-  const { loading, error, limitFor, editingPeriod, startEditing, cancelEditing, form, onSubmit, saving } =
+  const { loading, limitFor, editingPeriod, startEditing, cancelEditing, form, onSubmit, saving } =
     useDepositLimits()
 
   if (loading) return <Loading />
@@ -22,8 +22,6 @@ export function DepositLimits() {
           aumentar só entra em vigor 24h depois — assim você não sobe o próprio limite por impulso.
         </p>
       </div>
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <ul className="divide-y divide-slate-100">
         {DEPOSIT_LIMIT_PERIODS.map(({ period, label }) => {

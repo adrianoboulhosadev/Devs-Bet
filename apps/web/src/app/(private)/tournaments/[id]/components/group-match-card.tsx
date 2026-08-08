@@ -79,7 +79,7 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
                   disabled={declaring}
                   onClick={() => onDeclare(match.matchId!, participant.id)}
                 >
-                  {participant.displayName} venceu{liveMatch.data!.bestOf > 1 ? ' o game' : ''}
+                  {participant.displayName} venceu{liveMatch.data!.bestOf > 1 ? ' a unidade' : ''}
                 </Button>
               ))}
             </div>

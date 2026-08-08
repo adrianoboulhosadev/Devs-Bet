@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
 
@@ -18,7 +17,6 @@ export function useTournamentDetail(tournamentId: string) {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { pathOf } = useCategories()
-  const [error, setError] = useState<string | null>(null)
 
   const tournamentKey = ['tournament', tournamentId]
 
@@ -38,14 +36,20 @@ export function useTournamentDetail(tournamentId: string) {
   const declare = useMutation({
     mutationFn: ({ matchId, winnerParticipantId }: { matchId: string; winnerParticipantId: string }) =>
       api.post(`/tournament/${tournamentId}/matches/${matchId}/result`, { winnerParticipantId }),
-    onSuccess: invalidate,
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível declarar o vencedor.')),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Resultado registrado.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível declarar o vencedor.'),
   })
 
   const cancel = useMutation({
     mutationFn: () => api.post(`/tournament/${tournamentId}/cancel`),
-    onSuccess: invalidate,
-    onError: (failure) => setError(errorMessage(failure)),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Torneio cancelado — as apostas foram estornadas.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível cancelar o torneio.'),
   })
 
   const size = tournament.data?.size ?? 0
@@ -65,18 +69,15 @@ export function useTournamentDetail(tournamentId: string) {
     tournament: tournament.data,
     loading: tournament.isLoading,
     isAdmin,
-    error,
     pathOf,
     roundCount,
     roundLabel,
     championName,
     declareResult: (matchId: string, winnerParticipantId: string) => {
-      setError(null)
       declare.mutate({ matchId, winnerParticipantId })
     },
     declaring: declare.isPending,
     cancel: () => {
-      setError(null)
       cancel.mutate()
     },
   }

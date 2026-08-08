@@ -26,7 +26,7 @@ export function OutrightCard({
   open,
   championParticipantId,
 }: OutrightCardProps) {
-  const { odds, oddsHistory, form, onSubmit, placing, error } = useOutright(tournamentId, open)
+  const { odds, oddsHistory, form, onSubmit, placing } = useOutright(tournamentId, open)
   const { isSelfExcluded } = useSelfExclusion()
 
   const poolOf = (participantId: string) =>
@@ -70,7 +70,6 @@ export function OutrightCard({
         </p>
       ) : open ? (
         <form onSubmit={onSubmit} className="space-y-3 border-t border-slate-100 p-5">
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <label className="block space-y-1">
             <span className="text-sm font-medium">Campeão</span>
             <select

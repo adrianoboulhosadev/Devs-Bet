@@ -1,10 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories, CATEGORIES_KEY } from '@/hooks/use-categories'
 
@@ -17,10 +16,8 @@ export function useCategoriesAdmin() {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { categories, loading, pathOf } = useCategories()
-  const [error, setError] = useState<string | null>(null)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: CATEGORIES_KEY })
-  const fail = (failure: unknown, fallback: string) => setError(errorMessage(failure, fallback))
 
   const form = useForm<CreateFields>({ defaultValues: { name: '', parentId: '' } })
 
@@ -29,24 +26,30 @@ export function useCategoriesAdmin() {
     onSuccess: () => {
       form.reset({ name: '', parentId: '' })
       invalidate()
+      notify.success('Categoria criada.')
     },
-    onError: (failure) => fail(failure, 'Não foi possível criar a categoria.'),
+    onError: (failure) => notify.failure(failure, 'Não foi possível criar a categoria.'),
   })
 
   const rename = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => api.patch(`/category/${id}`, { name }),
-    onSuccess: invalidate,
-    onError: (failure) => fail(failure, 'Não foi possível renomear.'),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Categoria renomeada.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível renomear.'),
   })
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/category/${id}`),
-    onSuccess: invalidate,
-    onError: (failure) => fail(failure, 'Não foi possível excluir (só folhas sem filhos).'),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Categoria excluída.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível excluir a categoria.'),
   })
 
   const onSubmit = form.handleSubmit((data) => {
-    setError(null)
     create.mutate({ name: data.name.trim(), parentId: data.parentId || null })
   })
 
@@ -66,6 +69,5 @@ export function useCategoriesAdmin() {
     submitting: create.isPending,
     rename: (id: string, name: string) => rename.mutate({ id, name }),
     remove: (id: string) => remove.mutate(id),
-    error,
   }
 }

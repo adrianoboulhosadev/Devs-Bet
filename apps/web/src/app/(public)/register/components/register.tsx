@@ -7,7 +7,7 @@ import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { useRegister } from '../hooks/use-register'
 
 export function Register() {
-  const { form, error, onSubmit, submitting } = useRegister()
+  const { form, onSubmit, submitting } = useRegister()
   const {
     register,
     getValues,
@@ -21,8 +21,6 @@ export function Register() {
         className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
       >
         <h1 className="text-xl font-semibold">Criar conta</h1>
-
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <Field label="E-mail" type="email" required {...register('email')} />
         <Field label="Senha" type="password" required {...register('password')} />

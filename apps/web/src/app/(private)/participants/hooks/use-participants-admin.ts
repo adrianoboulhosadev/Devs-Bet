@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { CreateParticipantInput, UpdateParticipantInput } from '@participant/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useParticipants, PARTICIPANTS_KEY } from '@/hooks/use-participants'
 
@@ -28,10 +27,8 @@ export function useParticipantsAdmin() {
   const queryClient = useQueryClient()
   const { isAdmin } = useAuth()
   const { participants, loading } = useParticipants()
-  const [error, setError] = useState<string | null>(null)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: PARTICIPANTS_KEY })
-  const fail = (failure: unknown, fallback: string) => setError(errorMessage(failure, fallback))
 
   const form = useForm<CreateFields>({ defaultValues: emptyForm })
 
@@ -48,27 +45,31 @@ export function useParticipantsAdmin() {
     onSuccess: () => {
       form.reset(emptyForm)
       invalidate()
+      notify.success('Participante criado.')
     },
-    onError: (failure) => fail(failure, 'Não foi possível criar o participante.'),
+    onError: (failure) => notify.failure(failure, 'Não foi possível criar o participante.'),
   })
 
   const update = useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateParticipantInput }) =>
       api.patch(`/participant/${id}`, input),
-    onSuccess: invalidate,
-    onError: (failure) => fail(failure, 'Não foi possível editar.'),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Participante atualizado.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível editar o participante.'),
   })
 
   const remove = useMutation({
     mutationFn: (id: string) => api.delete(`/participant/${id}`),
-    onSuccess: invalidate,
-    onError: (failure) => fail(failure, 'Não foi possível excluir (já usado em alguma partida/torneio).'),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Participante excluído.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível excluir o participante.'),
   })
 
-  const onSubmit = form.handleSubmit((data) => {
-    setError(null)
-    create.mutate(data)
-  })
+  const onSubmit = form.handleSubmit((data) => create.mutate(data))
 
   return {
     isAdmin,
@@ -77,14 +78,7 @@ export function useParticipantsAdmin() {
     form,
     onSubmit,
     submitting: create.isPending,
-    updateParticipant: (id: string, input: UpdateParticipantInput) => {
-      setError(null)
-      update.mutate({ id, input })
-    },
-    remove: (id: string) => {
-      setError(null)
-      remove.mutate(id)
-    },
-    error,
+    updateParticipant: (id: string, input: UpdateParticipantInput) => update.mutate({ id, input }),
+    remove: (id: string) => remove.mutate(id),
   }
 }

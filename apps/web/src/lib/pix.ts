@@ -4,9 +4,37 @@
 
 interface PixPayloadInput {
   pixKey: string
+  // Decides how the key must be FORMATTED inside the payload (see normalizeKey).
+  pixKeyType: string
   beneficiaryName: string
   beneficiaryCity: string
   amountCents: number
+}
+
+/**
+ * Puts the key in the exact shape the Pix spec expects inside field 26-01 —
+ * banks resolve the key by an exact string match, so a phone typed as
+ * "21999552683" is simply not found ("destinatário inexistente"). Per the
+ * spec: phone in E.164 (+55 + DDD + number), CPF/CNPJ digits only, e-mail
+ * lowercase, and a random (EVP) key already comes as a UUID.
+ */
+function normalizeKey(pixKey: string, pixKeyType: string): string {
+  const key = pixKey.trim()
+  const digits = key.replace(/\D/g, '')
+
+  switch (pixKeyType.toLowerCase()) {
+    case 'phone':
+      // Accepts "21999552683", "5521999552683" or an already complete "+55…".
+      if (key.startsWith('+')) return `+${digits}`
+      return digits.startsWith('55') && digits.length > 11 ? `+${digits}` : `+55${digits}`
+    case 'cpf':
+    case 'cnpj':
+      return digits
+    case 'email':
+      return key.toLowerCase()
+    default:
+      return key
+  }
 }
 
 function tlv(id: string, value: string): string {
@@ -41,11 +69,15 @@ function crc16(payload: string): string {
 /** Builds the full BR Code string to encode in the QR (amount fixed, no reusable txid). */
 export function buildPixPayload({
   pixKey,
+  pixKeyType,
   beneficiaryName,
   beneficiaryCity,
   amountCents,
 }: PixPayloadInput): string {
-  const merchantAccountInfo = tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', pixKey))
+  const merchantAccountInfo = tlv(
+    '26',
+    tlv('00', 'br.gov.bcb.pix') + tlv('01', normalizeKey(pixKey, pixKeyType)),
+  )
   const additionalData = tlv('62', tlv('05', '***')) // no dynamic txid to reconcile by
 
   const payloadWithoutCrc =

@@ -16,7 +16,6 @@ export function Wallet() {
     payments,
     instructions,
     loading,
-    error,
     depositStep,
     depositAmountCents,
     qrDataUrl,
@@ -37,8 +36,6 @@ export function Wallet() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Carteira</h1>
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-5">

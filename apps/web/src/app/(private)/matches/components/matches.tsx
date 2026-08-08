@@ -12,7 +12,7 @@ import { mediaUrl } from '@/lib/media'
 import { useMatches, MATCH_BEST_OF_OPTIONS } from '../hooks/use-matches'
 
 export function Matches() {
-  const { isAdmin, matches, loading, categories, pathOf, participants, form, onSubmit, submitting, error } =
+  const { isAdmin, matches, loading, categories, pathOf, participants, form, onSubmit, submitting } =
     useMatches()
   const bestOf = form.watch('bestOf')
 
@@ -23,8 +23,6 @@ export function Matches() {
       {isAdmin && (
         <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
           <h2 className="font-medium">Criar partida</h2>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
           <Field label="Título" required {...form.register('title')} />
           <div className="space-y-1">
             <span className="text-sm font-medium">Categoria</span>

@@ -1,11 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { MarketOddsDTO, OddsSnapshotDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 
 interface OutrightBetFields {
@@ -20,7 +19,6 @@ interface OutrightBetFields {
  */
 export function useOutright(tournamentId: string, open: boolean) {
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const oddsKey = ['outright-odds', tournamentId]
 
   const odds = useQuery({
@@ -54,13 +52,13 @@ export function useOutright(tournamentId: string, open: boolean) {
       queryClient.invalidateQueries({ queryKey: oddsKey })
       queryClient.invalidateQueries({ queryKey: oddsHistoryKey })
       queryClient.invalidateQueries({ queryKey: ['wallet'] })
+      notify.success('Aposta no campeão confirmada.')
       queryClient.invalidateQueries({ queryKey: ['my-bets'] })
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível apostar no campeão.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível apostar no campeão.'),
   })
 
   const onSubmit = form.handleSubmit((fields) => {
-    setError(null)
     place.mutate(fields)
   })
 
@@ -70,6 +68,5 @@ export function useOutright(tournamentId: string, open: boolean) {
     form,
     onSubmit,
     placing: place.isPending,
-    error,
   }
 }

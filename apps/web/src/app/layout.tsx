@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import './globals.css'
 import { Providers } from '@/providers'
+import { Toaster } from '@/components/toaster'
 
 export const metadata: Metadata = {
   title: 'Devs-Bet',
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="pt-BR">
       <body>
         <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   )

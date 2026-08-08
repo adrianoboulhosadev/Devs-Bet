@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { DepositLimitDTO, DepositLimitPeriod } from '@wallet/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 
 const DEPOSIT_LIMITS_KEY = ['deposit-limits']
@@ -22,7 +22,6 @@ interface LimitForm {
 
 export function useDepositLimits() {
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const [editingPeriod, setEditingPeriod] = useState<DepositLimitPeriod | null>(null)
 
   const limits = useQuery({
@@ -40,24 +39,23 @@ export function useDepositLimits() {
       setEditingPeriod(null)
       form.reset()
       queryClient.invalidateQueries({ queryKey: DEPOSIT_LIMITS_KEY })
+      notify.success('Limite de depósito atualizado.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível salvar o limite.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível salvar o limite.'),
   })
 
   const limitFor = (period: DepositLimitPeriod) => limits.data?.find((limit) => limit.period === period) ?? null
 
   const startEditing = (period: DepositLimitPeriod, currentAmount: number | null) => {
-    setError(null)
     setEditingPeriod(period)
     form.reset({ amount: currentAmount ? String(currentAmount / 100).replace('.', ',') : '' })
   }
 
   const onSubmit = form.handleSubmit((fields) => {
-    setError(null)
     if (!editingPeriod) return
     const amount = toCents(fields.amount)
     if (amount <= 0) {
-      setError('Informe um valor maior que zero.')
+      notify.error('Informe um valor maior que zero.')
       return
     }
     setLimit.mutate({ period: editingPeriod, amount })
@@ -65,7 +63,6 @@ export function useDepositLimits() {
 
   return {
     loading: limits.isLoading,
-    error,
     limitFor,
     editingPeriod,
     startEditing,

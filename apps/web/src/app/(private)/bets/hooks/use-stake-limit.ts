@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { StakeLimitDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 
 const STAKE_LIMIT_KEY = ['stake-limit']
@@ -16,7 +16,6 @@ interface LimitForm {
 
 export function useStakeLimit() {
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
 
   const limit = useQuery({
@@ -33,21 +32,20 @@ export function useStakeLimit() {
       setEditing(false)
       form.reset()
       queryClient.invalidateQueries({ queryKey: STAKE_LIMIT_KEY })
+      notify.success('Limite de aposta atualizado.')
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível salvar o limite.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível salvar o limite.'),
   })
 
   const startEditing = () => {
-    setError(null)
     setEditing(true)
     form.reset({ amount: limit.data ? String(limit.data.amount / 100).replace('.', ',') : '' })
   }
 
   const onSubmit = form.handleSubmit((fields) => {
-    setError(null)
     const amount = toCents(fields.amount)
     if (amount <= 0) {
-      setError('Informe um valor maior que zero.')
+      notify.error('Informe um valor maior que zero.')
       return
     }
     setLimit.mutate(amount)
@@ -56,7 +54,6 @@ export function useStakeLimit() {
   return {
     loading: limit.isLoading,
     limit: limit.data,
-    error,
     editing,
     startEditing,
     cancelEditing: () => setEditing(false),

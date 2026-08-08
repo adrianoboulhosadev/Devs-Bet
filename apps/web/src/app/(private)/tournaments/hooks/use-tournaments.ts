@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { TournamentDTO, CreateTournamentInput } from '@tournament/adapters'
 import { api } from '@/lib/api'
-import { errorMessage } from '@/lib/api/errors'
+import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
 import { useParticipants } from '@/hooks/use-participants'
@@ -62,7 +62,6 @@ export function useTournaments() {
   const { isAdmin } = useAuth()
   const { categories, pathOf } = useCategories()
   const { participants } = useParticipants()
-  const [error, setError] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: TOURNAMENTS_KEY,
@@ -123,19 +122,19 @@ export function useTournaments() {
     onSuccess: (created) => {
       form.reset(emptyForm())
       queryClient.invalidateQueries({ queryKey: TOURNAMENTS_KEY })
+      notify.success('Torneio criado.')
       router.push(`/tournaments/${created.id}`)
     },
-    onError: (failure) => setError(errorMessage(failure, 'Não foi possível criar o torneio.')),
+    onError: (failure) => notify.failure(failure, 'Não foi possível criar o torneio.'),
   })
 
   const onSubmit = form.handleSubmit((data) => {
-    setError(null)
     if (!data.categoryId) {
-      setError('Selecione a categoria (até o nível mais específico).')
+      notify.error('Selecione a categoria (até o nível mais específico).')
       return
     }
     if (data.participantIds.length !== data.size) {
-      setError(`Escolha exatamente ${data.size} participantes.`)
+      notify.error(`Escolha exatamente ${data.size} participantes.`)
       return
     }
     creation.mutate(data)
@@ -153,6 +152,5 @@ export function useTournaments() {
     roundLabel,
     onSubmit,
     submitting: creation.isPending,
-    error,
   }
 }

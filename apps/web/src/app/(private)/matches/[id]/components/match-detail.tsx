@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { StatusBadge } from '@/components/status-badge'
@@ -9,6 +10,7 @@ import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { CategoryPicker } from '@/components/category-picker'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useMatchDetail, MATCH_DRAW_SELECTION_ID } from '../hooks/use-match-detail'
 
@@ -21,7 +23,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     loading,
     isAdmin,
     isOpen,
-    error,
+    marketClosed,
     betForm,
     onPlaceBet,
     placing,
@@ -38,6 +40,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     pathOf,
   } = useMatchDetail(matchId)
   const { isSelfExcluded } = useSelfExclusion()
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (loading || !match) return <Loading />
 
@@ -79,8 +82,6 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         />
       )}
 
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
       {match.status === 'settled' && (
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           {match.winnerParticipantId === null ? (
@@ -102,12 +103,12 @@ export function MatchDetail({ matchId }: { matchId: string }) {
             </span>
           </div>
           {match.units.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-slate-500">Nenhum game disputado ainda.</p>
+            <p className="px-5 py-4 text-sm text-slate-500">Nenhuma unidade disputada ainda.</p>
           ) : (
             <ul className="divide-y divide-slate-100">
               {match.units.map((unit) => (
                 <li key={unit.unitNumber} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span>Game {unit.unitNumber}</span>
+                  <span>Unidade {unit.unitNumber}</span>
                   <span className="font-medium">{selectionLabel(unit.winnerParticipantId ?? '')}</span>
                 </li>
               ))}
@@ -118,7 +119,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
 
       <div className="rounded-lg border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <h2 className="font-medium">Odds ao vivo</h2>
+          <h2 className="font-medium">{marketClosed ? 'Odds finais' : 'Odds ao vivo'}</h2>
           <span className="text-sm text-slate-500">Pool total: {formatBRL(odds?.totalPool ?? 0)}</span>
         </div>
         <ul className="divide-y divide-slate-100">
@@ -186,7 +187,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
             )}
             {match.status === 'locked' && match.bestOf > 1 && (
               <span className="w-full text-sm text-slate-500">
-                Vencedor do game {nextUnitNumber}:
+                Vencedor da unidade {nextUnitNumber}:
               </span>
             )}
             {match.status === 'locked' &&
@@ -200,7 +201,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
                 Empate
               </Button>
             )}
-            <Button variant="danger" onClick={cancel}>
+            <Button variant="danger" onClick={() => setConfirmingCancel(true)}>
               Cancelar partida
             </Button>
           </div>
@@ -254,6 +255,18 @@ export function MatchDetail({ matchId }: { matchId: string }) {
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmingCancel}
+        title="Cancelar a partida?"
+        description="Todas as apostas abertas são estornadas para as carteiras. Não dá pra desfazer."
+        confirmLabel="Cancelar partida"
+        onConfirm={() => {
+          cancel()
+          setConfirmingCancel(false)
+        }}
+        onCancel={() => setConfirmingCancel(false)}
+      />
     </div>
   )
 }

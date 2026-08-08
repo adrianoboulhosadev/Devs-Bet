@@ -11,7 +11,6 @@ import { useCombo } from '../hooks/use-combo'
 export function Combo() {
   const {
     loading,
-    error,
     pickableMarkets,
     pickedMarketKey,
     setPickedMarketKey,
@@ -44,8 +43,6 @@ export function Combo() {
           derruba o bilhete inteiro.
         </p>
       </div>
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       {isSelfExcluded && (
         <p className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-600">
@@ -100,7 +97,9 @@ export function Combo() {
       </div>
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="font-medium">Bilhete ({legs.length} seleções)</h2>
+        <h2 className="font-medium">
+          Bilhete ({legs.length} {legs.length === 1 ? 'seleção' : 'seleções'})
+        </h2>
 
         {legs.length === 0 ? (
           <p className="text-sm text-slate-500">Adicione pelo menos 2 seleções para montar o bilhete.</p>
