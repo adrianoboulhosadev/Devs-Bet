@@ -59,9 +59,12 @@ test('one leg loses -> ticket is lost immediately, even with a leg still pending
   expect(combo.status).toBe('lost')
   expect(combo.payout.cents).toBe(0)
 
-  // m2 never resolves (the market it's on could settle later) - stays a no-op.
+  // m2 settling later only records ITS OWN outcome (bookkeeping, so the ticket
+  // history never shows a leg stuck on "pending") — the ticket stays lost.
   combo.resolveLeg('m2', 'won')
   expect(combo.status).toBe('lost')
+  expect(combo.payout.cents).toBe(0)
+  expect(combo.legs.map((leg) => leg.result)).toEqual(['lost', 'won'])
 })
 
 test('a void leg refunds the whole ticket once every leg is resolved', () => {

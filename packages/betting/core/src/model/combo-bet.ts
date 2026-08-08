@@ -67,14 +67,18 @@ export class ComboBet extends Entity<ComboBet, ComboBetProps> {
    *    refunds the ticket in full — a simplification: the leg is not stripped
    *    out and the odd is not recalculated, unlike some real sportsbooks;
    *  - otherwise (every leg won) the ticket pays `stake * totalOdd`.
-   * No-op once the ticket already settled, or if no pending leg matches
-   * `marketId` — safe to call more than once (idempotent, like AutoLockMatch).
+   * No-op if no pending leg matches `marketId` — safe to call more than once
+   * (idempotent, like AutoLockMatch). When the ticket has ALREADY settled (a
+   * previous leg killed it), the leg's own outcome is still recorded — it is
+   * just bookkeeping so the ticket's history reads truthfully instead of
+   * leaving that leg "pending" forever — but the ticket's status/payout are
+   * final and no money moves.
    */
   resolveLeg(marketId: string, outcome: 'won' | 'lost' | 'void'): void {
-    if (this.status !== 'open') return
     const leg = this.legs.find((candidate) => candidate.marketId === marketId && candidate.isPending)
     if (!leg) return
     leg.resolve(outcome)
+    if (this.status !== 'open') return
 
     if (this.legs.some((candidate) => candidate.result === 'lost')) {
       this.status = 'lost'
