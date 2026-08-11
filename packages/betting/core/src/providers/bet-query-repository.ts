@@ -9,6 +9,8 @@ export interface BetQueryRepository {
   // Settled bets (won/lost/refunded) across every market, for the leaderboard
   // read model (LeaderboardCalculator).
   findSettledBets(): Promise<Bet[]>
+  // Settled bets (won/lost/refunded) for ONE bettor — the XP/level read model.
+  findSettledBetsByBettor(bettorId: string): Promise<Bet[]>
   listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]>
   // Every odds snapshot recorded for a market (chronological), for the
   // odds-history chart.
