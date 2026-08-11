@@ -182,6 +182,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 - **auth** — identidade/credencial. `User` (com `role`: `user`/`admin`), `AuthSession`. JWT access 15m +
   refresh 7d **stateful** (rotação + detecção de reuso). VOs: `Email`, `StrongPassword`, `PasswordHash`.
+  `User` também guarda `nickname`/`avatarUrl` (ambos `string | null`, sem VO — mesmo padrão solto do
+  `Participant.nickname`/`imageUrl`): **display-only**, nunca usados pra autenticar (login continua por
+  e-mail). Editáveis via `PATCH /user/me` (`UpdateProfile`, use-case simples que carrega o `User` e
+  chama `user.editProfile(...)`); o avatar é upload self-service (`POST /upload/avatars`, mesmo padrão do
+  de comprovante — só `image/*`, 5 MB) que devolve a URL pro front então gravar com o PATCH.
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
   `Payment` (depósito/saque). Porta `PaymentGateway` (adapter manual/admin-confirmado). Endpoints admin
   para confirmar depósito e efetivar saque. **Depósito é um wizard de 2 passos no front**: (1) o usuário
@@ -270,8 +275,10 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `GET /bet/match/:id/odds/history` e `GET /bet/tournament/:id/odds/history`. Front
   (`components/odds-history-chart.tsx`, reaproveitado por partida e outright): gráfico **em degrau** (odd só
   muda quando alguém aposta, então a linha fica reta entre pontos e "pula" a cada evento) via SVG puro (sem
-  lib nova), paleta categórica validada da skill de dataviz (8 cores, só modo claro — o app não tem tema
-  escuro), com legenda, crosshair+tooltip no hover e alternância pra tabela (acessibilidade). **Cap de 8
+  lib nova), paleta categórica de 8 cores neon (as mesmas do tema retrô-arcade — validada com o script da
+  skill de dataviz contra o fundo escuro do card: CVD/contraste/chroma passam, só o check de "faixa de
+  luminosidade" falha, porque neon-sobre-preto é o visual pedido, não uma falha de acessibilidade), com
+  legenda, crosshair+tooltip no hover e alternância pra tabela (acessibilidade). **Cap de 8
   séries**: mercados com mais seleções que isso (ex.: outright de torneio de 32) mostram só as **mais
   apostadas** (maior pool), com aviso de quantas ficaram de fora — 32 linhas coloridas seria ilegível.
   **Ranking de apostadores**: domain service `LeaderboardCalculator.calculate(bets, limit)` (puro/estático,
@@ -285,6 +292,25 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (não é admin-only, é vitrine pública do produto) — `GET /bet/leaderboard?limit=N` (default 10). O front
   (`app/(private)/leaderboard`) mostra o id do apostador **truncado** (8 chars, igual ao painel admin de
   pagamentos) — nunca o e-mail, pra não expor dado pessoal numa tela que qualquer usuário vê.
+  **Nível/XP do apostador**: domain service `LevelCalculator` (`core/src/domain-services`, puro/estático,
+  mesmo molde do `LeaderboardCalculator`/`OddsCalculator`) dá XP só em apostas **vencidas** (`lost`/`open`/
+  `refunded` não contam — mesmo critério do leaderboard): `xpForWin(legs) = round(10 × legs^1.3)` — uma
+  simples é `legs=1` (10 XP); uma múltipla de N pernas usa `legs = ComboBet.legs.length` (2 pernas = 25 XP,
+  3 = 42 XP, 4 = 61 XP) — cresce **mais que linear** porque a odd de uma múltipla já multiplica o risco por
+  perna, então o XP acompanha. Nível sobe numa curva progressiva, não fixa: XP acumulado pra **chegar** no
+  nível N é `100 × (N−1) × N / 2` (nível 1 = 0 XP, nível 2 = 100, nível 3 = 300, nível 4 = 600, ...) — cada
+  nível pede mais XP que o anterior. `LevelCalculator.calculate(simpleBets, combos)` devolve
+  `ProfileStatsDTO { wins, losses, xp, level, xpIntoLevel, xpToNextLevel }`; roda **ao vivo** a cada leitura
+  (nenhuma settled bet é apagada, então não precisa persistir XP em lugar nenhum — igual o leaderboard).
+  Porta nova `BetQueryRepository.findSettledBetsByBettor(bettorId)` (versão de `findSettledBets()` filtrada
+  por um bettor) + a já existente `listComboBetsByBettorQuery`. `GetMyProfileStatsQuery` (betting, read-only)
+  chama as duas portas e o domain service. A rota composta `GET /user/me/profile` (em `apps/backend/src/user`,
+  não em `apps/backend/src/betting`) monta o DTO final cruzando **auth** (id/e-mail/nickname/avatarUrl/
+  createdAt, já vem pronto do `@authenticatedUser()` — é um `UserDTO` fresco, ver seção auth) com **betting**
+  (`BettingFacade.getMyProfileStats`) — mesma orquestração cross-context na camada de app que o `PlaceBet`
+  já faz, só que de leitura. O shape composto (`ProfileDTO`) não pertence a nenhum `@ctx/adapters` — é
+  local ao controller, e o front espelha o tipo à mão (não tem de onde importar). O bloco de usuário do
+  front (sidebar + página de perfil) consome essa rota pra mostrar "nível N" e a barra de XP.
   **Bilhete múltiplo (combo/parlay) — odds FIXAS**: `ComboBet` + `ComboLeg` (entidades ricas, `core/src/model`)
   são um mecanismo **paralelo** ao parimutuel de cima — pedido explícito do usuário de reproduzir "o mesmo
   cálculo que as casas de apostas usam" (multiplicar odds), o que é **incompatível** com o parimutuel (cujo
@@ -401,7 +427,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 ## Rotas HTTP
 
 - **Nomes de rota em INGLÊS** (kebab-case). Ex.: `auth/{register,login,refresh}`,
-  `user/{me,change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`,
+  `user/me` (GET devolve a identidade básica; PATCH edita nickname/avatarUrl), `user/me/profile`
+  (GET, cross-context — vitrine de perfil com nível/XP e vitórias/derrotas),
+  `user/{change-password,logout,deactivate}`, `wallet/{me,deposit,withdraw}`,
   `wallet/deposit-limits` (GET lista os próprios; POST define/ajusta — jogo responsável),
   `wallet/self-exclusion` (GET consulta a autoexclusão ativa; POST inicia — jogo responsável),
   `match` (`/`, `/:id`
@@ -417,7 +445,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
   `admin/{deposits,withdrawals}`,
-  `upload/{matchs [admin], receipts [usuário autenticado], participants [admin]}`.
+  `upload/{matchs [admin], receipts [usuário autenticado], participants [admin], avatars [usuário
+  autenticado]}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
