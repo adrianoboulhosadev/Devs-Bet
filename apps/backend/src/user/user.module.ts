@@ -3,10 +3,12 @@ import { DbModule } from '../db/db.module'
 import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
 import { UserController } from './user.controller'
+import { PrismaBetQueryRepository } from '../betting/prisma-bet-query-repository'
 
 @Module({
   imports: [DbModule, AuthModule],
   controllers: [UserController],
+  providers: [PrismaBetQueryRepository],
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

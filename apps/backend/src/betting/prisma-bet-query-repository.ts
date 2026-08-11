@@ -70,6 +70,11 @@ export class PrismaBetQueryRepository implements BetQueryRepository, StakeLimitQ
     return rows.map((row) => this.toEntity(row))
   }
 
+  async findSettledBetsByBettor(bettorId: string): Promise<Bet[]> {
+    const rows = await this.prisma.bet.findMany({ where: { bettorId, status: { not: 'open' } } })
+    return rows.map((row) => this.toEntity(row))
+  }
+
   async listComboBetsByBettorQuery(bettorId: string): Promise<ComboBetDTO[]> {
     const rows = await this.prisma.comboBet.findMany({
       where: { bettorId },

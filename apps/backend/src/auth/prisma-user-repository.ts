@@ -15,6 +15,8 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
     password: string | null
     role: string
     active: boolean
+    nickname: string | null
+    avatarUrl: string | null
   }): User {
     return new User({
       id: row.id,
@@ -22,6 +24,8 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
       password: row.password ?? undefined,
       role: row.role as Role,
       active: row.active,
+      nickname: row.nickname,
+      avatarUrl: row.avatarUrl,
     })
   }
 
@@ -33,6 +37,8 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
         password: user.password?.value ?? null,
         role: user.role,
         active: user.active,
+        nickname: user.nickname,
+        avatarUrl: user.avatarUrl,
         // createdAt/lastLoginAt are infra: the DB handles them (default/update).
       },
     })
@@ -60,6 +66,13 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
     await this.prisma.user.update({ where: { id }, data: { active: false } })
   }
 
+  async updateProfile(
+    id: string,
+    fields: { nickname?: string | null; avatarUrl?: string | null },
+  ): Promise<void> {
+    await this.prisma.user.update({ where: { id }, data: fields })
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.user.delete({ where: { id } })
   }
@@ -68,7 +81,16 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
   async findByIdQuery(id: string): Promise<UserDTO | null> {
     const row = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true, role: true, active: true, createdAt: true, lastLoginAt: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        active: true,
+        nickname: true,
+        avatarUrl: true,
+        createdAt: true,
+        lastLoginAt: true,
+      },
     })
     return row ? { ...row, role: row.role as Role } : null
   }
