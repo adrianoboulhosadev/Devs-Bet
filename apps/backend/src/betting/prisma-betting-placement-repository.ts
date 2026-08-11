@@ -2,16 +2,19 @@ import { Injectable } from '@nestjs/common'
 import {
   BettingPlacementRepository,
   ComboBettingPlacementRepository,
+  BetCancellationRepository,
   StakeLimitRepository,
   Bet,
   BetMarketType,
   BetStatus,
   ComboBet,
+  ComboLegResult,
   StakeLimit,
   OddsCalculator,
 } from '@betting/adapters'
 import { Wallet } from '@wallet/adapters'
 import { PrismaService } from '../db/prisma.service'
+import { inMoneyTransaction } from '../shared/money-transaction'
 
 /**
  * Places a bet ATOMICALLY (cross-context): in a single `$transaction` it reserves
@@ -23,12 +26,16 @@ import { PrismaService } from '../db/prisma.service'
  */
 @Injectable()
 export class PrismaBettingPlacementRepository
-  implements BettingPlacementRepository, ComboBettingPlacementRepository, StakeLimitRepository
+  implements
+    BettingPlacementRepository,
+    ComboBettingPlacementRepository,
+    BetCancellationRepository,
+    StakeLimitRepository
 {
   constructor(private readonly prisma: PrismaService) {}
 
   async placeBet(bet: Bet): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await inMoneyTransaction(this.prisma, async (tx) => {
       const walletRow = await tx.wallet.findUnique({ where: { userId: bet.bettorId } })
       const wallet = walletRow
         ? new Wallet({
@@ -74,39 +81,12 @@ export class PrismaBettingPlacementRepository
         },
       })
 
-      // Odds-history point: this bet just moved the market's pool, so record
-      // where every selection's implied odd stands right now (combo legs never
-      // reach here — they don't touch this pool).
-      const openBetRows = await tx.bet.findMany({ where: { marketId: bet.marketId, status: 'open' } })
-      const openBets = openBetRows.map(
-        (row) =>
-          new Bet({
-            id: row.id,
-            marketType: row.marketType as BetMarketType,
-            marketId: row.marketId,
-            bettorId: row.bettorId,
-            selectionId: row.selectionId,
-            stake: row.stake,
-            status: row.status as BetStatus,
-            payout: row.payout,
-            settledAt: row.settledAt,
-          }),
-      )
-      const odds = OddsCalculator.calculate(bet.marketId, openBets)
-      await tx.oddsSnapshot.createMany({
-        data: odds.entries.map((entry) => ({
-          marketId: bet.marketId,
-          selectionId: entry.selectionId,
-          pool: entry.pool,
-          totalPool: odds.totalPool,
-          impliedOdd: entry.impliedOdd,
-        })),
-      })
+      await this.recordOddsSnapshot(tx, bet.marketId)
     })
   }
 
   async placeCombo(combo: ComboBet): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    await inMoneyTransaction(this.prisma, async (tx) => {
       const walletRow = await tx.wallet.findUnique({ where: { userId: combo.bettorId } })
       const wallet = walletRow
         ? new Wallet({
@@ -159,6 +139,155 @@ export class PrismaBettingPlacementRepository
           referenceId: combo.id.value,
         },
       })
+    })
+  }
+
+  // Odds-history point: the market's pool just moved (a bet came in, or one was
+  // cancelled), so record where every selection's implied odd stands right now.
+  // Combo legs never reach here — they don't touch this pool.
+  private async recordOddsSnapshot(
+    tx: Parameters<Parameters<typeof inMoneyTransaction>[1]>[0],
+    marketId: string,
+  ): Promise<void> {
+    const openBetRows = await tx.bet.findMany({ where: { marketId, status: 'open' } })
+    const openBets = openBetRows.map(
+      (row) =>
+        new Bet({
+          id: row.id,
+          marketType: row.marketType as BetMarketType,
+          marketId: row.marketId,
+          bettorId: row.bettorId,
+          selectionId: row.selectionId,
+          stake: row.stake,
+          status: row.status as BetStatus,
+          payout: row.payout,
+          settledAt: row.settledAt,
+        }),
+    )
+    const odds = OddsCalculator.calculate(marketId, openBets)
+    await tx.oddsSnapshot.createMany({
+      data: odds.entries.map((entry) => ({
+        marketId,
+        selectionId: entry.selectionId,
+        pool: entry.pool,
+        totalPool: odds.totalPool,
+        impliedOdd: entry.impliedOdd,
+      })),
+    })
+  }
+
+  async findBetById(betId: string): Promise<Bet | null> {
+    const row = await this.prisma.bet.findUnique({ where: { id: betId } })
+    return row
+      ? new Bet({
+          id: row.id,
+          marketType: row.marketType as BetMarketType,
+          marketId: row.marketId,
+          bettorId: row.bettorId,
+          selectionId: row.selectionId,
+          stake: row.stake,
+          status: row.status as BetStatus,
+          payout: row.payout,
+          settledAt: row.settledAt,
+        })
+      : null
+  }
+
+  // Mirror image of placeBet: give the stake back, mark the bet refunded, write
+  // the ledger line and re-snapshot the odds (the bet just left the pool).
+  async cancelBet(bet: Bet): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      const walletRow = await tx.wallet.findUnique({ where: { userId: bet.bettorId } })
+      if (walletRow) {
+        const wallet = new Wallet({
+          id: walletRow.id,
+          userId: walletRow.userId,
+          balance: walletRow.balance,
+          held: walletRow.held,
+        })
+        wallet.release(bet.stake)
+        await tx.wallet.update({
+          where: { userId: bet.bettorId },
+          data: { balance: wallet.balance.cents, held: wallet.held.cents },
+        })
+        await tx.ledgerEntry.create({
+          data: {
+            walletId: wallet.id.value,
+            type: 'refund',
+            amount: bet.stake.cents,
+            referenceId: bet.id.value,
+          },
+        })
+      }
+
+      await tx.bet.update({
+        where: { id: bet.id.value },
+        data: { status: bet.status, payout: bet.payout.cents, settledAt: bet.settledAt },
+      })
+
+      await this.recordOddsSnapshot(tx, bet.marketId)
+    })
+  }
+
+  async findComboBetById(comboBetId: string): Promise<ComboBet | null> {
+    const row = await this.prisma.comboBet.findUnique({
+      where: { id: comboBetId },
+      include: { legs: true },
+    })
+    return row
+      ? new ComboBet({
+          id: row.id,
+          bettorId: row.bettorId,
+          stake: row.stake,
+          status: row.status as BetStatus,
+          payout: row.payout,
+          settledAt: row.settledAt,
+          legs: row.legs.map((leg) => ({
+            id: leg.id,
+            comboBetId: leg.comboBetId,
+            marketType: leg.marketType as BetMarketType,
+            marketId: leg.marketId,
+            selectionId: leg.selectionId,
+            odd: leg.odd,
+            result: leg.result as ComboLegResult,
+          })),
+        })
+      : null
+  }
+
+  // A cancelled ticket never touched any pool, so there is no snapshot to redo.
+  async cancelCombo(combo: ComboBet): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      const walletRow = await tx.wallet.findUnique({ where: { userId: combo.bettorId } })
+      if (walletRow) {
+        const wallet = new Wallet({
+          id: walletRow.id,
+          userId: walletRow.userId,
+          balance: walletRow.balance,
+          held: walletRow.held,
+        })
+        wallet.release(combo.stake)
+        await tx.wallet.update({
+          where: { userId: combo.bettorId },
+          data: { balance: wallet.balance.cents, held: wallet.held.cents },
+        })
+        await tx.ledgerEntry.create({
+          data: {
+            walletId: wallet.id.value,
+            type: 'refund',
+            amount: combo.stake.cents,
+            referenceId: combo.id.value,
+          },
+        })
+      }
+
+      await tx.comboBet.update({
+        where: { id: combo.id.value },
+        data: { status: combo.status, payout: combo.payout.cents, settledAt: combo.settledAt },
+      })
+      for (const leg of combo.legs) {
+        await tx.comboLeg.update({ where: { id: leg.id.value }, data: { result: leg.result } })
+      }
     })
   }
 

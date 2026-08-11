@@ -51,6 +51,7 @@ export class BetController {
       this.placementRepository,
       this.placementRepository,
       this.betQueryRepository,
+      this.placementRepository,
     )
   }
 
@@ -120,6 +121,32 @@ export class BetController {
       this.isSelfExcluded(user.id),
     ])
     await this.facade().placeComboBet(input.stake, legs, user.id, bettorSelfExcluded)
+  }
+
+  // Cancelling one's OWN wager. The bettorId comes from the token, and whether
+  // the market still accepts bets is resolved here (betting imports neither
+  // match nor tournament) — exactly like placing.
+  @Post(':id/cancel')
+  @HttpCode(204)
+  async cancel(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
+    // Read the bet only to learn WHICH market to ask about; ownership and status
+    // are the use case's calls (a missing bet just answers BET_NOT_FOUND there).
+    const bet = await this.placementRepository.findBetById(id)
+    const marketOpen = bet ? (await this.resolveMarket(bet)).marketOpen : false
+    await this.facade().cancelBet(id, user.id, marketOpen)
+  }
+
+  // A ticket spans several markets: it can only be called off while EVERY one of
+  // them is still open.
+  @Post('combo/:id/cancel')
+  @HttpCode(204)
+  async cancelCombo(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
+    const combo = await this.placementRepository.findComboBetById(id)
+    const markets = combo
+      ? await Promise.all(combo.legs.map((leg) => this.resolveMarket(leg)))
+      : []
+    const allMarketsOpen = markets.length > 0 && markets.every((market) => market.marketOpen)
+    await this.facade().cancelComboBet(id, user.id, allMarketsOpen)
   }
 
   @Get('mine')

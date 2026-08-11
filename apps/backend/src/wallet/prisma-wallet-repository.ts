@@ -19,6 +19,7 @@ import {
   PaymentStatus,
 } from '@wallet/adapters'
 import { PrismaService } from '../db/prisma.service'
+import { inMoneyTransaction } from '../shared/money-transaction'
 
 @Injectable()
 export class PrismaWalletRepository
@@ -119,10 +120,33 @@ export class PrismaWalletRepository
     })
   }
 
-  async saveWithdrawalRequest(wallet: Wallet, payment: Payment): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.wallet.upsert(this.walletUpsert(wallet)),
-      this.prisma.payment.create({
+  // Loads the bettor's wallet INSIDE the given transaction (provisioning an
+  // empty one when the user never had it), so the domain method that follows
+  // decides on a balance nobody else can be writing at the same time.
+  private async loadWalletForUpdate(
+    tx: Parameters<Parameters<typeof inMoneyTransaction>[1]>[0],
+    userId: string,
+  ): Promise<Wallet> {
+    const row = await tx.wallet.findUnique({ where: { userId } })
+    return row ? this.reconstituteWallet(row) : new Wallet({ userId })
+  }
+
+  private ledgerFor(wallet: Wallet, payment: Payment, type: 'deposit' | 'withdrawal'): LedgerEntry {
+    return new LedgerEntry({
+      walletId: wallet.id.value,
+      type,
+      amount: payment.amount.cents,
+      referenceId: payment.id.value,
+    })
+  }
+
+  async holdForWithdrawal(payment: Payment): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      const wallet = await this.loadWalletForUpdate(tx, payment.userId)
+      wallet.hold(payment.amount) // raises INSUFFICIENT_BALANCE, aborting the transaction
+
+      await tx.wallet.upsert(this.walletUpsert(wallet))
+      await tx.payment.create({
         data: {
           id: payment.id.value,
           userId: payment.userId,
@@ -132,31 +156,42 @@ export class PrismaWalletRepository
           referenceCode: payment.referenceCode,
           receiptUrl: payment.receiptUrl,
         },
-      }),
-    ])
+      })
+    })
   }
 
-  async confirmDeposit(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.wallet.upsert(this.walletUpsert(wallet)),
-      this.prisma.ledgerEntry.create({ data: this.ledgerData(entry) }),
-      this.prisma.payment.update(this.paymentUpdate(payment)),
-    ])
+  async applyDepositConfirmation(payment: Payment): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      const wallet = await this.loadWalletForUpdate(tx, payment.userId)
+      wallet.deposit(payment.amount)
+
+      await tx.wallet.upsert(this.walletUpsert(wallet))
+      await tx.ledgerEntry.create({ data: this.ledgerData(this.ledgerFor(wallet, payment, 'deposit')) })
+      await tx.payment.update(this.paymentUpdate(payment))
+    })
   }
 
-  async confirmWithdrawal(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.wallet.upsert(this.walletUpsert(wallet)),
-      this.prisma.ledgerEntry.create({ data: this.ledgerData(entry) }),
-      this.prisma.payment.update(this.paymentUpdate(payment)),
-    ])
+  async applyWithdrawalConfirmation(payment: Payment): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      const wallet = await this.loadWalletForUpdate(tx, payment.userId)
+      wallet.settleHold(payment.amount)
+
+      await tx.wallet.upsert(this.walletUpsert(wallet))
+      await tx.ledgerEntry.create({ data: this.ledgerData(this.ledgerFor(wallet, payment, 'withdrawal')) })
+      await tx.payment.update(this.paymentUpdate(payment))
+    })
   }
 
-  async rejectPayment(payment: Payment, wallet: Wallet | null): Promise<void> {
-    const operations = wallet
-      ? [this.prisma.wallet.upsert(this.walletUpsert(wallet)), this.prisma.payment.update(this.paymentUpdate(payment))]
-      : [this.prisma.payment.update(this.paymentUpdate(payment))]
-    await this.prisma.$transaction(operations)
+  async applyPaymentRejection(payment: Payment): Promise<void> {
+    await inMoneyTransaction(this.prisma, async (tx) => {
+      // Only a withdrawal was holding funds; a rejected deposit never credited.
+      if (payment.direction === 'withdrawal') {
+        const wallet = await this.loadWalletForUpdate(tx, payment.userId)
+        wallet.release(payment.amount)
+        await tx.wallet.upsert(this.walletUpsert(wallet))
+      }
+      await tx.payment.update(this.paymentUpdate(payment))
+    })
   }
 
   private reconstituteDepositLimit(row: {
