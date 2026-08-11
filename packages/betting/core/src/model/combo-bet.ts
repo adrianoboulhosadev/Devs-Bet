@@ -1,4 +1,4 @@
-import { Entity, EntityProps, Money, ValidationError, Errors } from 'shared'
+import { Entity, EntityProps, Money, ValidationError, ConflictError, Errors } from 'shared'
 import { BetStatus } from './bet'
 import { ComboLeg, ComboLegProps } from './combo-leg'
 
@@ -95,6 +95,23 @@ export class ComboBet extends Entity<ComboBet, ComboBetProps> {
       this.status = 'won'
       this.payout = this.stake.multiply(this.totalOdd)
     }
+    this.settledAt = new Date()
+  }
+
+  /**
+   * The bettor calls the ticket off before any of its markets closed: the whole
+   * stake comes back and every (still pending) leg is voided, since none of them
+   * will ever be graded. Only possible while the ticket is open — once a leg has
+   * decided it, the outcome stands. Whether the markets are still open is the
+   * caller's check (the domain has no clock for them).
+   */
+  cancel(): void {
+    if (this.status !== 'open') ConflictError.throwError(Errors.BET_NOT_OPEN, this.status)
+    this.legs.forEach((leg) => {
+      if (leg.isPending) leg.resolve('void')
+    })
+    this.status = 'refunded'
+    this.payout = this.stake
     this.settledAt = new Date()
   }
 }

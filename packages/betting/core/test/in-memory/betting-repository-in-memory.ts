@@ -3,6 +3,7 @@ import {
   BettingSettlementRepository,
   BetQueryRepository,
   ComboBettingPlacementRepository,
+  BetCancellationRepository,
   StakeLimitRepository,
   StakeLimitQueryRepository,
   Bet,
@@ -28,6 +29,7 @@ export default class BettingRepositoryInMemory
     BettingSettlementRepository,
     BetQueryRepository,
     ComboBettingPlacementRepository,
+    BetCancellationRepository,
     StakeLimitRepository,
     StakeLimitQueryRepository
 {
@@ -49,6 +51,20 @@ export default class BettingRepositoryInMemory
     this.combos.push(combo)
     this.createdAt.set(combo.id.value, new Date())
   }
+
+  // Cancellation: the aggregates are held by reference, so the refund the use
+  // case applied is already visible — persisting is a no-op, like settlement.
+  async findBetById(betId: string): Promise<Bet | null> {
+    return this.bets.find((bet) => bet.id.value === betId) ?? null
+  }
+
+  async cancelBet(_bet: Bet): Promise<void> {}
+
+  async findComboBetById(comboBetId: string): Promise<ComboBet | null> {
+    return this.combos.find((combo) => combo.id.value === comboBetId) ?? null
+  }
+
+  async cancelCombo(_combo: ComboBet): Promise<void> {}
 
   async findOpenBetsByMarket(marketId: string): Promise<Bet[]> {
     return this.bets.filter((bet) => bet.marketId === marketId && bet.status === 'open')

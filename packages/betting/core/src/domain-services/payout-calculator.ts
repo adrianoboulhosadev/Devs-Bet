@@ -18,9 +18,10 @@ export interface BetOutcome {
  *    winner's implied odd is distributable / pool(winner): the smaller the pool,
  *    the bigger the payout (the underdog pays more).
  *  - if there is no winner declared (market cancelled), EVERYONE is refunded
- *    (gets their stake back). If a winner IS declared but nobody backed it
- *    (pool == 0), every bet just LOSES — nobody guessed right, so nobody is
- *    owed anything back.
+ *    (gets their stake back). Same when a winner IS declared but nobody backed
+ *    it (pool == 0): with no winning ticket there is nothing to share out, and
+ *    consuming everybody's stake would take money that no one won — the classic
+ *    parimutuel answer is to give the pool back.
  */
 export class PayoutCalculator {
   static calculate(
@@ -40,9 +41,10 @@ export class PayoutCalculator {
       .filter((bet) => bet.selectionId === winningSelectionId)
       .reduce((sum, bet) => sum + bet.stake.cents, 0)
 
-    // A winner was declared but nobody backed it: everybody loses their stake.
+    // A winner was declared but nobody backed it: there is no one to share the
+    // pool with, so it goes back where it came from (same as a cancelled market).
     if (winnerPool === 0) {
-      return bets.map((bet) => ({ betId: bet.id.value, outcome: 'lost', payout: 0 }))
+      return bets.map((bet) => ({ betId: bet.id.value, outcome: 'refunded', payout: bet.stake.cents }))
     }
 
     const rake = Math.floor((total * rakeBasisPoints) / 10_000)

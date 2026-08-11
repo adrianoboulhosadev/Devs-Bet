@@ -47,11 +47,19 @@ test('losing bets get a zero payout', () => {
   expect(loser?.payout).toBe(0)
 })
 
-test('nobody backed the winner -> everyone loses their stake', () => {
+test('nobody backed the winner -> everyone is refunded (no winning ticket to pay)', () => {
   const pool = bets([{ selectionId: 'A', stake: 1000, count: 2 }])
   const outcomes = PayoutCalculator.calculate(pool, 'B', 0)
-  expect(outcomes.every((outcome) => outcome.outcome === 'lost')).toBe(true)
-  expect(outcomes.every((outcome) => outcome.payout === 0)).toBe(true)
+  expect(outcomes.every((outcome) => outcome.outcome === 'refunded')).toBe(true)
+  expect(outcomes.every((outcome) => outcome.payout === 1000)).toBe(true)
+})
+
+test('everyone on the SAME selection and it wins -> each gets exactly their stake back', () => {
+  const pool = bets([{ selectionId: 'A', stake: 1000, count: 3 }])
+  const outcomes = PayoutCalculator.calculate(pool, 'A', 0)
+  expect(outcomes.every((outcome) => outcome.outcome === 'won')).toBe(true)
+  // The winners are splitting their own money: no profit, no loss.
+  expect(outcomes.every((outcome) => outcome.payout === 1000)).toBe(true)
 })
 
 test('no winner declared -> everyone refunded', () => {
