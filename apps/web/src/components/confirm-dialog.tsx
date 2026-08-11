@@ -46,19 +46,16 @@ export function ConfirmDialog({
   // pushes a `margin-top` onto it and the full-screen backdrop stops covering
   // the top of the screen.
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 px-6"
-      onClick={onCancel}
-    >
+    <div className="fixed inset-0 z-[95] grid place-items-center bg-arcade-bg/80 px-6" onClick={onCancel}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-lg"
+        className="w-full max-w-sm space-y-4 border-3 border-arcade-magenta bg-arcade-surface p-6 shadow-pixel-lg"
       >
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {description && <p className="text-sm text-slate-600">{description}</p>}
+        <h2 className="font-pixel text-sm leading-relaxed text-arcade-text">{title}</h2>
+        {description && <p className="font-arcade text-lg text-arcade-text-soft">{description}</p>}
 
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>

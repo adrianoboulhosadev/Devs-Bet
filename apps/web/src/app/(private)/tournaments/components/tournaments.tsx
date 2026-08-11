@@ -28,27 +28,25 @@ export function Tournaments() {
   const size = Number(form.watch('size'))
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Torneios</h1>
-
+    <div className="animate-scrIn space-y-7">
       {isAdmin && (
-        <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="font-medium">Criar torneio</h2>
-          <Field label="Título" required {...form.register('title')} />
-          <div className="space-y-1">
-            <span className="text-sm font-medium">Categoria</span>
+        <form onSubmit={onSubmit} className="space-y-5 border-3 border-arcade-purple bg-arcade-surface p-6 shadow-pixel-lg">
+          <h2 className="font-pixel text-xs tracking-wide text-arcade-purple">CRIAR TORNEIO</h2>
+          <Field label="TÍTULO" required {...form.register('title')} />
+          <div className="space-y-2">
+            <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">CATEGORIA</span>
             <CategoryPicker
               categories={categories}
               value={form.watch('categoryId') || null}
               onChange={(leafId) => form.setValue('categoryId', leafId ?? '')}
             />
           </div>
-          <Field label="Início" type="datetime-local" required {...form.register('scheduledAt')} />
+          <Field label="INÍCIO" type="datetime-local" required {...form.register('scheduledAt')} />
 
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Participantes</span>
+          <label className="block space-y-2">
+            <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">PARTICIPANTES</span>
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              className="w-full border-3 border-arcade-border bg-[#0b0714] px-3 py-2.5 font-arcade text-xl text-arcade-text outline-none focus:border-arcade-cyan"
               {...form.register('size', { valueAsNumber: true })}
             >
               {TOURNAMENT_SIZES.map((size) => (
@@ -59,13 +57,13 @@ export function Tournaments() {
             </select>
           </label>
 
-          <div className="space-y-2">
-            <span className="text-sm font-medium">Melhor de (por rodada)</span>
+          <div className="space-y-2.5">
+            <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">MELHOR DE (POR RODADA)</span>
             {Array.from({ length: roundCount }, (_, round) => (
-              <label key={round} className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-slate-600">{roundLabel(round)}</span>
+              <label key={round} className="flex items-center justify-between gap-2.5 font-arcade text-lg">
+                <span className="text-arcade-text-soft">{roundLabel(round)}</span>
                 <select
-                  className="rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                  className="border-3 border-arcade-border bg-[#0b0714] px-3 py-2 text-arcade-text outline-none focus:border-arcade-cyan"
                   {...form.register(`bestOfByRound.${round}` as const, { valueAsNumber: true })}
                 >
                   {TOURNAMENT_BEST_OF_OPTIONS.map((option) => (
@@ -78,7 +76,7 @@ export function Tournaments() {
             ))}
           </div>
 
-          <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
+          <Field label="IMAGEM (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
 
           <ParticipantPicker
             participants={participants}
@@ -87,48 +85,45 @@ export function Tournaments() {
             max={size}
           />
 
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Criando…' : 'Criar torneio'}
+          <Button type="submit" className="bg-arcade-purple shadow-[6px_6px_0_#5f2f80] hover:shadow-[3px_3px_0_#5f2f80]" disabled={submitting}>
+            {submitting ? 'Criando…' : 'Abrir torneio'}
           </Button>
         </form>
       )}
 
-      <div className="space-y-3">
-        <h2 className="font-medium">Lista</h2>
+      <div className="space-y-3.5">
+        <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">CHAVES E CAMPEÕES</h2>
         {loading ? (
           <Loading />
         ) : tournaments.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum torneio ainda.</p>
+          <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
+            Nenhum torneio ainda.
+          </p>
         ) : (
-          <ul className="space-y-2">
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
             {tournaments.map((tournament) => (
-              <li key={tournament.id}>
-                <Link
-                  href={`/tournaments/${tournament.id}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400"
-                >
-                  <div className="flex items-center gap-3">
-                    {tournament.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={mediaUrl(tournament.imageUrl)}
-                        alt={tournament.title}
-                        className="h-12 w-12 rounded-md object-cover"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium">{tournament.title}</p>
-                      <p className="text-sm text-slate-500">{tournament.size} participantes</p>
-                      <p className="text-xs text-slate-400">
-                        {pathOf(tournament.categoryId)} · {formatDateTime(tournament.scheduledAt)}
-                      </p>
-                    </div>
-                  </div>
+              <Link
+                key={tournament.id}
+                href={`/tournaments/${tournament.id}`}
+                className="block border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg transition-all hover:-translate-x-1 hover:-translate-y-1 hover:border-arcade-lime hover:shadow-pixel-hover"
+              >
+                <div className="flex items-center justify-between border-b-3 border-arcade-border-strong bg-[#1d1233] px-4 py-2.5">
+                  <span className="text-2xl text-arcade-text">{tournament.title}</span>
                   <StatusBadge status={tournament.status} />
-                </Link>
-              </li>
+                </div>
+                {tournament.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="h-32 w-full border-b-3 border-arcade-border-strong object-cover" />
+                )}
+                <div className="p-4">
+                  <p className="font-arcade text-lg text-arcade-text-muted">{tournament.size} participantes</p>
+                  <p className="mt-1 font-arcade text-base text-arcade-text-muted">
+                    {pathOf(tournament.categoryId)} · {formatDateTime(tournament.scheduledAt)}
+                  </p>
+                </div>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>

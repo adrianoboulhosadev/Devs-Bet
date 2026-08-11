@@ -1,18 +1,24 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-type Variant = 'primary' | 'secondary' | 'danger'
+type Variant = 'primary' | 'secondary' | 'danger' | 'success' | 'warning'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
 }
 
 const BASE =
-  'inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none'
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap px-4 py-3 font-pixel text-[11px] tracking-wide uppercase transition-all active:translate-x-0.5 active:translate-y-0.5 active:shadow-pixel-sm disabled:opacity-50 disabled:pointer-events-none'
 
+// Chunky "8-bit" shadow in the fixed shadow ink (#08040f), colored border per
+// variant — mirrors the mockup's block buttons exactly.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-slate-900 text-white hover:bg-slate-800',
-  secondary: 'border border-slate-300 text-slate-900 hover:bg-slate-100',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+  primary: 'bg-arcade-magenta text-arcade-bg shadow-pixel hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-pixel-sm',
+  secondary:
+    'bg-transparent text-arcade-text border-3 border-arcade-border hover:border-arcade-cyan hover:text-arcade-cyan',
+  danger:
+    'bg-transparent text-arcade-danger border-3 border-arcade-danger hover:bg-arcade-danger hover:text-arcade-bg',
+  success: 'bg-arcade-lime text-arcade-bg shadow-pixel hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-pixel-sm',
+  warning: 'bg-arcade-amber text-arcade-bg shadow-pixel hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-pixel-sm',
 }
 
 export function Button({ variant = 'primary', className = '', type = 'button', ...props }: ButtonProps) {

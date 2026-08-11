@@ -3,9 +3,36 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-arcade-bg text-arcade-text antialiased;
+  font-family: var(--font-arcade), ui-monospace, monospace;
+  -webkit-font-smoothing: none;
+}
+
+a {
+  @apply text-arcade-cyan;
+}
+a:hover {
+  @apply text-arcade-lime;
+}
+
+button {
+  font-family: inherit;
+  line-height: 1.7;
+}
+
+/* Scrollbars in the retro palette, everywhere. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0818;
+}
+::-webkit-scrollbar-thumb {
+  background: #34215c;
+  border: 2px solid #0d0818;
 }

@@ -46,7 +46,11 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
   const data = useMemo(() => shapeOddsHistory(snapshots), [snapshots])
 
   if (!data) {
-    return <p className="text-sm text-slate-500">Ainda não há histórico de odds — aguardando a primeira aposta.</p>
+    return (
+      <p className="font-arcade text-lg text-arcade-text-muted">
+        Ainda não há histórico de odds — aguardando a primeira aposta.
+      </p>
+    )
   }
 
   const { series, minTime, maxTime, maxOdd, omittedCount } = data
@@ -78,11 +82,11 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
           {series.map((entry) => {
             const current = entry.points.at(-1)!.odd
             return (
-              <div key={entry.selectionId} className="flex items-center gap-1.5 text-xs text-slate-600">
+              <div key={entry.selectionId} className="flex items-center gap-1.5 font-arcade text-lg text-arcade-text-soft">
                 <span className="inline-block h-0.5 w-4 rounded-full" style={{ backgroundColor: entry.color }} />
                 <span>
-                  {selectionLabel(entry.selectionId)} <span className="text-slate-400">·</span>{' '}
-                  <span className="font-medium text-slate-900">{current.toFixed(2)}x</span>
+                  {selectionLabel(entry.selectionId)} <span className="text-arcade-text-muted">·</span>{' '}
+                  <span className="font-medium text-arcade-text">{current.toFixed(2)}x</span>
                 </span>
               </div>
             )
@@ -91,22 +95,22 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
         <button
           type="button"
           onClick={() => setShowTable((current) => !current)}
-          className="shrink-0 text-xs text-slate-500 underline"
+          className="shrink-0 font-arcade text-lg text-arcade-text-muted underline"
         >
           {showTable ? 'ver gráfico' : 'ver como tabela'}
         </button>
       </div>
 
       {omittedCount > 0 && (
-        <p className="text-xs text-slate-500">
+        <p className="font-arcade text-base text-arcade-text-muted">
           Mostrando as {series.length} seleções mais apostadas ({omittedCount} de fora, pra não poluir o gráfico).
         </p>
       )}
 
       {showTable ? (
-        <div className="overflow-x-auto rounded-md border border-slate-200">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500">
+        <div className="overflow-x-auto border-3 border-arcade-border">
+          <table className="w-full text-left font-arcade text-base">
+            <thead className="bg-arcade-header text-arcade-text-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">Horário</th>
                 {series.map((entry) => (
@@ -116,14 +120,14 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-arcade-border-strong">
               {allTimes.map((t) => (
                 <tr key={t}>
-                  <td className="px-3 py-1.5 text-slate-500">{formatDateTime(new Date(t))}</td>
+                  <td className="px-3 py-1.5 text-arcade-text-muted">{formatDateTime(new Date(t))}</td>
                   {series.map((entry) => {
                     const value = valueAt(entry, t)
                     return (
-                      <td key={entry.selectionId} className="px-3 py-1.5 font-medium tabular-nums text-slate-900">
+                      <td key={entry.selectionId} className="px-3 py-1.5 font-medium tabular-nums text-arcade-text">
                         {value !== undefined ? `${value.toFixed(2)}x` : '—'}
                       </td>
                     )
@@ -149,10 +153,10 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
                   x2={PADDING.left + PLOT_WIDTH}
                   y1={scaleY(tick)}
                   y2={scaleY(tick)}
-                  stroke="#e1e0d9"
+                  stroke="#241640"
                   strokeWidth={1}
                 />
-                <text x={PADDING.left - 6} y={scaleY(tick)} textAnchor="end" dominantBaseline="middle" fontSize={9} fill="#898781">
+                <text x={PADDING.left - 6} y={scaleY(tick)} textAnchor="end" dominantBaseline="middle" fontSize={9} fill="#8b7bb8">
                   {tick.toFixed(2)}
                 </text>
               </g>
@@ -162,7 +166,7 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
               x2={PADDING.left}
               y1={PADDING.top}
               y2={PADDING.top + PLOT_HEIGHT}
-              stroke="#c3c2b7"
+              stroke="#34215c"
               strokeWidth={1}
             />
             <line
@@ -170,13 +174,13 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
               x2={PADDING.left + PLOT_WIDTH}
               y1={PADDING.top + PLOT_HEIGHT}
               y2={PADDING.top + PLOT_HEIGHT}
-              stroke="#c3c2b7"
+              stroke="#34215c"
               strokeWidth={1}
             />
-            <text x={PADDING.left} y={VIEW_HEIGHT - 6} fontSize={9} fill="#898781">
+            <text x={PADDING.left} y={VIEW_HEIGHT - 6} fontSize={9} fill="#8b7bb8">
               {formatTick(minTime)}
             </text>
-            <text x={PADDING.left + PLOT_WIDTH} y={VIEW_HEIGHT - 6} textAnchor="end" fontSize={9} fill="#898781">
+            <text x={PADDING.left + PLOT_WIDTH} y={VIEW_HEIGHT - 6} textAnchor="end" fontSize={9} fill="#8b7bb8">
               {formatTick(maxTime)}
             </text>
 
@@ -198,7 +202,7 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
                 x2={scaleX(hoverT)}
                 y1={PADDING.top}
                 y2={PADDING.top + PLOT_HEIGHT}
-                stroke="#898781"
+                stroke="#8b7bb8"
                 strokeWidth={1}
               />
             )}
@@ -206,12 +210,12 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
 
           {hoverT !== null && (
             <div
-              className="pointer-events-none absolute top-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm"
+              className="pointer-events-none absolute top-2 border-2 border-arcade-border bg-arcade-surface px-3 py-2 font-arcade text-base shadow-pixel-sm"
               style={{
                 left: `${Math.min(85, Math.max(2, (scaleX(hoverT) / VIEW_WIDTH) * 100))}%`,
               }}
             >
-              <p className="mb-1 text-slate-500">{formatDateTime(new Date(hoverT))}</p>
+              <p className="mb-1 text-arcade-text-muted">{formatDateTime(new Date(hoverT))}</p>
               <ul className="space-y-0.5">
                 {series.map((entry) => {
                   const value = valueAt(entry, hoverT)
@@ -219,8 +223,8 @@ export function OddsHistoryChart({ snapshots, selectionLabel }: OddsHistoryChart
                   return (
                     <li key={entry.selectionId} className="flex items-center gap-1.5">
                       <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                      <span className="font-medium text-slate-900">{value.toFixed(2)}x</span>
-                      <span className="text-slate-500">{selectionLabel(entry.selectionId)}</span>
+                      <span className="font-medium text-arcade-text">{value.toFixed(2)}x</span>
+                      <span className="text-arcade-text-muted">{selectionLabel(entry.selectionId)}</span>
                     </li>
                   )
                 })}

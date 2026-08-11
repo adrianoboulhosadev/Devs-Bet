@@ -14,20 +14,22 @@ export function StakeLimit() {
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+    <div className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-5 shadow-pixel">
       <div>
-        <h2 className="font-medium">Limite de aposta diária</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="font-pixel text-xs tracking-wide text-arcade-text">LIMITE DE APOSTA DIÁRIA</h2>
+        <p className="mt-1 font-arcade text-lg text-arcade-text-muted">
           Jogo responsável: defina um teto pro quanto você pode apostar (somando apostas simples e
           bilhetes) nas últimas 24h. Diminuir vale na hora; aumentar só entra em vigor 24h depois.
         </p>
       </div>
 
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-medium">{limit ? formatBRL(limit.amount) : 'Sem limite definido'}</p>
+          <p className="text-2xl leading-tight text-arcade-text">
+            {limit ? formatBRL(limit.amount) : 'Sem limite definido'}
+          </p>
           {limit?.pendingAmount && limit.effectiveAt && (
-            <p className="text-xs text-amber-700">
+            <p className="font-arcade text-base text-arcade-amber">
               Novo limite de {formatBRL(limit.pendingAmount)} entra em vigor em{' '}
               {formatDateTime(limit.effectiveAt)}
             </p>
@@ -41,11 +43,11 @@ export function StakeLimit() {
       </div>
 
       {editing && (
-        <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
+        <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2.5">
           <div className="w-40">
-            <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...form.register('amount')} />
+            <Field label="VALOR (R$)" type="number" step="0.01" min="0" required {...form.register('amount')} />
           </div>
-          <Button type="submit" disabled={saving}>
+          <Button type="submit" variant="warning" disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar'}
           </Button>
           <Button type="button" variant="secondary" onClick={cancelEditing}>

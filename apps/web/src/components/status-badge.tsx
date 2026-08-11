@@ -1,18 +1,18 @@
 const STYLES: Record<string, string> = {
-  open: 'bg-emerald-100 text-emerald-800',
-  locked: 'bg-amber-100 text-amber-800',
-  settled: 'bg-slate-200 text-slate-700',
-  cancelled: 'bg-red-100 text-red-700',
-  in_progress: 'bg-emerald-100 text-emerald-800',
-  finished: 'bg-slate-200 text-slate-700',
-  pending: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-emerald-100 text-emerald-800',
-  paid: 'bg-emerald-100 text-emerald-800',
-  rejected: 'bg-red-100 text-red-700',
-  won: 'bg-emerald-100 text-emerald-800',
-  lost: 'bg-red-100 text-red-700',
-  refunded: 'bg-slate-200 text-slate-700',
-  void: 'bg-slate-200 text-slate-700',
+  open: 'bg-arcade-lime',
+  locked: 'bg-arcade-amber',
+  settled: 'bg-arcade-text-muted',
+  cancelled: 'bg-arcade-danger',
+  in_progress: 'bg-arcade-magenta',
+  finished: 'bg-arcade-text-muted',
+  pending: 'bg-arcade-amber',
+  confirmed: 'bg-arcade-lime',
+  paid: 'bg-arcade-cyan',
+  rejected: 'bg-arcade-danger',
+  won: 'bg-arcade-lime',
+  lost: 'bg-arcade-danger',
+  refunded: 'bg-arcade-text-muted',
+  void: 'bg-arcade-text-muted',
 }
 
 const LABELS: Record<string, string> = {
@@ -32,13 +32,13 @@ const LABELS: Record<string, string> = {
   void: 'Anulada',
 }
 
-/** Small colored pill for a match/payment/bet status. */
+/** Small colored pixel-font pill for a match/payment/bet status. */
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STYLES[status] ?? 'bg-slate-100 text-slate-700'}`}
+      className={`inline-block whitespace-nowrap px-2 py-1 font-pixel text-[8px] tracking-wide text-arcade-bg ${STYLES[status] ?? 'bg-arcade-text-muted'}`}
     >
-      {LABELS[status] ?? status}
+      {(LABELS[status] ?? status).toUpperCase()}
     </span>
   )
 }

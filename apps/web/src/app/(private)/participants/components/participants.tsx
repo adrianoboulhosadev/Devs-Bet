@@ -18,7 +18,11 @@ export function Participants() {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   if (!isAdmin) {
-    return <p className="text-sm text-slate-500">Área restrita ao administrador.</p>
+    return (
+      <p className="border-3 border-arcade-danger bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-danger">
+        Área restrita ao administrador.
+      </p>
+    )
   }
 
   if (loading) return <Loading />
@@ -37,79 +41,76 @@ export function Participants() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Participantes</h1>
-        <p className="text-sm text-slate-500">
-          Cadastro reaproveitável — quem entra numa partida ou torneio é escolhido daqui.
-        </p>
-      </div>
+    <div className="animate-scrIn space-y-7">
+      <p className="font-arcade text-lg text-arcade-text-muted">
+        Cadastro reaproveitável — quem entra numa partida ou torneio é escolhido daqui.
+      </p>
 
-      <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="font-medium">Novo participante</h2>
+      <form onSubmit={onSubmit} className="space-y-4 border-3 border-arcade-amber bg-arcade-surface p-6 shadow-pixel-lg">
+        <h2 className="font-pixel text-xs tracking-wide text-arcade-amber">NOVO PARTICIPANTE</h2>
 
-        <Field label="Nome" required {...form.register('name')} />
-        <Field label="Apelido (opcional)" {...form.register('nickname')} />
-        <Field label="Foto (opcional)" type="file" accept="image/*" {...form.register('image')} />
+        <Field label="NOME" required {...form.register('name')} />
+        <Field label="APELIDO (OPCIONAL)" {...form.register('nickname')} />
+        <Field label="FOTO (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
 
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" variant="warning" disabled={submitting}>
           {submitting ? 'Criando…' : 'Criar participante'}
         </Button>
       </form>
 
-      <div className="space-y-2">
-        <h2 className="font-medium">Catálogo</h2>
+      <div className="space-y-2.5">
+        <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">CATÁLOGO</h2>
         {participants.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum participante ainda.</p>
+          <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
+            Nenhum participante ainda.
+          </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {participants.map((participant) => (
               <li
                 key={participant.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3"
+                className="flex flex-wrap items-center justify-between gap-3 border-3 border-arcade-border bg-arcade-surface p-3.5 shadow-pixel-sm"
               >
                 <div className="flex items-center gap-3">
                   {participant.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={mediaUrl(participant.imageUrl)}
-                      alt={participant.name}
-                      className="h-10 w-10 rounded-full object-cover"
-                    />
+                    <img src={mediaUrl(participant.imageUrl)} alt={participant.name} className="h-10 w-10 object-cover" />
                   ) : (
-                    <span className="h-10 w-10 shrink-0 rounded-full bg-slate-200" />
+                    <span className="h-10 w-10 shrink-0 bg-arcade-border" />
                   )}
 
                   {editingId === participant.id ? (
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                       <input
                         autoFocus
                         value={editName}
                         onChange={(event) => setEditName(event.target.value)}
                         placeholder="Nome"
-                        className="rounded-md border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500"
+                        className="border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                       />
                       <input
                         value={editNickname}
                         onChange={(event) => setEditNickname(event.target.value)}
                         placeholder="Apelido"
-                        className="rounded-md border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-500"
+                        className="border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                       />
                     </div>
                   ) : (
-                    <span className="text-sm">
-                      <span className="font-medium">{participant.name}</span>
+                    <span className="font-arcade text-lg">
+                      <span className="text-arcade-text">{participant.name}</span>
                       {participant.nickname && (
-                        <span className="ml-2 text-xs text-slate-400">"{participant.nickname}"</span>
+                        <span className="ml-2 text-base text-arcade-text-muted">"{participant.nickname}"</span>
                       )}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   {editingId === participant.id ? (
                     <>
-                      <Button onClick={saveEdit}>Salvar</Button>
+                      <Button variant="warning" onClick={saveEdit}>
+                        Salvar
+                      </Button>
                       <Button variant="secondary" onClick={() => setEditingId(null)}>
                         Cancelar
                       </Button>

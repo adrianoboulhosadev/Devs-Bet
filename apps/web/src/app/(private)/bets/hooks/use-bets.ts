@@ -1,7 +1,8 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { BetDTO } from '@betting/adapters'
+import type { BetDTO, ComboBetDTO } from '@betting/adapters'
 import type { MatchDTO } from '@match/adapters'
 import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
@@ -26,6 +27,33 @@ export function useBets() {
     queryKey: ['tournaments'],
     queryFn: async (): Promise<TournamentDTO[]> => (await api.get<TournamentDTO[]>('/tournament')).data,
   })
+
+  // Same key /bet/combo/mine already uses (see use-my-combos.ts) — cache-shared,
+  // no extra request, just enough to roll up simple bets + combo tickets into
+  // one summary for the stat tiles.
+  const combos = useQuery({
+    queryKey: ['combo-mine'],
+    queryFn: async (): Promise<ComboBetDTO[]> => (await api.get<ComboBetDTO[]>('/bet/combo/mine')).data,
+  })
+
+  const stats = useMemo(() => {
+    const allBets = query.data ?? []
+    const allCombos = combos.data ?? []
+    const openCount =
+      allBets.filter((bet) => bet.status === 'open').length +
+      allCombos.filter((combo) => combo.status === 'open').length
+    const openStaked =
+      allBets.filter((bet) => bet.status === 'open').reduce((total, bet) => total + bet.stake, 0) +
+      allCombos.filter((combo) => combo.status === 'open').reduce((total, combo) => total + combo.stake, 0)
+    const settled = [...allBets, ...allCombos].filter((entry) => entry.status !== 'open')
+    const wins = settled.filter((entry) => entry.status === 'won').length
+    return {
+      openCount,
+      openStaked,
+      settledCount: settled.length,
+      winRate: settled.length === 0 ? null : Math.round((wins / settled.length) * 100),
+    }
+  }, [query.data, combos.data])
 
   /**
    * A bet can only be pulled while its market still takes bets — the backend is
@@ -67,6 +95,7 @@ export function useBets() {
   return {
     bets: query.data ?? [],
     loading: query.isLoading,
+    stats,
     canCancel,
     cancelBet: (betId: string) => cancel.mutate(betId),
     cancelling: cancel.isPending,

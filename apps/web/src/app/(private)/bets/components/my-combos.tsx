@@ -16,54 +16,50 @@ export function MyCombos() {
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null)
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      <h2 className="border-b border-slate-100 px-5 py-3 font-medium">Meus bilhetes múltiplos</h2>
+    <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+      <h2 className="border-b-3 border-arcade-border-strong px-5 py-3 font-pixel text-[11px] tracking-wide text-arcade-text">
+        MEUS BILHETES MÚLTIPLOS
+      </h2>
 
       {loading ? (
         <div className="p-5">
           <Loading />
         </div>
       ) : combos.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-slate-500">Nenhum bilhete ainda.</p>
+        <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum bilhete ainda.</p>
       ) : (
-        <ul className="divide-y divide-slate-100">
-          {combos.map((combo) => (
-            <li key={combo.id} className="space-y-2 px-5 py-4 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">
-                  {formatBRL(combo.stake)} · odd {combo.totalOdd}x
-                </span>
-                <div className="flex items-center gap-3">
-                  {combo.status !== 'open' && <span>{formatBRL(combo.payout)}</span>}
-                  <StatusBadge status={combo.status} />
-                  {canCancel(combo) && (
-                    <Button
-                      variant="secondary"
-                      disabled={cancelling}
-                      onClick={() => setPendingCancelId(combo.id)}
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                </div>
+        combos.map((combo) => (
+          <div key={combo.id} className="space-y-2.5 border-b border-arcade-border-strong px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-2xl leading-tight text-arcade-text">
+                {formatBRL(combo.stake)} · odd {combo.totalOdd}x
+              </span>
+              <div className="flex items-center gap-3">
+                {combo.status !== 'open' && <span className="text-xl text-arcade-lime">{formatBRL(combo.payout)}</span>}
+                <StatusBadge status={combo.status} />
+                {canCancel(combo) && (
+                  <Button variant="secondary" disabled={cancelling} onClick={() => setPendingCancelId(combo.id)}>
+                    Cancelar
+                  </Button>
+                )}
               </div>
-              <ul className="space-y-1 text-slate-500">
-                {combo.legs.map((leg) => (
-                  <li
-                    key={`${leg.marketId}-${leg.selectionId}`}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <span>
-                      {marketLabel(leg.marketType, leg.marketId)} ·{' '}
-                      {selectionLabel(leg.marketType, leg.marketId, leg.selectionId)} · odd {leg.odd}x
-                    </span>
-                    <StatusBadge status={leg.result === 'pending' ? 'open' : leg.result} />
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
-        </ul>
+            </div>
+            <ul className="space-y-1">
+              {combo.legs.map((leg) => (
+                <li
+                  key={`${leg.marketId}-${leg.selectionId}`}
+                  className="flex items-center justify-between gap-3 font-arcade text-lg text-arcade-text-muted"
+                >
+                  <span>
+                    {marketLabel(leg.marketType, leg.marketId)} ·{' '}
+                    {selectionLabel(leg.marketType, leg.marketId, leg.selectionId)} · odd {leg.odd}x
+                  </span>
+                  <StatusBadge status={leg.result === 'pending' ? 'open' : leg.result} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
       )}
 
       <ConfirmDialog

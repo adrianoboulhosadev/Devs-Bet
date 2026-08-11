@@ -22,17 +22,17 @@ export function SelfExclusion() {
 
   if (isSelfExcluded && exclusion) {
     return (
-      <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-5">
-        <h2 className="font-medium text-red-900">Autoexclusão ativa</h2>
-        <p className="text-sm text-red-800">
+      <div className="space-y-2.5 border-3 border-arcade-danger bg-arcade-surface p-6 shadow-pixel">
+        <h2 className="font-pixel text-xs tracking-wide text-arcade-danger">AUTOEXCLUSÃO ATIVA</h2>
+        <p className="font-arcade text-lg text-arcade-text-soft">
           Depósitos e apostas estão bloqueados
           {exclusion.until ? (
             <>
               {' '}
-              até <span className="font-medium">{formatDateTime(exclusion.until)}</span>.
+              até <span className="text-arcade-text">{formatDateTime(exclusion.until)}</span>.
             </>
           ) : (
-            <span className="font-medium"> permanentemente.</span>
+            <span className="text-arcade-text"> permanentemente.</span>
           )}{' '}
           Essa proteção não pode ser cancelada antes do prazo.
         </p>
@@ -41,12 +41,12 @@ export function SelfExclusion() {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
+    <div className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-6 shadow-pixel">
       <div>
-        <h2 className="font-medium">Autoexclusão</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="font-pixel text-xs tracking-wide text-arcade-text">AUTOEXCLUSÃO</h2>
+        <p className="mt-1 font-arcade text-lg text-arcade-text-muted">
           Jogo responsável: bloqueie a si mesmo de depositar e apostar por um período. Uma vez
-          iniciada, <span className="font-medium">não pode ser cancelada</span> antes do prazo —
+          iniciada, <span className="text-arcade-text">não pode ser cancelada</span> antes do prazo —
           nem permanente pode ser desfeita.
         </p>
       </div>
@@ -55,8 +55,10 @@ export function SelfExclusion() {
         {SELF_EXCLUSION_PERIODS.map((option) => (
           <label
             key={option.period}
-            className={`cursor-pointer rounded-md border px-3 py-2 text-sm ${
-              period === option.period ? 'border-slate-900 bg-slate-100' : 'border-slate-300'
+            className={`cursor-pointer border-3 px-3.5 py-2 font-pixel text-[10px] tracking-wide ${
+              period === option.period
+                ? 'border-arcade-danger bg-arcade-danger text-arcade-bg'
+                : 'border-arcade-border text-arcade-text-soft'
             }`}
           >
             <input
@@ -72,12 +74,12 @@ export function SelfExclusion() {
         ))}
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-slate-700">
+      <label className="flex items-start gap-2.5 font-arcade text-lg text-arcade-text-soft">
         <input
           type="checkbox"
           checked={confirmed}
           onChange={(event) => setConfirmed(event.target.checked)}
-          className="mt-0.5"
+          className="mt-1 h-5 w-5 flex-none accent-arcade-danger"
         />
         Eu entendo que essa ação não pode ser desfeita antes do prazo escolhido.
       </label>

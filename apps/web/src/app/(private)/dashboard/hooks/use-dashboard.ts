@@ -82,6 +82,15 @@ export function useDashboard() {
     )
   }, [matches.data])
 
+  // Independent of the active filter — the single soonest open match, for the
+  // "próxima partida" banner.
+  const nextMatch = useMemo(() => {
+    const open = (matches.data ?? []).filter((match) => match.status === 'open')
+    return open.sort(
+      (first, second) => new Date(first.scheduledAt).getTime() - new Date(second.scheduledAt).getTime(),
+    )[0]
+  }, [matches.data])
+
   const visibleMatches = useMemo(() => {
     const all = matches.data ?? []
     const filtered = filter === 'all' ? all : all.filter((match) => match.status === filter)
@@ -105,5 +114,6 @@ export function useDashboard() {
     setFilter,
     countsByStatus,
     matches: visibleMatches,
+    nextMatch,
   }
 }

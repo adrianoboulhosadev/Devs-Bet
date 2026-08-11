@@ -37,35 +37,26 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
   )?.displayName
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+    <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">{nameA}</span>
-        <span className="text-xs text-slate-400">vs</span>
-        <span className="font-medium">{nameB}</span>
+        <span className="text-arcade-text">{nameA}</span>
+        <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
+        <span className="text-arcade-text">{nameB}</span>
       </div>
 
       {slot.matchId ? (
         <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">
-            {status ? (
-              <StatusBadge status={status} />
-            ) : (
-              <span className="text-xs text-slate-400">…</span>
-            )}
-            <Link
-              href={`/matches/${slot.matchId}`}
-              className="text-xs font-medium text-slate-500 hover:text-slate-900"
-            >
+            {status ? <StatusBadge status={status} /> : <span className="text-arcade-text-muted">…</span>}
+            <Link href={`/matches/${slot.matchId}`} className="text-base text-arcade-cyan hover:underline">
               Ver / Apostar →
             </Link>
           </div>
 
-          {status === 'settled' && (
-            <p className="text-xs text-emerald-700">Vencedor: {winnerName ?? '—'}</p>
-          )}
+          {status === 'settled' && <p className="text-base text-arcade-lime">Vencedor: {winnerName ?? '—'}</p>}
 
           {match.data && match.data.bestOf > 1 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-base text-arcade-text-muted">
               Melhor de {match.data.bestOf} · placar:{' '}
               {match.data.participants
                 .map(
@@ -80,11 +71,7 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
           {canDeclare && match.data && (
             <div className="flex flex-wrap gap-2">
               {match.data.participants.map((participant) => (
-                <Button
-                  key={participant.id}
-                  disabled={declaring}
-                  onClick={() => onDeclare(slot.matchId!, participant.id)}
-                >
+                <Button key={participant.id} variant="warning" disabled={declaring} onClick={() => onDeclare(slot.matchId!, participant.id)}>
                   {participant.displayName} venceu{match.data!.bestOf > 1 ? ' a unidade' : ''}
                 </Button>
               ))}
@@ -92,7 +79,7 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
           )}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-slate-400">Aguardando confronto anterior.</p>
+        <p className="mt-2 text-base text-arcade-text-muted">Aguardando confronto anterior.</p>
       )}
     </div>
   )

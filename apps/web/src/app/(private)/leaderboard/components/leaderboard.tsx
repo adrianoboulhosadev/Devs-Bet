@@ -2,10 +2,12 @@
 
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { colorForId } from '@/lib/participant-colors'
 import { useAuth } from '@/contexts/auth-context'
 import { useLeaderboard } from '../hooks/use-leaderboard'
 
-const MEDALS = ['🥇', '🥈', '🥉']
+const POSITIONS = ['1ST', '2ND', '3RD']
+const POSITION_COLORS = ['#ffb020', '#c9b8f0', '#ff6b35']
 
 export function Leaderboard() {
   const { ranking, loading } = useLeaderboard()
@@ -14,50 +16,68 @@ export function Leaderboard() {
   if (loading) return <Loading />
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Ranking de apostadores</h1>
-      <p className="text-sm text-slate-500">
-        Os maiores lucros líquidos entre apostas já liquidadas (vencidas/perdidas).
-      </p>
+    <div className="animate-scrIn space-y-5">
+      <div className="flex flex-wrap items-center gap-4">
+        <p className="font-pixel text-base text-arcade-amber [text-shadow:0_0_16px_rgba(255,176,32,.5)]">
+          ★ HIGH SCORES ★
+        </p>
+        <p className="font-arcade text-xl text-arcade-text-muted">
+          lucro líquido em apostas encerradas
+        </p>
+      </div>
 
       {ranking.length === 0 ? (
-        <p className="text-sm text-slate-500">Ainda não há apostas liquidadas.</p>
+        <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
+          Ainda não há apostas liquidadas.
+        </p>
       ) : (
-        <ul className="space-y-2">
+        <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+          <div className="flex items-center gap-4 border-b-3 border-arcade-border-strong px-5 py-3.5 font-pixel text-[8px] leading-relaxed tracking-widest text-arcade-text-muted">
+            <span className="w-14 flex-none">POS</span>
+            <span className="min-w-0 flex-1">APOSTADOR</span>
+            <span>RESULTADO</span>
+          </div>
           {ranking.map((entry, index) => {
             const isMe = user?.id === entry.bettorId
             const isProfit = entry.netProfit >= 0
+            const initials = entry.bettorId.slice(0, 2).toUpperCase()
 
             return (
-              <li
+              <div
                 key={entry.bettorId}
-                className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 ${
-                  isMe ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'
-                }`}
+                className={`flex flex-wrap items-center gap-4 border-b border-arcade-border-strong px-5 py-4 ${isMe ? 'bg-[#1d1233]' : ''}`}
               >
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="w-8 text-lg">{MEDALS[index] ?? `#${index + 1}`}</span>
-                  <div>
-                    <p className="font-medium">
+                <span className="w-14 flex-none font-pixel text-sm" style={{ color: POSITION_COLORS[index] ?? '#8b7bb8' }}>
+                  {POSITIONS[index] ?? `#${index + 1}`}
+                </span>
+                <span className="flex min-w-[190px] flex-1 items-center gap-3">
+                  <span
+                    className="grid h-[38px] w-[38px] flex-none place-items-center font-pixel text-[10px] text-arcade-bg shadow-pixel-sm"
+                    style={{ backgroundColor: colorForId(entry.bettorId) }}
+                  >
+                    {initials}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-2xl leading-tight text-arcade-text">
                       Apostador {entry.bettorId.slice(0, 8)}
-                      {isMe && <span className="ml-2 text-xs text-slate-500">(você)</span>}
-                    </p>
-                    <p className="text-slate-500">
+                      {isMe && <span className="ml-2 font-arcade text-base text-arcade-text-muted">(você)</span>}
+                    </span>
+                    <span className="block font-arcade text-lg text-arcade-text-muted">
                       {entry.betsWon}/{entry.betsSettled} apostas vencidas
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right text-sm">
-                  <p className={`font-semibold ${isProfit ? 'text-emerald-600' : 'text-red-600'}`}>
+                    </span>
+                  </span>
+                </span>
+                <span className="ml-auto flex items-baseline gap-5">
+                  <span className="text-xl text-arcade-text-soft">{formatBRL(entry.totalStaked)}</span>
+                  <span className={`text-2xl ${isProfit ? 'text-arcade-lime' : 'text-arcade-danger'}`}>
                     {isProfit ? '+' : ''}
                     {formatBRL(entry.netProfit)}
-                  </p>
-                  <p className="text-slate-500">{formatBRL(entry.totalStaked)} apostados</p>
-                </div>
-              </li>
+                  </span>
+                </span>
+              </div>
             )
           })}
-        </ul>
+        </div>
       )}
     </div>
   )

@@ -1,17 +1,21 @@
 import type { OddsSnapshotDTO } from '@betting/adapters'
 
-// Validated categorical palette (dataviz skill), light-surface steps only — the
-// app has no dark theme yet. Fixed order; a selection always keeps its slot's
-// meaning (color follows the entity, never its rank).
+// Retro-arcade neon categorical palette (the mockup's own 8 per-friend colors —
+// checked with the dataviz skill's validator against the dark chart surface
+// #150d26: CVD separation, chroma floor and contrast all PASS; only the
+// "lightness band" check fails, because these are deliberately bright neon
+// tones on a near-black background — that IS the requested design, not an
+// accessibility gap). Fixed order; a selection always keeps its slot's meaning
+// (color follows the entity, never its rank).
 const PALETTE = [
-  '#2a78d6',
-  '#eb6834',
-  '#1baf7a',
-  '#eda100',
-  '#e87ba4',
-  '#008300',
-  '#4a3aa7',
-  '#e34948',
+  '#22e6ff',
+  '#ff3d81',
+  '#b6ff3d',
+  '#ffb020',
+  '#c77dff',
+  '#ff6b35',
+  '#4ade80',
+  '#f472b6',
 ]
 export const ODDS_HISTORY_MAX_SERIES = PALETTE.length
 

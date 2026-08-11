@@ -58,7 +58,7 @@ export function CategoryPicker({ categories, value, onChange }: CategoryPickerPr
           key={level}
           value={selected[level] ?? ''}
           onChange={(event) => selectAt(level, event.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+          className="w-full border-3 border-arcade-border bg-[#0b0714] px-3 py-2.5 font-arcade text-xl text-arcade-text outline-none focus:border-arcade-cyan"
         >
           <option value="">{level === 0 ? 'Categoria…' : 'Selecione…'}</option>
           {options.map((option) => (

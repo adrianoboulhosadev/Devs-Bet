@@ -12,14 +12,14 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
   ref,
 ) {
   return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium">{label}</span>
+    <label className="block space-y-2">
+      <span className="font-pixel text-[9px] leading-relaxed tracking-widest text-arcade-text-muted">{label}</span>
       <input
         ref={ref}
-        className={`w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500 ${className}`}
+        className={`w-full border-3 border-arcade-border bg-[#0b0714] px-3 py-2.5 font-arcade text-xl text-arcade-text outline-none focus:border-arcade-cyan ${className}`}
         {...props}
       />
-      {error && <span className="text-sm text-red-700">{error}</span>}
+      {error && <span className="block font-arcade text-base text-arcade-danger">{error}</span>}
     </label>
   )
 })

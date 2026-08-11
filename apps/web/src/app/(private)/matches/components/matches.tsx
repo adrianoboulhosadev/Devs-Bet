@@ -17,28 +17,29 @@ export function Matches() {
   const bestOf = form.watch('bestOf')
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Partidas</h1>
-
+    <div className="animate-scrIn space-y-7">
       {isAdmin && (
-        <form onSubmit={onSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="font-medium">Criar partida</h2>
-          <Field label="Título" required {...form.register('title')} />
-          <div className="space-y-1">
-            <span className="text-sm font-medium">Categoria</span>
+        <form
+          onSubmit={onSubmit}
+          className="space-y-5 border-3 border-arcade-amber bg-arcade-surface p-6 shadow-pixel-lg"
+        >
+          <h2 className="font-pixel text-xs tracking-wide text-arcade-amber">CRIAR MESA</h2>
+          <Field label="TÍTULO" required {...form.register('title')} />
+          <div className="space-y-2">
+            <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">CATEGORIA</span>
             <CategoryPicker
               categories={categories}
               value={form.watch('categoryId') || null}
               onChange={(leafId) => form.setValue('categoryId', leafId ?? '')}
             />
           </div>
-          <Field label="Data e hora" type="datetime-local" required {...form.register('scheduledAt')} />
-          <Field label="Imagem (opcional)" type="file" accept="image/*" {...form.register('image')} />
+          <Field label="DATA E HORA" type="datetime-local" required {...form.register('scheduledAt')} />
+          <Field label="IMAGEM (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
 
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Melhor de</span>
+          <label className="block space-y-2">
+            <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">MELHOR DE</span>
             <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+              className="w-full border-3 border-arcade-border bg-[#0b0714] px-3 py-2.5 font-arcade text-xl text-arcade-text outline-none focus:border-arcade-cyan"
               {...form.register('bestOf', { valueAsNumber: true })}
             >
               {MATCH_BEST_OF_OPTIONS.map((option) => (
@@ -49,10 +50,14 @@ export function Matches() {
             </select>
           </label>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={bestOf !== 1} {...form.register('allowsDraw')} />
-            Permite empate (a partida pode terminar empatada e o empate vira uma seleção de aposta —
-            só disponível em MD1)
+          <label className="flex items-center gap-3 font-arcade text-lg leading-snug text-arcade-text-soft">
+            <input
+              type="checkbox"
+              disabled={bestOf !== 1}
+              {...form.register('allowsDraw')}
+              className="mt-0.5 h-5 w-5 flex-none accent-arcade-amber"
+            />
+            Permite empate — vira uma seleção extra no bilhete (só em MD1)
           </label>
 
           <ParticipantPicker
@@ -61,50 +66,51 @@ export function Matches() {
             onChange={(ids) => form.setValue('participantIds', ids)}
           />
 
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Criando…' : 'Criar partida'}
+          <Button type="submit" variant="warning" disabled={submitting}>
+            {submitting ? 'Criando…' : 'Criar mesa'}
           </Button>
         </form>
       )}
 
-      <div className="space-y-3">
-        <h2 className="font-medium">Lobby</h2>
+      <div className="space-y-3.5">
+        <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">ESCOLHA SUA MESA</h2>
         {loading ? (
           <Loading />
         ) : matches.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhuma partida ainda.</p>
+          <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
+            Nenhuma partida ainda.
+          </p>
         ) : (
-          <ul className="space-y-2">
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
             {matches.map((match) => (
-              <li key={match.id}>
-                <Link
-                  href={`/matches/${match.id}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-slate-400"
-                >
-                  <div className="flex items-center gap-3">
-                    {match.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={mediaUrl(match.imageUrl)}
-                        alt={match.title}
-                        className="h-12 w-12 rounded-md object-cover"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium">{match.title}</p>
-                      <p className="text-sm text-slate-500">
-                        {match.participants.map((participant) => participant.displayName).join(' × ')}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {pathOf(match.categoryId)} · {formatDateTime(match.scheduledAt)}
-                      </p>
-                    </div>
-                  </div>
+              <Link
+                key={match.id}
+                href={`/matches/${match.id}`}
+                className="block border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg transition-all hover:-translate-x-1 hover:-translate-y-1 hover:border-arcade-magenta hover:shadow-pixel-hover"
+              >
+                <div className="flex items-center justify-between border-b-3 border-arcade-border-strong bg-[#1d1233] px-4 py-2.5">
+                  <span className="font-pixel text-[8px] tracking-widest text-arcade-text-muted">
+                    {pathOf(match.categoryId).toUpperCase()}
+                  </span>
                   <StatusBadge status={match.status} />
-                </Link>
-              </li>
+                </div>
+                {match.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaUrl(match.imageUrl)} alt={match.title} className="h-36 w-full border-b-3 border-arcade-border-strong object-cover" />
+                )}
+                <div className="p-4">
+                  <p className="mb-2 text-2xl leading-tight text-arcade-text">{match.title}</p>
+                  <p className="font-arcade text-lg text-arcade-text-muted">
+                    {match.participants.map((participant) => participant.displayName).join(' × ')}
+                  </p>
+                  <p className="mt-1 font-arcade text-base text-arcade-text-muted">
+                    {formatDateTime(match.scheduledAt)}
+                    {match.bestOf > 1 && ` · MD${match.bestOf}`}
+                  </p>
+                </div>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import type { TournamentParticipantDTO } from '@tournament/adapters'
 import { formatBRL } from '@/lib/money'
+import { colorForId, initialsOf } from '@/lib/participant-colors'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useBetSlip } from '@/contexts/bet-slip-context'
@@ -40,68 +41,71 @@ export function OutrightCard({
   const pickable = open && !isSelfExcluded
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <h2 className="font-medium">Apostar no campeão</h2>
-        <span className="text-sm text-slate-500">Pool total: {formatBRL(odds?.totalPool ?? 0)}</span>
+    <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+      <div className="flex items-center justify-between border-b-3 border-arcade-border-strong px-5 py-3.5">
+        <h2 className="font-pixel text-[10px] tracking-widest text-arcade-purple">APOSTAR NO CAMPEÃO</h2>
+        <span className="font-arcade text-lg text-arcade-text-muted">pool total {formatBRL(odds?.totalPool ?? 0)}</span>
       </div>
 
-      <ul className="divide-y divide-slate-100">
-        {participants.map((participant) => {
-          const line = poolOf(participant.id)
-          const isChampion = participant.id === championParticipantId
-          const picked = has(tournamentId, participant.id)
-          const name = (
-            <span className="font-medium">
+      {participants.map((participant) => {
+        const line = poolOf(participant.id)
+        const isChampion = participant.id === championParticipantId
+        const picked = has(tournamentId, participant.id)
+
+        const content = (
+          <span className="flex flex-wrap items-center gap-3.5">
+            <span
+              className="grid h-10 w-10 flex-none place-items-center font-pixel text-[10px] text-arcade-bg"
+              style={{ backgroundColor: colorForId(participant.id) }}
+            >
+              {initialsOf(participant.displayName)}
+            </span>
+            <span className="min-w-[120px] flex-1 text-2xl leading-tight text-arcade-text">
               {participant.displayName}
-              {isChampion && <span className="ml-2 text-xs text-emerald-600">campeão</span>}
+              {isChampion && <span className="ml-2 font-pixel text-[9px] text-arcade-lime">CAMPEÃO</span>}
             </span>
-          )
-          const line_ = (
-            <span className={`text-sm ${picked ? 'text-white' : 'text-slate-500'}`}>
-              {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+            <span className="text-right">
+              <span className="block text-2xl leading-none text-arcade-text">
+                {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+              </span>
+              <span className="block font-arcade text-lg text-arcade-text-muted">{formatBRL(line?.pool ?? 0)}</span>
             </span>
-          )
+          </span>
+        )
 
-          return (
-            <li key={participant.id}>
-              {pickable ? (
-                <button
-                  type="button"
-                  aria-pressed={picked}
-                  onClick={() =>
-                    toggle({
-                      marketType: 'tournament_outright',
-                      marketId: tournamentId,
-                      selectionId: participant.id,
-                      marketLabel: `${tournamentTitle} (campeão)`,
-                      selectionLabel: participant.displayName,
-                    })
-                  }
-                  className={`flex w-full items-center justify-between px-5 py-3 text-left transition-colors ${
-                    picked ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  {name}
-                  {line_}
-                </button>
-              ) : (
-                <div className="flex items-center justify-between px-5 py-3">
-                  {name}
-                  {line_}
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+        return pickable ? (
+          <button
+            key={participant.id}
+            type="button"
+            aria-pressed={picked}
+            onClick={() =>
+              toggle({
+                marketType: 'tournament_outright',
+                marketId: tournamentId,
+                selectionId: participant.id,
+                marketLabel: `${tournamentTitle} (campeão)`,
+                selectionLabel: participant.displayName,
+              })
+            }
+            className={`block w-full border-b border-arcade-border-strong px-5 py-3.5 text-left transition-colors hover:bg-[#1d1233] ${
+              picked ? 'bg-[#2a1150]' : ''
+            }`}
+          >
+            {content}
+          </button>
+        ) : (
+          <div key={participant.id} className="border-b border-arcade-border-strong px-5 py-3.5">
+            {content}
+          </div>
+        )
+      })}
 
-      <div className="border-t border-slate-100 p-5">
-        <h3 className="mb-3 text-sm font-medium">Histórico de odds</h3>
+      <div className="p-5">
+        <h3 className="mb-4 font-pixel text-[10px] tracking-widest text-arcade-cyan">HISTÓRICO DE ODDS</h3>
         <OddsHistoryChart snapshots={oddsHistory} selectionLabel={participantLabel} />
       </div>
 
-      <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
+      <p className="border-t-3 border-arcade-border-strong px-5 py-3.5 font-arcade text-lg text-arcade-text-muted">
         {!open
           ? 'Apostas no campeão encerradas.'
           : isSelfExcluded

@@ -35,31 +35,26 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
   )?.displayName
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+    <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">{match.playerA.displayName}</span>
-        <span className="text-xs text-slate-400">vs</span>
-        <span className="font-medium">{match.playerB.displayName}</span>
+        <span className="text-arcade-text">{match.playerA.displayName}</span>
+        <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
+        <span className="text-arcade-text">{match.playerB.displayName}</span>
       </div>
 
       {match.matchId ? (
         <div className="mt-2 space-y-2">
           <div className="flex items-center justify-between">
-            {status ? <StatusBadge status={status} /> : <span className="text-xs text-slate-400">…</span>}
-            <Link
-              href={`/matches/${match.matchId}`}
-              className="text-xs font-medium text-slate-500 hover:text-slate-900"
-            >
+            {status ? <StatusBadge status={status} /> : <span className="text-arcade-text-muted">…</span>}
+            <Link href={`/matches/${match.matchId}`} className="text-base text-arcade-cyan hover:underline">
               Ver / Apostar →
             </Link>
           </div>
 
-          {status === 'settled' && (
-            <p className="text-xs text-emerald-700">Vencedor: {winnerName ?? '—'}</p>
-          )}
+          {status === 'settled' && <p className="text-base text-arcade-lime">Vencedor: {winnerName ?? '—'}</p>}
 
           {liveMatch.data && liveMatch.data.bestOf > 1 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-base text-arcade-text-muted">
               Melhor de {liveMatch.data.bestOf} · placar:{' '}
               {liveMatch.data.participants
                 .map(
@@ -74,11 +69,7 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
           {canDeclare && liveMatch.data && (
             <div className="flex flex-wrap gap-2">
               {liveMatch.data.participants.map((participant) => (
-                <Button
-                  key={participant.id}
-                  disabled={declaring}
-                  onClick={() => onDeclare(match.matchId!, participant.id)}
-                >
+                <Button key={participant.id} variant="warning" disabled={declaring} onClick={() => onDeclare(match.matchId!, participant.id)}>
                   {participant.displayName} venceu{liveMatch.data!.bestOf > 1 ? ' a unidade' : ''}
                 </Button>
               ))}
@@ -86,7 +77,7 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
           )}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-slate-400">Aguardando criação da partida.</p>
+        <p className="mt-2 text-base text-arcade-text-muted">Aguardando criação da partida.</p>
       )}
     </div>
   )
