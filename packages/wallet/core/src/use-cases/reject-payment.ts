@@ -1,5 +1,4 @@
 import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
-import { Wallet } from '../model'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -22,12 +21,9 @@ export default class RejectPayment extends AdminUseCase<Input, void> {
 
     payment.reject(actor.id)
 
-    let wallet: Wallet | null = null
-    if (payment.direction === 'withdrawal') {
-      wallet = await this.walletRepository.findWalletByUserId(payment.userId)
-      if (wallet) wallet.release(payment.amount)
-    }
-
-    await this.walletRepository.rejectPayment(payment, wallet)
+    // Releasing the hold of a rejected WITHDRAWAL happens INSIDE the
+    // repository's transaction (see the port); a rejected deposit never
+    // credited anything, so there is nothing to undo.
+    await this.walletRepository.applyPaymentRejection(payment)
   }
 }

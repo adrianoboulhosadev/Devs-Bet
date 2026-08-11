@@ -19,11 +19,6 @@ export default class RequestWithdrawal implements UseCase<Input, void> {
     const value = new Money(amount)
     if (value.isZero()) ValidationError.throwError(Errors.INVALID_AMOUNT, amount)
 
-    const wallet = await this.walletRepository.findWalletByUserId(userId)
-    if (!wallet) ValidationError.throwError(Errors.INSUFFICIENT_BALANCE, amount)
-
-    wallet.hold(value) // raises INSUFFICIENT_BALANCE when available < amount
-
     const payment = new Payment({
       userId,
       direction: 'withdrawal',
@@ -31,6 +26,9 @@ export default class RequestWithdrawal implements UseCase<Input, void> {
       referenceCode: 'WTH-' + Id.create().replace(/-/g, '').slice(0, 10).toUpperCase(),
     })
 
-    await this.walletRepository.saveWithdrawalRequest(wallet, payment)
+    // The hold happens INSIDE the repository's transaction (see the port): it
+    // loads the wallet there and calls `wallet.hold`, which is what raises
+    // INSUFFICIENT_BALANCE when the funds are not available.
+    await this.walletRepository.holdForWithdrawal(payment)
   }
 }

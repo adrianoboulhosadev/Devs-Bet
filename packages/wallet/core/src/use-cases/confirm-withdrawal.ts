@@ -1,5 +1,4 @@
 import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
-import { LedgerEntry } from '../model'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -24,18 +23,8 @@ export default class ConfirmWithdrawal extends AdminUseCase<Input, void> {
 
     payment.markPaid(actor.id)
 
-    const wallet = await this.walletRepository.findWalletByUserId(payment.userId)
-    if (!wallet) NotFoundError.throwError(Errors.WALLET_NOT_FOUND, payment.userId)
-
-    wallet.settleHold(payment.amount)
-
-    const entry = new LedgerEntry({
-      walletId: wallet.id.value,
-      type: 'withdrawal',
-      amount: payment.amount.cents,
-      referenceId: payment.id.value,
-    })
-
-    await this.walletRepository.confirmWithdrawal(wallet, entry, payment)
+    // Settling the hold + writing the ledger entry happens INSIDE the
+    // repository's transaction (see the port).
+    await this.walletRepository.applyWithdrawalConfirmation(payment)
   }
 }

@@ -1,4 +1,4 @@
-import { Wallet, LedgerEntry, Payment, DepositLimit, SelfExclusion } from '../model'
+import { Wallet, Payment, DepositLimit, SelfExclusion } from '../model'
 
 /**
  * Wallet WRITE port (command side). Because money moves must be ATOMIC, the port
@@ -13,17 +13,31 @@ export interface WalletRepository {
   // A user opens a pending deposit (no balance change yet).
   saveDepositRequest(payment: Payment): Promise<void>
 
-  // A user opens a pending withdrawal: reserve (hold) the funds + record the payment. Atomic.
-  saveWithdrawalRequest(wallet: Wallet, payment: Payment): Promise<void>
+  // The four money moves below take the PAYMENT, not an already-mutated Wallet:
+  // the adapter loads the wallet INSIDE the same transaction, applies the Wallet
+  // method named in each comment and persists — exactly like
+  // BettingPlacementRepository.placeBet. Handing over a wallet read beforehand
+  // would put the read outside the transaction, and two concurrent moves would
+  // then both write from the same stale balance, silently dropping one of them.
+  // The rules stay in the entity; only WHERE it is loaded changes.
 
-  // Admin confirms a deposit: upsert the credited wallet + ledger + payment. Atomic.
-  confirmDeposit(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void>
+  // A user opens a pending withdrawal: `wallet.hold` (raises INSUFFICIENT_BALANCE
+  // when available < amount, and a user with no wallet has nothing available)
+  // + record the payment. Atomic.
+  holdForWithdrawal(payment: Payment): Promise<void>
 
-  // Admin pays a withdrawal: settle the hold (balance/held down) + ledger + payment. Atomic.
-  confirmWithdrawal(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void>
+  // Admin confirms a deposit: `wallet.deposit` + ledger + payment. The wallet is
+  // provisioned here when the user never had one. Atomic.
+  applyDepositConfirmation(payment: Payment): Promise<void>
 
-  // Admin rejects a payment: mark it rejected (+ release the hold when it is a withdrawal). Atomic.
-  rejectPayment(payment: Payment, wallet: Wallet | null): Promise<void>
+  // Admin pays a withdrawal: `wallet.settleHold` (balance/held down) + ledger +
+  // payment. Atomic.
+  applyWithdrawalConfirmation(payment: Payment): Promise<void>
+
+  // Admin rejects a payment: mark it rejected, and for a WITHDRAWAL also
+  // `wallet.release` the funds it was holding (a rejected deposit never credited
+  // anything). Atomic.
+  applyPaymentRejection(payment: Payment): Promise<void>
 
   // Responsible-gambling deposit caps (self-service). Every limit the user has
   // ever set (one per period at most).

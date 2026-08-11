@@ -1,5 +1,4 @@
 import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
-import { Wallet, LedgerEntry } from '../model'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -24,18 +23,9 @@ export default class ConfirmDeposit extends AdminUseCase<Input, void> {
 
     payment.confirm(actor.id)
 
-    const wallet =
-      (await this.walletRepository.findWalletByUserId(payment.userId)) ??
-      new Wallet({ userId: payment.userId })
-    wallet.deposit(payment.amount)
-
-    const entry = new LedgerEntry({
-      walletId: wallet.id.value,
-      type: 'deposit',
-      amount: payment.amount.cents,
-      referenceId: payment.id.value,
-    })
-
-    await this.walletRepository.confirmDeposit(wallet, entry, payment)
+    // Crediting the wallet + writing the ledger entry happens INSIDE the
+    // repository's transaction (see the port), which also provisions the wallet
+    // when this is the user's first deposit.
+    await this.walletRepository.applyDepositConfirmation(payment)
   }
 }

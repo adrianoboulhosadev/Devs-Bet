@@ -137,25 +137,54 @@ export default class WalletRepositoryInMemory
     this.insertPayment(payment)
   }
 
-  async saveWithdrawalRequest(wallet: Wallet, payment: Payment): Promise<void> {
+  // The four money moves below mirror the Prisma adapter: they LOAD the wallet
+  // themselves and apply the domain method, instead of receiving a wallet the
+  // caller already mutated.
+  private loadOrProvision(userId: string): Wallet {
+    const row = this.wallets.find((current) => current.userId === userId)
+    return row
+      ? new Wallet({ id: row.id, userId: row.userId, balance: row.balance, held: row.held })
+      : new Wallet({ userId })
+  }
+
+  private ledgerFor(wallet: Wallet, payment: Payment, type: LedgerEntryType): LedgerEntry {
+    return new LedgerEntry({
+      walletId: wallet.id.value,
+      type,
+      amount: payment.amount.cents,
+      referenceId: payment.id.value,
+    })
+  }
+
+  async holdForWithdrawal(payment: Payment): Promise<void> {
+    const wallet = this.loadOrProvision(payment.userId)
+    wallet.hold(payment.amount) // raises INSUFFICIENT_BALANCE
     this.upsertWallet(wallet)
     this.insertPayment(payment)
   }
 
-  async confirmDeposit(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void> {
+  async applyDepositConfirmation(payment: Payment): Promise<void> {
+    const wallet = this.loadOrProvision(payment.userId)
+    wallet.deposit(payment.amount)
     this.upsertWallet(wallet)
-    this.insertLedger(entry)
+    this.insertLedger(this.ledgerFor(wallet, payment, 'deposit'))
     this.updatePayment(payment)
   }
 
-  async confirmWithdrawal(wallet: Wallet, entry: LedgerEntry, payment: Payment): Promise<void> {
+  async applyWithdrawalConfirmation(payment: Payment): Promise<void> {
+    const wallet = this.loadOrProvision(payment.userId)
+    wallet.settleHold(payment.amount)
     this.upsertWallet(wallet)
-    this.insertLedger(entry)
+    this.insertLedger(this.ledgerFor(wallet, payment, 'withdrawal'))
     this.updatePayment(payment)
   }
 
-  async rejectPayment(payment: Payment, wallet: Wallet | null): Promise<void> {
-    if (wallet) this.upsertWallet(wallet)
+  async applyPaymentRejection(payment: Payment): Promise<void> {
+    if (payment.direction === 'withdrawal') {
+      const wallet = this.loadOrProvision(payment.userId)
+      wallet.release(payment.amount)
+      this.upsertWallet(wallet)
+    }
     this.updatePayment(payment)
   }
 
