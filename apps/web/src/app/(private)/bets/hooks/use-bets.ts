@@ -1,14 +1,74 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { BetDTO } from '@betting/adapters'
+import type { MatchDTO } from '@match/adapters'
+import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
+import { notify } from '@/lib/notify'
 
 export function useBets() {
+  const queryClient = useQueryClient()
+
   const query = useQuery({
     queryKey: ['my-bets'],
     queryFn: async (): Promise<BetDTO[]> => (await api.get<BetDTO[]>('/bet/mine')).data,
   })
 
-  return { bets: query.data ?? [], loading: query.isLoading }
+  // Same query keys the rest of the page already uses, so React Query serves
+  // these from cache instead of firing extra requests.
+  const matches = useQuery({
+    queryKey: ['matches'],
+    queryFn: async (): Promise<MatchDTO[]> => (await api.get<MatchDTO[]>('/match')).data,
+  })
+
+  const tournaments = useQuery({
+    queryKey: ['tournaments'],
+    queryFn: async (): Promise<TournamentDTO[]> => (await api.get<TournamentDTO[]>('/tournament')).data,
+  })
+
+  /**
+   * A bet can only be pulled while its market still takes bets — the backend is
+   * what enforces it (BETTING_CLOSED), but the button has to know too: an `open`
+   * bet on a match that already kicked off is NOT cancellable, and offering the
+   * action just to fail is worse than not offering it.
+   */
+  const canCancel = (bet: BetDTO): boolean => {
+    if (bet.status !== 'open') return false
+    if (bet.marketType === 'tournament_outright') {
+      const tournament = tournaments.data?.find((entry) => entry.id === bet.marketId)
+      return (
+        !!tournament &&
+        tournament.status === 'in_progress' &&
+        new Date(tournament.scheduledAt).getTime() > Date.now()
+      )
+    }
+    return matches.data?.find((entry) => entry.id === bet.marketId)?.status === 'open'
+  }
+
+  const cancel = useMutation({
+    mutationFn: (betId: string) => api.post(`/bet/${betId}/cancel`),
+    onSuccess: (_result, betId) => {
+      queryClient.invalidateQueries({ queryKey: ['my-bets'] })
+      queryClient.invalidateQueries({ queryKey: ['wallet'] })
+      // The bet left the pool, so the market's odds moved.
+      const bet = query.data?.find((entry) => entry.id === betId)
+      if (bet) {
+        queryClient.invalidateQueries({ queryKey: ['odds', bet.marketId] })
+        queryClient.invalidateQueries({ queryKey: ['outright-odds', bet.marketId] })
+        queryClient.invalidateQueries({ queryKey: ['odds-history', bet.marketId] })
+        queryClient.invalidateQueries({ queryKey: ['book', bet.marketId] })
+      }
+      notify.success('Aposta cancelada — o valor voltou para a carteira.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível cancelar a aposta.'),
+  })
+
+  return {
+    bets: query.data ?? [],
+    loading: query.isLoading,
+    canCancel,
+    cancelBet: (betId: string) => cancel.mutate(betId),
+    cancelling: cancel.isPending,
+  }
 }

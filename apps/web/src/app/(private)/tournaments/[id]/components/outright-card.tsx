@@ -1,38 +1,43 @@
 'use client'
 
 import type { TournamentParticipantDTO } from '@tournament/adapters'
-import { Button } from '@/components/button'
-import { Field } from '@/components/field'
 import { formatBRL } from '@/lib/money'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
+import { useBetSlip } from '@/contexts/bet-slip-context'
 import { useOutright } from '../hooks/use-outright'
 
 interface OutrightCardProps {
   tournamentId: string
+  tournamentTitle: string
   participants: TournamentParticipantDTO[]
   open: boolean
   championParticipantId: string | null
 }
 
 /**
- * "Bet on the champion" (outright) card: live pool + implied odd per participant
- * and, while the market is open (before the tournament starts), a form to back a
- * champion. Harder to hit than a single match, so the underdog pays much more.
+ * "Bet on the champion" (outright) card: live pool + implied odd per participant.
+ * While the market is open (before the tournament starts) each row is a button
+ * that drops the pick into the bet slip — there is no form here any more.
+ * Harder to hit than a single match, so the underdog pays much more.
  */
 export function OutrightCard({
   tournamentId,
+  tournamentTitle,
   participants,
   open,
   championParticipantId,
 }: OutrightCardProps) {
-  const { odds, oddsHistory, form, onSubmit, placing } = useOutright(tournamentId, open)
+  const { odds, oddsHistory } = useOutright(tournamentId, open)
   const { isSelfExcluded } = useSelfExclusion()
+  const { toggle, has } = useBetSlip()
 
   const poolOf = (participantId: string) =>
     odds?.entries.find((entry) => entry.selectionId === participantId)
   const participantLabel = (participantId: string) =>
     participants.find((participant) => participant.id === participantId)?.displayName ?? '—'
+
+  const pickable = open && !isSelfExcluded
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white">
@@ -45,15 +50,47 @@ export function OutrightCard({
         {participants.map((participant) => {
           const line = poolOf(participant.id)
           const isChampion = participant.id === championParticipantId
+          const picked = has(tournamentId, participant.id)
+          const name = (
+            <span className="font-medium">
+              {participant.displayName}
+              {isChampion && <span className="ml-2 text-xs text-emerald-600">campeão</span>}
+            </span>
+          )
+          const line_ = (
+            <span className={`text-sm ${picked ? 'text-white' : 'text-slate-500'}`}>
+              {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+            </span>
+          )
+
           return (
-            <li key={participant.id} className="flex items-center justify-between px-5 py-3">
-              <span className="font-medium">
-                {participant.displayName}
-                {isChampion && <span className="ml-2 text-xs text-emerald-600">campeão</span>}
-              </span>
-              <span className="text-sm text-slate-500">
-                {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
-              </span>
+            <li key={participant.id}>
+              {pickable ? (
+                <button
+                  type="button"
+                  aria-pressed={picked}
+                  onClick={() =>
+                    toggle({
+                      marketType: 'tournament_outright',
+                      marketId: tournamentId,
+                      selectionId: participant.id,
+                      marketLabel: `${tournamentTitle} (campeão)`,
+                      selectionLabel: participant.displayName,
+                    })
+                  }
+                  className={`flex w-full items-center justify-between px-5 py-3 text-left transition-colors ${
+                    picked ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  {name}
+                  {line_}
+                </button>
+              ) : (
+                <div className="flex items-center justify-between px-5 py-3">
+                  {name}
+                  {line_}
+                </div>
+              )}
             </li>
           )
         })}
@@ -64,37 +101,13 @@ export function OutrightCard({
         <OddsHistoryChart snapshots={oddsHistory} selectionLabel={participantLabel} />
       </div>
 
-      {open && isSelfExcluded ? (
-        <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
-          Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.
-        </p>
-      ) : open ? (
-        <form onSubmit={onSubmit} className="space-y-3 border-t border-slate-100 p-5">
-          <label className="block space-y-1">
-            <span className="text-sm font-medium">Campeão</span>
-            <select
-              required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-              {...form.register('selectionId')}
-            >
-              <option value="">Selecione…</option>
-              {participants.map((participant) => (
-                <option key={participant.id} value={participant.id}>
-                  {participant.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...form.register('amount')} />
-          <Button type="submit" disabled={placing}>
-            {placing ? 'Apostando…' : 'Apostar no campeão'}
-          </Button>
-        </form>
-      ) : (
-        <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
-          Apostas no campeão encerradas.
-        </p>
-      )}
+      <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
+        {!open
+          ? 'Apostas no campeão encerradas.'
+          : isSelfExcluded
+            ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
+            : 'Toque em um participante para adicioná-lo ao bilhete.'}
+      </p>
     </div>
   )
 }

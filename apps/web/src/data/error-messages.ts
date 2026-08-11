@@ -29,6 +29,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.PAYMENT_ALREADY_SETTLED]: 'Este pagamento já foi processado.',
   [Errors.RECEIPT_REQUIRED]: 'Envie o comprovante de pagamento para concluir o depósito.',
   [Errors.DEPOSIT_LIMIT_EXCEEDED]: 'Esse depósito ultrapassa o limite que você definiu.',
+  [Errors.WALLET_BUSY]: 'Sua carteira está processando outra operação. Tente de novo em instantes.',
   [Errors.SELF_EXCLUDED]: 'Sua autoexclusão está ativa — depósitos e apostas estão bloqueados.',
   [Errors.ALREADY_SELF_EXCLUDED]: 'Você já tem uma autoexclusão ativa.',
   // match
@@ -45,6 +46,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   // betting
   [Errors.BETTING_CLOSED]: 'As apostas para esta partida estão encerradas.',
   [Errors.BET_NOT_FOUND]: 'Aposta não encontrada.',
+  [Errors.BET_NOT_OPEN]: 'Esta aposta já foi resolvida e não pode mais ser cancelada.',
   [Errors.INVALID_COMBO_LEGS]: 'O bilhete precisa de pelo menos 2 seleções.',
   [Errors.DUPLICATE_COMBO_MARKET]: 'Você já tem uma seleção desta partida/torneio no bilhete.',
   [Errors.INVALID_COMBO_ODD]: 'Não foi possível calcular a odd desta seleção.',

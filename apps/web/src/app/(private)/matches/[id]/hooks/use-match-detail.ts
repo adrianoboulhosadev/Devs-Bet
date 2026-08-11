@@ -7,7 +7,6 @@ import type { MatchDTO } from '@match/adapters'
 import type { MarketOddsDTO, BetDTO, OddsSnapshotDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/notify'
-import { toCents } from '@/lib/money'
 import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
@@ -15,11 +14,6 @@ import { useCategories } from '@/hooks/use-categories'
 // Betting selection id for "the match ends in a draw" (must match the sentinel
 // in packages/match/core's Match model and the backend's bet.controller).
 export const MATCH_DRAW_SELECTION_ID = 'draw'
-
-interface BetFields {
-  participantId: string
-  amount: string // reais
-}
 
 interface EditFields {
   title: string
@@ -98,26 +92,6 @@ export function useMatchDetail(matchId: string) {
     queryClient.invalidateQueries({ queryKey: ['wallet'] })
   }
 
-  const betForm = useForm<BetFields>({ defaultValues: { participantId: '', amount: '' } })
-
-  const placeBet = useMutation({
-    mutationFn: (fields: BetFields) =>
-      api.post('/bet', {
-        marketType: 'match',
-        marketId: matchId,
-        selectionId: fields.participantId,
-        stake: toCents(fields.amount),
-      }),
-    onSuccess: () => {
-      betForm.reset()
-      invalidate()
-      notify.success('Aposta confirmada.')
-    },
-    onError: (failure) => notify.failure(failure, 'Não foi possível apostar.'),
-  })
-
-  const onPlaceBet = betForm.handleSubmit((fields) => placeBet.mutate(fields))
-
   const lock = useMutation({
     mutationFn: () => api.post(`/match/${matchId}/lock`),
     onSuccess: () => {
@@ -187,9 +161,6 @@ export function useMatchDetail(matchId: string) {
     loading: match.isLoading,
     isAdmin,
     isOpen,
-    betForm,
-    onPlaceBet,
-    placing: placeBet.isPending,
     lock: () => lock.mutate(),
     recordUnitResult: (winnerParticipantId: string | null) => recordUnitResult.mutate(winnerParticipantId),
     cancel: () => cancel.mutate(),

@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { href: '/matches', label: 'Partidas' },
   { href: '/tournaments', label: 'Torneios' },
   { href: '/bets', label: 'Minhas apostas' },
-  { href: '/combo', label: 'Bilhete múltiplo' },
   { href: '/leaderboard', label: 'Ranking' },
   { href: '/wallet', label: 'Carteira' },
 ]

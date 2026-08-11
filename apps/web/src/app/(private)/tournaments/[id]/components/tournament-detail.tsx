@@ -71,6 +71,7 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
 
       <OutrightCard
         tournamentId={tournament.id}
+        tournamentTitle={tournament.title}
         participants={tournament.participants}
         open={outrightOpen}
         championParticipantId={tournament.championParticipantId}

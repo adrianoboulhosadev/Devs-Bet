@@ -12,6 +12,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
+import { useBetSlip } from '@/contexts/bet-slip-context'
 import { useMatchDetail, MATCH_DRAW_SELECTION_ID } from '../hooks/use-match-detail'
 
 export function MatchDetail({ matchId }: { matchId: string }) {
@@ -24,9 +25,6 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     isAdmin,
     isOpen,
     marketClosed,
-    betForm,
-    onPlaceBet,
-    placing,
     lock,
     recordUnitResult,
     cancel,
@@ -40,6 +38,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
     pathOf,
   } = useMatchDetail(matchId)
   const { isSelfExcluded } = useSelfExclusion()
+  const { toggle, has } = useBetSlip()
   const [confirmingCancel, setConfirmingCancel] = useState(false)
 
   if (loading || !match) return <Loading />
@@ -126,11 +125,37 @@ export function MatchDetail({ matchId }: { matchId: string }) {
           {selections.map((selection) => {
             const line = poolOf(selection.id)
             return (
-              <li key={selection.id} className="flex items-center justify-between px-5 py-3">
-                <span className="font-medium">{selection.label}</span>
-                <span className="text-sm text-slate-500">
-                  {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
-                </span>
+              <li key={selection.id}>
+                {isOpen && !isSelfExcluded ? (
+                  <button
+                    type="button"
+                    aria-pressed={has(match.id, selection.id)}
+                    onClick={() =>
+                      toggle({
+                        marketType: 'match',
+                        marketId: match.id,
+                        selectionId: selection.id,
+                        marketLabel: match.title,
+                        selectionLabel: selection.label,
+                      })
+                    }
+                    className={`flex w-full items-center justify-between px-5 py-3 text-left transition-colors ${
+                      has(match.id, selection.id) ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="font-medium">{selection.label}</span>
+                    <span className={`text-sm ${has(match.id, selection.id) ? 'text-white' : 'text-slate-500'}`}>
+                      {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <span className="font-medium">{selection.label}</span>
+                    <span className="text-sm text-slate-500">
+                      {formatBRL(line?.pool ?? 0)} · odd {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+                    </span>
+                  </div>
+                )}
               </li>
             )
           })}
@@ -143,36 +168,11 @@ export function MatchDetail({ matchId }: { matchId: string }) {
       </div>
 
       {isOpen && (
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="font-medium">Apostar</h2>
-          {isSelfExcluded ? (
-            <p className="text-sm text-slate-500">
-              Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.
-            </p>
-          ) : (
-            <form onSubmit={onPlaceBet} className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-sm font-medium">Resultado</span>
-                <select
-                  required
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-                  {...betForm.register('participantId')}
-                >
-                  <option value="">Selecione…</option>
-                  {selections.map((selection) => (
-                    <option key={selection.id} value={selection.id}>
-                      {selection.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Field label="Valor (R$)" type="number" step="0.01" min="0" required {...betForm.register('amount')} />
-              <Button type="submit" disabled={placing}>
-                {placing ? 'Apostando…' : 'Confirmar aposta'}
-              </Button>
-            </form>
-          )}
-        </div>
+        <p className="rounded-lg border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500">
+          {isSelfExcluded
+            ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
+            : 'Toque em um resultado acima para adicioná-lo ao bilhete.'}
+        </p>
       )}
 
       {isAdmin && match.status !== 'settled' && match.status !== 'cancelled' && (
