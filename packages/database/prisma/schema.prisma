@@ -21,6 +21,8 @@ model User {
   password    String?
   role        String    @default("user")
   active      Boolean   @default(true)
+  nickname    String?
+  avatarUrl   String?   @map("avatar_url")
   createdAt   DateTime  @default(now()) @map("created_at")
   lastLoginAt DateTime? @map("last_login_at")
 
