@@ -2,6 +2,7 @@ import { BettingSettlementRepository, Bet, ComboBet, BetStatus, BetMarketType, C
 import { Wallet } from '@wallet/adapters'
 import { PrismaClient } from 'database'
 import { applyBetToWallet, applyComboToWallet } from '../settlement/apply-settlement'
+import { inMoneyTransaction } from './money-transaction'
 
 /**
  * Persists a market settlement ATOMICALLY: for every bettor, loads the wallet,
@@ -39,7 +40,7 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       byBettor.set(bet.bettorId, list)
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await inMoneyTransaction(this.prisma, async (tx) => {
       for (const [bettorId, userBets] of byBettor) {
         const walletRow = await tx.wallet.findUnique({ where: { userId: bettorId } })
         if (!walletRow) continue // a bet always implies a held wallet; skip defensively
@@ -110,7 +111,7 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       byBettor.set(combo.bettorId, list)
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await inMoneyTransaction(this.prisma, async (tx) => {
       for (const [bettorId, userCombos] of byBettor) {
         const walletRow = await tx.wallet.findUnique({ where: { userId: bettorId } })
         if (!walletRow) continue // a combo always implies a held wallet; skip defensively
