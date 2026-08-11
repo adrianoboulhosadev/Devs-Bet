@@ -11,6 +11,8 @@ export interface UserDTO {
   email: string
   role: Role
   active: boolean
+  nickname: string | null
+  avatarUrl: string | null
   createdAt: Date
   lastLoginAt: Date | null
 }

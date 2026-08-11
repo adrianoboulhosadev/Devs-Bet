@@ -14,6 +14,8 @@ interface UserRow {
   password: string | null
   role: Role
   active: boolean
+  nickname: string | null
+  avatarUrl: string | null
   createdAt: Date
   lastLoginAt: Date | null
 }
@@ -28,6 +30,8 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
       password: row.password ?? undefined,
       role: row.role,
       active: row.active,
+      nickname: row.nickname,
+      avatarUrl: row.avatarUrl,
     })
   }
 
@@ -38,6 +42,8 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
       password: user.password?.value ?? null,
       role: user.role,
       active: user.active,
+      nickname: user.nickname,
+      avatarUrl: user.avatarUrl,
       createdAt: new Date(),
       lastLoginAt: null,
     })
@@ -68,6 +74,16 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
     if (row) row.active = false
   }
 
+  async updateProfile(
+    id: string,
+    fields: { nickname?: string | null; avatarUrl?: string | null },
+  ): Promise<void> {
+    const row = this.rows.find((current) => current.id === id)
+    if (!row) return
+    if (fields.nickname !== undefined) row.nickname = fields.nickname
+    if (fields.avatarUrl !== undefined) row.avatarUrl = fields.avatarUrl
+  }
+
   async delete(id: string): Promise<void> {
     const index = this.rows.findIndex((current) => current.id === id)
     if (index >= 0) this.rows.splice(index, 1)
@@ -81,6 +97,8 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
           email: row.email,
           role: row.role,
           active: row.active,
+          nickname: row.nickname,
+          avatarUrl: row.avatarUrl,
           createdAt: row.createdAt,
           lastLoginAt: row.lastLoginAt,
         }

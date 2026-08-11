@@ -9,6 +9,9 @@ export interface UserProps extends EntityProps {
   password?: string
   role?: Role
   active?: boolean
+  // Display-only. Never used for authentication — Email stays the identity.
+  nickname?: string | null
+  avatarUrl?: string | null
 }
 
 /**
@@ -21,6 +24,8 @@ export class User extends Entity<User, UserProps> {
   readonly password?: PasswordHash
   readonly role: Role
   active: boolean
+  nickname: string | null
+  avatarUrl: string | null
 
   constructor(props: UserProps) {
     super(props)
@@ -28,10 +33,18 @@ export class User extends Entity<User, UserProps> {
     if (props.password) this.password = new PasswordHash(props.password)
     this.role = props.role ?? 'user'
     this.active = props.active ?? true
+    this.nickname = props.nickname?.trim() || null
+    this.avatarUrl = props.avatarUrl ?? null
   }
 
   get isAdmin(): boolean {
     return this.role === 'admin'
+  }
+
+  /** Display-only fields, editable any time — no invariant beyond trimming. */
+  editProfile(fields: { nickname?: string | null; avatarUrl?: string | null }): void {
+    if (fields.nickname !== undefined) this.nickname = fields.nickname?.trim() || null
+    if (fields.avatarUrl !== undefined) this.avatarUrl = fields.avatarUrl
   }
 
   /** Projection of the same identity without the secret (for handing outward). */

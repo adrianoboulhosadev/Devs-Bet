@@ -7,6 +7,7 @@ export interface UserRepository {
   findByEmail(email: string): Promise<User | null>
   changePassword(id: string, password: string): Promise<void>
   updateLastLogin(id: string): Promise<void>
+  updateProfile(id: string, fields: { nickname?: string | null; avatarUrl?: string | null }): Promise<void>
   deactivate(id: string): Promise<void>
   // Hard delete of the identity (right to erasure). Distinct from `deactivate`
   // (soft): the row ceases to exist. The cross-context cascade (wallet, matches,
