@@ -143,9 +143,12 @@ Mesma matemática pra **qualquer mercado** (vencedor de uma match ou campeão de
 - `distributable = total − rake` (`rake = total × rakeBasisPoints / 10000`; começa em 0).
 - Aposta vencedora `i` recebe `stake_i / pool(winner) × distributable`. Odd implícita do vencedor =
   `distributable / pool(winner)` → quanto menor o pool, maior o pagamento (azarão paga mais).
-- `pool(winner) == 0` (declarado um vencedor, mas ninguém apostou nele) → **todo mundo perde** (ninguém
-  acertou, o valor não volta pra carteira). **Só** mercado/partida **cancelado** → **estorna todos**
-  (`RefundMarket`, caminho separado do `SettleMarket`).
+- `pool(winner) == 0` (declarado um vencedor, mas ninguém apostou nele) → **estorna todos**: sem bilhete
+  vencedor não há o que ratear, e consumir as apostas tiraria dinheiro que ninguém ganhou (é o que o
+  parimutuel clássico faz). Mercado/partida **cancelado** também estorna, por outro caminho
+  (`RefundMarket`, separado do `SettleMarket`).
+- Se **todos** apostaram na MESMA seleção e ela vence, cada um recebe exatamente o que apostou — estão
+  rateando o próprio dinheiro (`stake / total × total`). Sem lucro, sem prejuízo.
 - Odds ao vivo (read model) são **indicativas** enquanto `open`; congelam no `locked`; settlement usa
   o pool final.
 
