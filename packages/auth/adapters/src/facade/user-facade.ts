@@ -18,12 +18,14 @@ import {
   DeactivateUserController,
   RefreshTokenController,
   LoginWithGoogleController,
+  UpdateProfileController,
 } from '../controllers'
 import {
   RegisterUserInput,
   LoginUserInput,
   ChangePasswordInput,
   LoginWithGoogleInput,
+  UpdateProfileInput,
 } from '../@types'
 
 /**
@@ -86,6 +88,11 @@ export default class UserFacade {
   async deactivateUser(userId: string): Promise<void> {
     const controller = new DeactivateUserController(this.userRepository!)
     await controller.execute(userId)
+  }
+
+  async updateProfile(input: UpdateProfileInput, userId: string): Promise<void> {
+    const controller = new UpdateProfileController(this.userRepository!)
+    await controller.execute(input, userId)
   }
 
   async loginWithGoogle(input: LoginWithGoogleInput): Promise<JwtTokens> {

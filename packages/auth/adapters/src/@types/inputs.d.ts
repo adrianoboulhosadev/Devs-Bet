@@ -14,6 +14,12 @@ export interface ChangePasswordInput {
   newPassword: string
 }
 
+/** Display-only fields; omit a key to leave it unchanged. */
+export interface UpdateProfileInput {
+  nickname?: string | null
+  avatarUrl?: string | null
+}
+
 /** The idToken is the Google-issued ID token the front got back after the
  * NextAuth handshake completed — see LoginWithGoogle (the backend verifies it
  * against Google's JWKS, never trusting the client's claim). */

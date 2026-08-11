@@ -6,6 +6,7 @@ import LogoutUserController from './logout-user-controller'
 import DeactivateUserController from './deactivate-user-controller'
 import RefreshTokenController from './refresh-token-controller'
 import LoginWithGoogleController from './login-with-google-controller'
+import UpdateProfileController from './update-profile-controller'
 
 export {
   RegisterUserController,
@@ -16,4 +17,5 @@ export {
   DeactivateUserController,
   RefreshTokenController,
   LoginWithGoogleController,
+  UpdateProfileController,
 }
