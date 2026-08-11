@@ -5,6 +5,7 @@ import {
   ComboBettingPlacementRepository,
   StakeLimitRepository,
   StakeLimitQueryRepository,
+  BetCancellationRepository,
   BetDTO,
   MarketOddsDTO,
   LeaderboardEntryDTO,
@@ -21,6 +22,7 @@ import {
   ListMyBetsController,
   GetLeaderboardController,
   PlaceComboBetController,
+  CancelBetController,
   ListMyComboBetsController,
   SetStakeLimitController,
   GetMyStakeLimitController,
@@ -42,6 +44,7 @@ export default class BettingFacade {
     private readonly comboPlacementRepository?: ComboBettingPlacementRepository,
     private readonly stakeLimitRepository?: StakeLimitRepository,
     private readonly stakeLimitQueryRepository?: StakeLimitQueryRepository,
+    private readonly cancellationRepository?: BetCancellationRepository,
   ) {}
 
   async placeBet(
@@ -91,6 +94,19 @@ export default class BettingFacade {
       legs,
       bettorId,
       bettorSelfExcluded,
+    )
+  }
+
+  // Cancelling one's own wager while the market(s) are still open.
+  async cancelBet(betId: string, bettorId: string, marketOpen: boolean): Promise<void> {
+    await new CancelBetController(this.cancellationRepository!).cancelBet(betId, bettorId, marketOpen)
+  }
+
+  async cancelComboBet(comboBetId: string, bettorId: string, allMarketsOpen: boolean): Promise<void> {
+    await new CancelBetController(this.cancellationRepository!).cancelCombo(
+      comboBetId,
+      bettorId,
+      allMarketsOpen,
     )
   }
 
