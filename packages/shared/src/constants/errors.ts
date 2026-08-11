@@ -35,6 +35,10 @@ export const Errors = {
   PAYMENT_ALREADY_SETTLED: 'PAYMENT_ALREADY_SETTLED',
   RECEIPT_REQUIRED: 'RECEIPT_REQUIRED',
   DEPOSIT_LIMIT_EXCEEDED: 'DEPOSIT_LIMIT_EXCEEDED',
+  // Too many money moves hit the same wallet at once and the database kept
+  // refusing the interleaving (see the apps' inMoneyTransaction). Transient:
+  // nothing was written and the very same request works on a retry.
+  WALLET_BUSY: 'WALLET_BUSY',
   SELF_EXCLUDED: 'SELF_EXCLUDED',
   ALREADY_SELF_EXCLUDED: 'ALREADY_SELF_EXCLUDED',
 
@@ -53,6 +57,8 @@ export const Errors = {
   // betting
   BETTING_CLOSED: 'BETTING_CLOSED',
   BET_NOT_FOUND: 'BET_NOT_FOUND',
+  // The bet/ticket already settled (won/lost/refunded), so there is nothing to cancel.
+  BET_NOT_OPEN: 'BET_NOT_OPEN',
   INVALID_COMBO_LEGS: 'INVALID_COMBO_LEGS',
   DUPLICATE_COMBO_MARKET: 'DUPLICATE_COMBO_MARKET',
   INVALID_COMBO_ODD: 'INVALID_COMBO_ODD',
