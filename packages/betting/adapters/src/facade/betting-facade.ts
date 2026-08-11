@@ -13,6 +13,7 @@ import {
   StakeLimitDTO,
   OddsSnapshotDTO,
   SettlementJob,
+  ProfileStatsDTO,
 } from '@betting/core'
 import {
   PlaceBetController,
@@ -27,6 +28,7 @@ import {
   SetStakeLimitController,
   GetMyStakeLimitController,
   GetOddsHistoryController,
+  GetMyProfileStatsController,
 } from '../controllers'
 import { PlaceBetInput, PlaceComboBetLegInput, SetStakeLimitInput } from '../@types'
 
@@ -124,5 +126,9 @@ export default class BettingFacade {
 
   async getOddsHistory(marketId: string): Promise<OddsSnapshotDTO[]> {
     return new GetOddsHistoryController(this.betQueryRepository!).execute(marketId)
+  }
+
+  async getMyProfileStats(bettorId: string): Promise<ProfileStatsDTO> {
+    return new GetMyProfileStatsController(this.betQueryRepository!).execute(bettorId)
   }
 }
