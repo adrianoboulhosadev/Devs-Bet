@@ -1,4 +1,4 @@
-import { AdminUseCase, AuthenticatedActor, AccessDeniedError, NotFoundError, Errors } from 'shared'
+import { AdminUseCase, AuthenticatedActor, EventPublisher, AccessDeniedError, NotFoundError, Errors } from 'shared'
 import { ApprovalStatus } from '../model'
 import { UserRepository, AuthSessionRepository } from '../providers'
 
@@ -17,6 +17,7 @@ export default class SetUserApproval extends AdminUseCase<Input, void> {
   constructor(
     private readonly repository: UserRepository,
     private readonly sessionRepository: AuthSessionRepository,
+    private readonly eventPublisher?: EventPublisher,
   ) {
     super()
   }
@@ -34,5 +35,9 @@ export default class SetUserApproval extends AdminUseCase<Input, void> {
 
     await this.repository.updateApprovalStatus(userId, user.approvalStatus)
     if (!user.isApproved) await this.sessionRepository.deleteAllByUser(userId)
+
+    // Publishes UserApproved on approve, and NOTHING on reject (reject()
+    // never records) — no `if` needed here, the entity already decided.
+    await this.eventPublisher?.publish(user.pullDomainEvents())
   }
 }

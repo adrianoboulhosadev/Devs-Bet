@@ -1,6 +1,7 @@
-import { Entity, EntityProps, Role } from 'shared'
+import { AggregateRoot, EntityProps, Role } from 'shared'
 import { Email } from './email'
 import { PasswordHash } from './password-hash'
+import { UserApproved } from './events'
 
 /**
  * Gate to the platform: this is a closed, friends-only product, so signing up
@@ -30,7 +31,7 @@ export interface UserProps extends EntityProps {
  * `approvalStatus` to 'pending' — a brand-new account is always waiting for an
  * admin, whichever path created it (sign-up form or first Google login).
  */
-export class User extends Entity<User, UserProps> {
+export class User extends AggregateRoot<User, UserProps> {
   readonly email: Email
   readonly password?: PasswordHash
   readonly role: Role
@@ -61,6 +62,7 @@ export class User extends Entity<User, UserProps> {
   /** Admin releases the account (also the way back in for a rejected one). */
   approve(): void {
     this.approvalStatus = 'approved'
+    this.record(new UserApproved(this.id.value))
   }
 
   /** Admin bars the account — either denying a new sign-up or revoking access

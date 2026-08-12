@@ -9,7 +9,7 @@ import {
   OAuthAccountRepository,
   GoogleTokenVerifier,
 } from '@auth/core'
-import { AuthenticatedActor } from 'shared'
+import { AuthenticatedActor, EventPublisher } from 'shared'
 import {
   RegisterUserController,
   LoginUserController,
@@ -47,10 +47,17 @@ export default class UserFacade {
     private readonly sessionRepository?: AuthSessionRepository,
     private readonly oauthAccountRepository?: OAuthAccountRepository,
     private readonly googleVerifier?: GoogleTokenVerifier,
+    // Domain events raised by sign-up / the front door (see @auth/core's
+    // events): the app turns them into notifications + a live update.
+    private readonly eventPublisher?: EventPublisher,
   ) {}
 
   async registerUser(input: RegisterUserInput): Promise<void> {
-    const controller = new RegisterUserController(this.userRepository!, this.hashProvider!)
+    const controller = new RegisterUserController(
+      this.userRepository!,
+      this.hashProvider!,
+      this.eventPublisher,
+    )
     await controller.execute(input)
   }
 
@@ -101,7 +108,11 @@ export default class UserFacade {
 
   // Admin-only (the AdminUseCase base re-checks the actor's role in the domain).
   async setUserApproval(input: SetUserApprovalInput, actor: AuthenticatedActor): Promise<void> {
-    const controller = new SetUserApprovalController(this.userRepository!, this.sessionRepository!)
+    const controller = new SetUserApprovalController(
+      this.userRepository!,
+      this.sessionRepository!,
+      this.eventPublisher,
+    )
     await controller.execute(input, actor)
   }
 
