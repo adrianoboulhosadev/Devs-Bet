@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { DomainEvent, EventPublisher } from 'shared'
-import { NotificationInput } from '@notification/adapters'
+import { NotificationFacade, NotificationInput } from '@notification/adapters'
 import { UserRegistered, UserApproved } from '@auth/adapters'
 import {
   DepositRequested,
@@ -9,8 +9,9 @@ import {
   WithdrawalPaid,
   PaymentRejected,
 } from '@wallet/adapters'
-import { NotificationDispatcher } from './notification.dispatcher'
+import { PrismaNotificationRepository } from './prisma-notification-repository'
 import { NotificationAudience } from './notification-audience'
+import { LiveUpdates } from './live-updates'
 
 /**
  * The single place that turns a DOMAIN EVENT into the notification(s) it
@@ -22,6 +23,17 @@ import { NotificationAudience } from './notification-audience'
  * Implements the `EventPublisher` port from `shared`, so the use cases depend on
  * an interface, never on this class.
  *
+ * Two deliberate choices about WHEN and HOW it runs:
+ *
+ * 1. It runs AFTER the business operation committed, never inside its
+ *    transaction — a wallet credit that worked must not be rolled back because
+ *    an inbox line failed to write. (The worker's settlement is the exception,
+ *    and for the opposite reason: there the notification IS derived from the
+ *    same rows being written, so it rides along in the same transaction.)
+ * 2. It swallows its own failures (logging them): the caller's HTTP response
+ *    describes the money move, and a notification that never arrived is not a
+ *    reason to tell the admin their confirmation failed.
+ *
  * Unknown events are ignored on purpose: a context is free to raise an event
  * nobody notifies about yet (that is the point of events being facts, not
  * commands), and adding one must never break an existing flow.
@@ -31,20 +43,27 @@ export class DomainEventListener implements EventPublisher {
   private readonly logger = new Logger(DomainEventListener.name)
 
   constructor(
-    private readonly notifications: NotificationDispatcher,
+    private readonly notificationRepository: PrismaNotificationRepository,
     private readonly audience: NotificationAudience,
+    private readonly liveUpdates: LiveUpdates,
   ) {}
 
   async publish(events: DomainEvent[]): Promise<void> {
     for (const event of events) {
       try {
-        await this.notifications.notify(await this.translate(event))
+        await this.deliver(await this.translate(event))
       } catch (error) {
-        // Never let a notification failure surface as a failed money move: the
-        // business operation already committed before we got here.
         this.logger.error(`failed to handle ${event.constructor.name}`, error as Error)
       }
     }
+  }
+
+  private async deliver(items: NotificationInput[]): Promise<void> {
+    if (items.length === 0) return
+    await new NotificationFacade(this.notificationRepository).send(items)
+    // Only after the write succeeded: a ping for a notification that failed to
+    // save would make the client re-read and find nothing.
+    await this.liveUpdates.notifyUsers(items.map((item) => item.userId))
   }
 
   private async translate(event: DomainEvent): Promise<NotificationInput[]> {

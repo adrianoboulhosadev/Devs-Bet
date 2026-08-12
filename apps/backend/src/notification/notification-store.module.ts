@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common'
 import { DbModule } from '../db/db.module'
 import { PrismaNotificationRepository } from './prisma-notification-repository'
-import { NotificationDispatcher } from './notification.dispatcher'
 import { NotificationAudience } from './notification-audience'
 import { DomainEventListener } from './domain-event-listener'
 import { LiveUpdates } from './live-updates'
@@ -17,13 +16,7 @@ import { LiveUpdates } from './live-updates'
  */
 @Module({
   imports: [DbModule],
-  providers: [
-    PrismaNotificationRepository,
-    NotificationAudience,
-    LiveUpdates,
-    NotificationDispatcher,
-    DomainEventListener,
-  ],
+  providers: [PrismaNotificationRepository, NotificationAudience, LiveUpdates, DomainEventListener],
   exports: [PrismaNotificationRepository, DomainEventListener, LiveUpdates],
 })
 export class NotificationStoreModule {}

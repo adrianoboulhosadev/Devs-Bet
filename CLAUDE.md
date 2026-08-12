@@ -450,8 +450,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   mesma justificativa da tela de portaria — sem ele o dono não reconhece o amigo); as pendências de
   depósito/saque usam apelido ou **id truncado**, nunca e-mail. **Onde a escrita acontece muda por
   caminho, e é decisão consciente**: no backend o disparo é **depois** do commit e **engole o próprio
-  erro** (`NotificationDispatcher`) — carteira creditada não pode ser desfeita porque a caixa de entrada
-  falhou; no worker a notificação é gravada **dentro da transação do settlement** (mesmo precedente do
+  erro** (`DomainEventListener` — traduzir o evento, gravar e pingar são a mesma responsabilidade e
+  moram nele; não existe camada intermediária) — carteira creditada não pode ser desfeita porque a
+  caixa de entrada falhou; no worker a notificação é gravada **dentro da transação do settlement** (mesmo precedente do
   `OddsSnapshot` dentro do `PlaceBet`), porque ali ela é derivada das mesmas linhas sendo escritas,
   então não pode se perder nem sobreviver a um rollback. **Quem dispara cada notificação são os
   EVENTOS DE DOMÍNIO** — ver a seção própria abaixo; nenhum controller monta `NotificationInput` na
