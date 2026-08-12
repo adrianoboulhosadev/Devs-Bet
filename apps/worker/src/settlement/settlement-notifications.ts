@@ -1,5 +1,14 @@
+import { DomainEvent } from 'shared'
 import { Notification, NotificationInput } from '@notification/adapters'
-import { Bet, ComboBet, BetMarketType } from '@betting/adapters'
+import {
+  BetMarketType,
+  BetWon,
+  BetLost,
+  BetRefunded,
+  ComboWon,
+  ComboLost,
+  ComboRefunded,
+} from '@betting/adapters'
 import { Prisma } from 'database'
 
 /** The row shape the notifications table takes. Mapped here (and not through the
@@ -71,35 +80,81 @@ export async function resolveMarketTitle(
   return tournament?.title ?? 'o torneio'
 }
 
-/** One inbox line per settled bet, worded by its outcome. */
-export function betNotification(bet: Bet, marketTitle: string): NotificationInput | null {
-  const shared = {
-    userId: bet.bettorId,
-    marketKind: marketKind(bet.marketType),
-    marketId: bet.marketId,
-    marketTitle,
-    referenceId: bet.id.value,
+/**
+ * Turns the DOMAIN EVENTS a settled bet/ticket recorded into inbox lines.
+ *
+ * Reading the events instead of re-inspecting `bet.status` is what keeps this in
+ * step with the domain: the entity already decided WHAT happened (including the
+ * subtle case of a combo whose leg resolved while the ticket stayed open — it
+ * records nothing then, so nothing shows up here either). The app layer only
+ * decides what to SAY about it, enriching with the market title it resolved.
+ *
+ * Unknown events are ignored: a context may record events nobody notifies about
+ * (BetRefunded from a bettor's own CancelBet never reaches this path at all).
+ */
+export function notificationsFor(
+  events: DomainEvent[],
+  marketTitle: string,
+): NotificationInput[] {
+  const items: NotificationInput[] = []
+
+  for (const event of events) {
+    if (event instanceof BetWon) {
+      items.push({
+        userId: event.bettorId,
+        type: 'bet_won',
+        marketKind: marketKind(event.marketType),
+        marketId: event.marketId,
+        marketTitle,
+        payout: event.payout,
+        referenceId: event.betId,
+      })
+    } else if (event instanceof BetLost) {
+      items.push({
+        userId: event.bettorId,
+        type: 'bet_lost',
+        marketKind: marketKind(event.marketType),
+        marketId: event.marketId,
+        marketTitle,
+        stake: event.stake,
+        referenceId: event.betId,
+      })
+    } else if (event instanceof BetRefunded) {
+      items.push({
+        userId: event.bettorId,
+        type: 'bet_refunded',
+        marketKind: marketKind(event.marketType),
+        marketId: event.marketId,
+        marketTitle,
+        stake: event.stake,
+        referenceId: event.betId,
+      })
+    } else if (event instanceof ComboWon) {
+      items.push({
+        userId: event.bettorId,
+        type: 'combo_won',
+        legs: event.legs,
+        payout: event.payout,
+        referenceId: event.comboBetId,
+      })
+    } else if (event instanceof ComboLost) {
+      items.push({
+        userId: event.bettorId,
+        type: 'combo_lost',
+        legs: event.legs,
+        stake: event.stake,
+        referenceId: event.comboBetId,
+      })
+    } else if (event instanceof ComboRefunded) {
+      items.push({
+        userId: event.bettorId,
+        type: 'combo_refunded',
+        legs: event.legs,
+        stake: event.stake,
+        referenceId: event.comboBetId,
+      })
+    }
   }
 
-  if (bet.status === 'won') return { ...shared, type: 'bet_won', payout: bet.payout.cents }
-  if (bet.status === 'lost') return { ...shared, type: 'bet_lost', stake: bet.stake.cents }
-  if (bet.status === 'refunded') return { ...shared, type: 'bet_refunded', stake: bet.stake.cents }
-  return null // still open: nothing happened to tell about
-}
-
-/** One inbox line per combo ticket that REACHED a final status this round — a
- * leg resolving while the ticket stays open is not news yet. */
-export function comboNotification(combo: ComboBet): NotificationInput | null {
-  const shared = {
-    userId: combo.bettorId,
-    legs: combo.legs.length,
-    referenceId: combo.id.value,
-  }
-
-  if (combo.status === 'won') return { ...shared, type: 'combo_won', payout: combo.payout.cents }
-  if (combo.status === 'lost') return { ...shared, type: 'combo_lost', stake: combo.stake.cents }
-  if (combo.status === 'refunded') {
-    return { ...shared, type: 'combo_refunded', stake: combo.stake.cents }
-  }
-  return null
+  return items
 }

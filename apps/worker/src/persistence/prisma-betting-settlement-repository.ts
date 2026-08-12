@@ -4,11 +4,11 @@ import { NotificationInput } from '@notification/adapters'
 import { PrismaClient } from 'database'
 import { applyBetToWallet, applyComboToWallet } from '../settlement/apply-settlement'
 import {
-  betNotification,
-  comboNotification,
+  notificationsFor,
   resolveMarketTitle,
   writeNotifications,
 } from '../settlement/settlement-notifications'
+import { pushLiveUpdates } from '../settlement/live-updates'
 import { inMoneyTransaction } from './money-transaction'
 
 /**
@@ -49,6 +49,9 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       byBettor.set(bet.bettorId, list)
     }
 
+    // Collected inside the transaction, pinged AFTER it commits (see below).
+    const notified: string[] = []
+
     await inMoneyTransaction(this.prisma, async (tx) => {
       // Every bet of a settlement belongs to the same market, so its name is
       // resolved once and reused by all the inbox lines below.
@@ -81,8 +84,8 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
             },
           })
 
-          const notification = betNotification(bet, marketTitle)
-          if (notification) notifications.push(notification)
+          // Straight from what the entity recorded when it transitioned.
+          notifications.push(...notificationsFor(bet.pullDomainEvents(), marketTitle))
         }
 
         await tx.wallet.update({
@@ -92,7 +95,15 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       }
 
       await writeNotifications(tx, notifications)
+      // Reset per attempt: inMoneyTransaction RETRIES on a write conflict, and a
+      // retry re-runs this whole callback — appending would double the list.
+      notified.length = 0
+      notified.push(...notifications.map((item) => item.userId))
     })
+
+    // Only now that the rows are committed: a ping the client acted on before
+    // the commit would make it re-read and find nothing.
+    await pushLiveUpdates(notified)
   }
 
   async findComboBetsWithOpenLegByMarket(marketId: string): Promise<ComboBet[]> {
@@ -130,6 +141,9 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       byBettor.set(combo.bettorId, list)
     }
 
+    // Collected inside the transaction, pinged AFTER it commits (see below).
+    const notified: string[] = []
+
     await inMoneyTransaction(this.prisma, async (tx) => {
       const notifications: NotificationInput[] = []
 
@@ -154,10 +168,10 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
           const line = applyComboToWallet(wallet, combo)
           if (!line) continue // still open, no money movement this round
 
-          // Only a ticket that REACHED a final status this round is news; a leg
-          // resolving under an otherwise-open ticket says nothing yet.
-          const notification = comboNotification(combo)
-          if (notification) notifications.push(notification)
+          // Only a ticket that REACHED a final status this round recorded an
+          // event; a leg resolving under an otherwise-open ticket recorded
+          // nothing, so nothing is said.
+          notifications.push(...notificationsFor(combo.pullDomainEvents(), ''))
 
           await tx.comboBet.update({
             where: { id: combo.id.value },
@@ -180,6 +194,11 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
       }
 
       await writeNotifications(tx, notifications)
+      // Reset per attempt — see applySettlement.
+      notified.length = 0
+      notified.push(...notifications.map((item) => item.userId))
     })
+
+    await pushLiveUpdates(notified)
   }
 }
