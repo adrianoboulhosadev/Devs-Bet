@@ -799,8 +799,26 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   - **Não existe passo de schema no compose** (decisão do dono: nada de dev vaza pro ambiente de
     produção). O projeto não tem migration — num banco novo é preciso rodar o `prisma db push`
     **na mão** uma vez, senão a API sobe e responde erro em tudo.
-  - **Se puser um proxy (nginx/Caddy) na frente**, o SSE (`GET /notification/stream`) precisa de
-    buffering desligado e timeout de leitura longo, senão o sininho volta a parecer travado.
+- **Reverse proxy: `deploy/nginx.conf`** (Nginx nativo no host da VPS, fora do Docker; front e API no
+  MESMO domínio, com `/api/*` indo pro backend). Três coisas ali **não são opcionais**, e as três
+  foram validadas rodando um Nginx de verdade com essa config na frente do stack:
+  - **`client_max_body_size 10m`** — o default do Nginx é **1 MB**, e o comprovante aceita até 10 MB.
+    Sem isso, foto de celular/PDF toma **413 no proxy** e nem chega no backend (reproduzido: 413
+    antes, 201 depois, com um arquivo de 2 MB).
+  - **Bloco próprio pro SSE** (`location = /api/notification/stream`) com `proxy_buffering off`,
+    `proxy_http_version 1.1` + `Connection ''` e `proxy_read_timeout` longo. Com o buffering ligado
+    (default) o Nginx segura os eventos e o sininho parece travado — exatamente o sintoma que o push
+    veio resolver. Medido depois: push chega em **~0,6 s** através do proxy.
+  - **`X-Accel-Buffering: no`** no próprio handler (`@Header` no `NotificationStreamController`) —
+    cinto e suspensório: mantém o stream funcionando mesmo atrás de um proxy que ninguém configurou.
+    O Nginx **consome** esse header, então ele não aparece na resposta final; pra conferir, bater
+    direto no backend.
+  ⚠️ Enquanto o Nginx estiver em `listen 80` sem TLS, o **login não persiste**: o cookie de refresh é
+  `secure` (`NODE_ENV=production` no Dockerfile), e o navegador não guarda cookie `secure` em HTTP.
+  Rodar o `certbot` antes de usar pra valer.
+  ⚠️ Portas do compose (`5433`/`6380`/`5001`/`3003` no host) são **só o mapeamento pro host**. A
+  comunicação entre containers usa as portas INTERNAS (`db:5432`, `redis:6379`) — trocar isso no
+  `DATABASE_URL`/`REDIS_URL` derruba a conexão.
 - **Antes de declarar pronto** (não bootar servidor — precisa de Postgres/Redis):
   ```bash
   npx turbo run check-types test build

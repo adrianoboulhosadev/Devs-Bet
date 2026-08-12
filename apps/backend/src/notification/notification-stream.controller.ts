@@ -1,4 +1,4 @@
-import { Controller, Req, Sse, UseGuards } from '@nestjs/common'
+import { Controller, Header, Req, Sse, UseGuards } from '@nestjs/common'
 import { Observable } from 'rxjs'
 import { LiveUpdates } from './live-updates'
 import { StreamAuthGuard, RequestWithStreamUser } from './stream-auth.guard'
@@ -25,7 +25,14 @@ export class NotificationStreamController {
   // Returns the Observable SYNCHRONOUSLY — Nest does not await an @Sse handler
   // (see router-execution-context), so the authentication has to happen in the
   // guard above, not here.
+  //
+  // X-Accel-Buffering tells Nginx to not buffer THIS response, which is what
+  // SSE needs (a buffered stream reaches the browser only once the buffer
+  // fills, so the bell looks frozen). deploy/nginx.conf already turns buffering
+  // off for this route; the header is the belt-and-braces version that keeps
+  // the stream working even behind a proxy nobody configured for it.
   @Sse('stream')
+  @Header('X-Accel-Buffering', 'no')
   @UseGuards(StreamAuthGuard)
   stream(@Req() request: RequestWithStreamUser): Observable<{ data: string }> {
     return this.liveUpdates.streamFor(request.streamUserId)
