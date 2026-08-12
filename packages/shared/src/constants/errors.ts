@@ -23,6 +23,10 @@ export const Errors = {
   PASSWORD_SAME_AS_PREVIOUS: 'PASSWORD_SAME_AS_PREVIOUS',
   INVALID_SESSION: 'INVALID_SESSION',
   NOT_ADMIN: 'NOT_ADMIN',
+  // Signed up but an admin has not released the account yet. A REJECTED account
+  // never gets this code — it answers INVALID_EMAIL_OR_PASSWORD, so being barred
+  // is indistinguishable from a wrong password.
+  ACCOUNT_PENDING_APPROVAL: 'ACCOUNT_PENDING_APPROVAL',
   OAUTH_TOKEN_INVALID: 'OAUTH_TOKEN_INVALID',
   OAUTH_EMAIL_NOT_VERIFIED: 'OAUTH_EMAIL_NOT_VERIFIED',
 
