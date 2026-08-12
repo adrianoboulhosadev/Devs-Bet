@@ -110,7 +110,7 @@ export function Admin() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="font-pixel text-xs tracking-widest text-arcade-amber">FILA DE APROVAÇÃO</h2>
+        <h2 className="font-pixel text-xs tracking-widest text-arcade-amber">PAGAMENTOS</h2>
 
         {payments.length === 0 ? (
           <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
