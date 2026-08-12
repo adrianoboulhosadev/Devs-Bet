@@ -69,6 +69,34 @@ model OAuthAccount {
   @@map("oauth_accounts")
 }
 
+// --- notification --------------------------------------------------------------
+
+// One line in a user's inbox. `userId` is a LOGICAL FK (the recipient may be a
+// bettor or an admin); title/body are stored ALREADY RENDERED by the domain
+// (Notification.for) — a notification records what was said at the time, so a
+// later wording change never rewrites history.
+//
+// The @@unique triple is what makes delivery IDEMPOTENT: a retried settlement
+// job or a double-clicked confirm re-sends the same (userId, type, referenceId)
+// and the write is skipped instead of duplicating the line. Events with nothing
+// to reference leave `referenceId` null — in Postgres two NULLs never collide,
+// so those are free to repeat (each new deposit request IS a new event).
+model Notification {
+  id          String    @id
+  userId      String    @map("user_id")
+  type        String
+  title       String
+  body        String
+  link        String?
+  referenceId String?   @map("reference_id")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([userId, type, referenceId])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
 // --- wallet --------------------------------------------------------------------
 
 // The user's money at rest. All amounts are INTEGER CENTS. `available` (a domain
