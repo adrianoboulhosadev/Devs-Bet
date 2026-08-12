@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { WalletDTO } from '@wallet/adapters'
 import { useAuth } from '@/contexts/auth-context'
 import { useProfileStats } from '@/hooks/use-profile-stats'
+import { useNotificationStream } from '@/hooks/use-notification-stream'
 import { mediaUrl } from '@/lib/media'
 import { formatBRL } from '@/lib/money'
 import { api } from '@/lib/api'
@@ -150,6 +151,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, isAdmin, logout } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const { data: profile } = useProfileStats()
+
+  // One live connection for the whole private area (this is the only place the
+  // bell is mounted), so the inbox never needs a timer.
+  useNotificationStream()
 
   const wallet = useQuery({
     queryKey: ['wallet'],

@@ -5,8 +5,28 @@ import { api, refreshClient } from './config'
 // is recovered by the silent refresh. The opaque refresh lives in the httpOnly
 // cookie (out of JS reach).
 let accessToken: string | null = null
+
+// Whoever needs to REACT to the token changing — today the notification stream,
+// whose EventSource carries the token in its URL and therefore has to be
+// reopened when it rotates. A module-level variable cannot be watched by a hook,
+// so `setAccessToken` (the single door login/refresh/logout all go through)
+// announces it instead of anyone polling for it.
+type TokenListener = (token: string | null) => void
+const tokenListeners = new Set<TokenListener>()
+
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
+/** Returns the unsubscribe function, so a React effect can clean up. */
+export function onAccessTokenChange(listener: TokenListener): () => void {
+  tokenListeners.add(listener)
+  return () => tokenListeners.delete(listener)
+}
+
 export function setAccessToken(token: string | null): void {
   accessToken = token
+  tokenListeners.forEach((listener) => listener(token))
 }
 
 // Dedup: concurrent 401s share a single in-flight /refresh.
@@ -16,8 +36,10 @@ export function refreshAccessToken(): Promise<string> {
     refreshInFlight = refreshClient
       .post<{ accessToken: string }>('/auth/refresh')
       .then((response) => {
-        accessToken = response.data.accessToken
-        return accessToken
+        // Through setAccessToken, not a bare assignment: a rotated token has to
+        // reach the listeners (the notification stream reopens with it).
+        setAccessToken(response.data.accessToken)
+        return response.data.accessToken
       })
       .finally(() => {
         refreshInFlight = null
@@ -42,7 +64,7 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${newToken}`
         return api(original)
       } catch {
-        accessToken = null
+        setAccessToken(null)
         // let the 401 bubble up: the AuthProvider tears down the session and goes to login.
       }
     }
