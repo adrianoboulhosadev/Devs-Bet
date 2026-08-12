@@ -79,6 +79,12 @@ export const Errors = {
   PARTICIPANT_ALREADY_EXISTS: 'PARTICIPANT_ALREADY_EXISTS',
   PARTICIPANT_IN_USE: 'PARTICIPANT_IN_USE',
 
+  // notification
+  // Also answered when the notification belongs to SOMEONE ELSE (anti-IDOR):
+  // a foreign notification is indistinguishable from a missing one, same as
+  // BET_NOT_FOUND in CancelBet.
+  NOTIFICATION_NOT_FOUND: 'NOTIFICATION_NOT_FOUND',
+
   // tournament
   TOURNAMENT_NOT_FOUND: 'TOURNAMENT_NOT_FOUND',
   INVALID_TOURNAMENT_SIZE: 'INVALID_TOURNAMENT_SIZE',
