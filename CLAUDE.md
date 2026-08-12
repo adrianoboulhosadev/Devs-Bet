@@ -27,7 +27,8 @@ Monorepo **Turborepo + npm workspaces** em TypeScript. Arquitetura **hexagonal (
 por bounded context**, com **modelagem RICA** (entidades com comportamento e invariantes + value
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
-Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `participant`, `tournament`. O `auth` é a **referência canônica**
+Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `participant`, `tournament`,
+`notification`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -51,7 +52,8 @@ apps/
   database/  (container-db)            # docker-compose: Postgres + Redis (dev)
 ```
 
-Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@participant/*`, `@tournament/*`. `core` e
+Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@participant/*`,
+`@tournament/*`, `@notification/*`. `core` e
 `adapters` são **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
@@ -116,7 +118,8 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   cross-context (ex.: `PlaceBet` toca `wallet` + `match` + `betting`) fica na camada de app (backend).
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
   `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats;
-  `category`=árvore de categorias das partidas; `tournament`=chaveamento eliminatório que orquestra matches.
+  `category`=árvore de categorias das partidas; `tournament`=chaveamento eliminatório que orquestra matches;
+  `notification`=caixa de entrada do usuário (não conhece nenhum outro contexto — quem dispara é a camada de app).
 - **Categoria da partida (cross-context)**: o `match` guarda `categoryId` (folha da árvore) como
   dado puro; a validação "existe + é folha" segue o padrão do `PlaceBet` — o **backend resolve** via
   `category` (`findByIdQuery` → `isLeaf`) e passa `categoryIsLeaf` pro use-case do match (que lança
@@ -176,7 +179,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
 `INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
-`STAKE_LIMIT_EXCEEDED`.
+`STAKE_LIMIT_EXCEEDED`, `NOTIFICATION_NOT_FOUND`.
 
 ## Contextos
 
@@ -392,6 +395,41 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `participant` (que nunca importa `match`/`tournament`). Upload de foto: `/upload/participants`
   (admin-only, mesmo padrão de `/upload/matchs`). Rotas: `GET`/`POST /participant`, `PATCH`/`DELETE
   /participant/:id`.
+- **notification** — caixa de entrada do usuário (sininho no header + tela `/notifications`). Resolve o
+  problema de o usuário só descobrir o que aconteceu **indo procurar** (abrir `/bets` pra ver se
+  liquidou, `/wallet` pra ver se o Pix entrou) e de o admin só ver a fila entrando na sala de controle.
+  `Notification` (entidade rica: `userId` destinatário — FK lógica —, `type`, `title`, `body`, `link`,
+  `referenceId`, `readAt`; `markAsRead()` idempotente, mantendo o timestamp original). **A cópia mora
+  no domínio**: `Notification.for(input)` é um factory com `switch` sobre uma **união discriminada**
+  (`NotificationInput`, um shape por tipo — `bet_won` pede `payout`, `deposit_confirmed` pede `amount`),
+  então nenhum caller inventa campo nem esquece o valor, e o texto fica numa decisão só em vez de
+  espalhado por três apps. O texto é gravado **já renderizado** — a notificação é o registro do que foi
+  dito na época, então mudar a redação depois não reescreve o histórico. Tipos e quem dispara:
+  | tipo | quem recebe | onde dispara |
+  |---|---|---|
+  | `bet_won`/`bet_lost`/`bet_refunded` | apostador | worker, na transação do settlement |
+  | `combo_won`/`combo_lost`/`combo_refunded` | apostador | worker, idem (só quando o bilhete de fato liquida) |
+  | `deposit_confirmed`/`deposit_rejected`/`withdrawal_paid`/`withdrawal_rejected` | apostador | `AdminWalletController` |
+  | `account_approved` | apostador | `AdminUserController` (approve) |
+  | `admin_signup_pending` | admins | `AuthController` (register) |
+  | `admin_deposit_pending`/`admin_withdrawal_pending` | admins | `WalletController` |
+  **Rejeitar cadastro NÃO notifica** — de propósito: ser barrado tem que parecer senha errada (ver a
+  seção auth), e uma linha na caixa de entrada entregaria o jogo. **Idempotência** vem do banco:
+  `@@unique([userId, type, referenceId])` + `createMany({ skipDuplicates: true })`, então job de
+  settlement reprocessado ou duplo clique do admin não duplica; eventos sem referência
+  (`referenceId: null`) podem repetir de propósito (cada pedido de depósito É um evento novo, e no
+  Postgres dois NULL nunca colidem). **Quem são os admins** sai de `PrismaUserRepository.findAdminIds()`
+  — método do **app**, fora da porta do `auth/core` (nenhum use-case de auth precisa disso), só admins
+  ativos e aprovados. **Dados pessoais**: o `admin_signup_pending` carrega o e-mail (chega só a admin,
+  mesma justificativa da tela de portaria — sem ele o dono não reconhece o amigo); as pendências de
+  depósito/saque usam apelido ou **id truncado**, nunca e-mail. **Onde a escrita acontece muda por
+  caminho, e é decisão consciente**: no backend o disparo é **depois** do commit e **engole o próprio
+  erro** (`NotificationDispatcher`) — carteira creditada não pode ser desfeita porque a caixa de entrada
+  falhou; no worker a notificação é gravada **dentro da transação do settlement** (mesmo precedente do
+  `OddsSnapshot` dentro do `PlaceBet`), porque ali ela é derivada das mesmas linhas sendo escritas,
+  então não pode se perder nem sobreviver a um rollback. Front: `useNotifications` (hook global,
+  polling de 60s + refetch no foco — sem websocket, o stack não tem essa infra), `NotificationBell`
+  (badge, painel ancorado, fecha em Escape/clique fora) e `app/(private)/notifications`.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
   (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32,64,128} — potência de 2;
   **`bestOfByRound: number[]`** — **um valor por rodada do MATA-MATA** (índice 0 = rodada mais cheia do
@@ -468,6 +506,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `participant` (`/` [GET aberto — alimenta o picker; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
+  `notification` (`GET /` [caixa de entrada própria, `?limit=`; devolve `{ unreadCount, items }` — serve
+  o sininho e a tela], `POST /read-all`, `POST /:id/read`),
   `admin/{deposits,withdrawals}`,
   `admin/users` (GET lista todas as contas — portaria) e `admin/users/:id/{approve,reject}`
   (libera / barra; `reject` também revoga acesso e derruba as sessões),
@@ -536,7 +576,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `Tournament`(tournaments),
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
   `player_b_id` são FKs lógicas), `TournamentGroupMatch`(tournament_group_matches; fase de grupos —
-  `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas). FKs entre contextos são **lógicas**
+  `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas),
+  `Notification`(notifications; `@@unique([userId, type, referenceId])` — é o que dá idempotência de
+  entrega; `user_id` FK lógica). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`, `match_participants.participant_id`,
   `tournament_participants.participant_id`); a self-relation da `Category` é intra-contexto, então tem
   relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
@@ -552,6 +594,10 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   sem ramificar por tipo (a liquidação acha as apostas abertas por `marketId`).
 - Os literais da fila precisam bater entre backend (produtor) e worker (consumidor). O worker **não** usa
   Groq/Playwright.
+- A mesma transação do settlement grava as **notificações** de aposta/bilhete encerrado
+  (`settlement-notifications.ts`) — ver a seção do contexto `notification` pra por que ali e não depois.
+  O nome do mercado sai de **uma** consulta por liquidação (todas as apostas do lote são do mesmo
+  mercado), com fallback genérico: título faltando nunca pode quebrar o pagamento.
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
@@ -604,6 +650,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 
 **Stack travada**: Next.js (App Router) + **Tailwind** + **TanStack Query** + **Axios** + **react-hook-form**.
 **SEM zod** no front (validação de negócio já está no domínio; no front só validação de UI simples).
+
+> **Vocabulário do produto: "aposta", NUNCA "bilhete".** Decisão do dono — o texto que o usuário lê
+> fala em *aposta simples* e *aposta múltipla*; "bilhete" foi varrido da interface inteira. No CÓDIGO
+> o domínio segue em inglês (`ComboBet`, `ComboLeg`, `bet-slip`), e neste guia a palavra ainda aparece
+> descrevendo esses tipos — o que não pode voltar é pra tela.
 
 - **Visual ≠ lógica**: em `app/`, cada rota tem `<rota>/components/` (só JSX) e `<rota>/hooks/` (states,
   effects, handlers, chamadas). `page.tsx` só importa e renderiza.
