@@ -536,6 +536,18 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (`secure` só em produção); `auth/refresh` lê o cookie e rotaciona.
 - **CORS com credenciais**: origin específica (`WEB_ORIGIN`) + `credentials: true`.
 - **Role admin** = o dono. Guard de role protege rotas de confirmação de depósito/saque e de settlement.
+- ⚠️ **Login com Google está DESLIGADO** (decisão do dono pro primeiro deploy — o OAuth client ainda
+  não existe). **A chave É o interruptor**, não há flag separada pra esquecer de virar: com
+  `GOOGLE_CLIENT_ID` vazio, `POST /auth/oauth/google` responde **404 puro** (`GoogleLoginGuard`, um
+  recurso desligado não anuncia que existe) e o `GoogleOAuthVerifier` se recusa a rodar. Essa segunda
+  tranca **não é redundância decorativa**: sem client id a `google-auth-library` **pula a checagem de
+  audience** (`verifySignedJwtWithCertsAsync` só compara quando recebe um valor), então um ID token
+  emitido pra qualquer outro app do Google passaria e abriria conta aqui. No front, o botão sai das
+  duas telas por `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED` (**default desligado**; `NEXT_PUBLIC_*` é inlinado
+  no build, então ligar exige **rebuild do web**) e o provider do NextAuth nem é montado sem as
+  credenciais. Esconder o botão sozinho **não protegeria nada** — a rota é o portão. Pra religar:
+  criar o client no Google Cloud, preencher as três variáveis e reconstruir o web. Nada de código
+  comentado pra achar e descomentar.
 - **Login social (Google) NÃO muda nada do que está acima** — é só mais uma forma de chegar ao
   MESMO `accessToken`/`refreshToken`/cookie httpOnly de sempre. O NextAuth (`apps/web`) roda **só**
   o handshake OAuth com o Google (`/api/auth/[...nextauth]`, `lib/auth/options.ts`) — a sessão que
