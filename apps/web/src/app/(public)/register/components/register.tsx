@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Field } from '@/components/field'
 import { Button } from '@/components/button'
 import { GoogleSignInButton } from '@/components/google-sign-in-button'
+import { GOOGLE_LOGIN_ENABLED } from '@/lib/features'
 import { useRegister } from '../hooks/use-register'
 
 export function Register() {
@@ -40,13 +41,17 @@ export function Register() {
             {submitting ? 'Criando…' : '▸ Criar ficha · Cadastrar'}
           </Button>
 
-          <div className="flex items-center gap-3 font-pixel text-[9px] tracking-widest text-arcade-text-muted">
-            <span className="h-px flex-1 bg-arcade-border" />
-            ou
-            <span className="h-px flex-1 bg-arcade-border" />
-          </div>
+          {GOOGLE_LOGIN_ENABLED && (
+            <>
+              <div className="flex items-center gap-3 font-pixel text-[9px] tracking-widest text-arcade-text-muted">
+                <span className="h-px flex-1 bg-arcade-border" />
+                ou
+                <span className="h-px flex-1 bg-arcade-border" />
+              </div>
 
-          <GoogleSignInButton />
+              <GoogleSignInButton />
+            </>
+          )}
 
           <p className="text-center font-arcade text-lg text-arcade-text-muted">
             Já joga?{' '}

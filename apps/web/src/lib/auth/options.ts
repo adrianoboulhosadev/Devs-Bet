@@ -11,13 +11,18 @@ import GoogleProvider from 'next-auth/providers/google'
  * session is discarded (signOut) right after — nothing here ever becomes the
  * source of truth for who is logged in.
  */
+// No credentials, no provider: /api/auth/signin/google then answers 404 instead
+// of starting a handshake that could never finish. Keeps the disabled feature
+// from being reachable by typing the URL, with the backend route as the real
+// gate (see GoogleLoginGuard).
+const googleCredentials = {
+  clientId: process.env.GOOGLE_CLIENT_ID?.trim() ?? '',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim() ?? '',
+}
+const googleConfigured = !!googleCredentials.clientId && !!googleCredentials.clientSecret
+
 export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-    }),
-  ],
+  providers: googleConfigured ? [GoogleProvider(googleCredentials)] : [],
   session: { strategy: 'jwt' },
   callbacks: {
     // `account` is only present right after the OAuth redirect completes —
