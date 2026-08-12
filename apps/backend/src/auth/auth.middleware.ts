@@ -25,8 +25,13 @@ export class AuthMiddleware implements NestMiddleware {
 
       const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload
 
+      // Re-read on every request, so revoking someone's access (see
+      // SetUserApproval) cuts them off immediately instead of leaving the
+      // already-issued 15min access token usable.
       const user = await this.userRepository.findByIdQuery(payload.userId)
-      if (!user) UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
+      if (!user || user.approvalStatus !== 'approved') {
+        UnauthorizedError.throwError(Errors.NOT_AUTHENTICATED)
+      }
 
       ;(req as RequestWithUser).user = user
     } catch {
