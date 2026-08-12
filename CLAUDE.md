@@ -107,6 +107,32 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
 - **Domain services**: regras puras que cruzam entidades (ex.: `PayoutCalculator` do parimutuel,
   agregações de stats) → classe em `core/src/domain-services/` com métodos **estáticos**, sem portas
   e sem efeito. Reexportada como **valor** pelo `@ctx/adapters`.
+- **Eventos de domínio (TRAVADO)**: o que aconteceu no domínio é registrado como um **fato no
+  passado** pela própria entidade, no exato ponto da transição. Base no `shared`: `DomainEvent`
+  (só `occurredAt`), `AggregateRoot<T, Props> extends Entity` (com `protected record(event)` e
+  `pullDomainEvents()`) e a porta `EventPublisher { publish(events) }`. Quem tem evento
+  **estende `AggregateRoot`** em vez de `Entity` (hoje: `User`, `Payment`, `Bet`, `ComboBet`); as
+  classes de evento ficam em `core/src/model/events.ts` de cada contexto e são reexportadas como
+  **valor** pelo `@ctx/adapters` (o listener precisa da classe pra `instanceof`, não do tipo).
+  - **`pullDomainEvents()` DRENA a lista** (a segunda chamada vem vazia) e a lista **nunca é
+    `props`** — então reconstituir uma linha do banco nasce sem evento; só transição feita na
+    execução atual gera fato.
+  - **Quem publica é o CASO DE USO**, com `eventPublisher?: EventPublisher` opcional no construtor
+    (mesmo molde do `MatchLockQueue` no `CreateMatch`), chamado **depois** do `repository.xxx(...)`.
+    Roteado pelos controllers finos até a facade, como toda porta.
+  - **Evento de CRIAÇÃO é montado no caso de uso, não pela entidade** (`UserRegistered`,
+    `DepositRequested`, `WithdrawalRequested`): o construtor serve tanto pra criar quanto pra
+    RECONSTITUIR do banco, então ele nunca pode registrar nada.
+  - **Registrar ≠ publicar**: `Bet.refund()` registra `BetRefunded` sempre, mas o `CancelBet` (o
+    apostador desistindo da própria aposta) **não recebe a porta** — o fato existe e ninguém o
+    publica. É assim que "cancelamento não vira notificação" fica garantido pelo tipo, sem `if`.
+  - **`User.reject()` não registra nada** — a decisão de produto ("ser barrado tem que parecer senha
+    errada") mora no modelo, então nenhum caminho consegue vazá-la por engano.
+  - **Onde os eventos são consumidos muda por caminho, e é decisão consciente**: no backend o
+    `DomainEventListener` (implementa `EventPublisher`) traduz evento → notificação **depois** do
+    commit; no **worker** o adapter de settlement puxa `bet.pullDomainEvents()` **dentro da
+    transação**, porque a notificação é derivada das mesmas linhas sendo escritas (ver a seção do
+    contexto `notification`).
 - **Autorização por caso de uso (role)**: casos de uso restritos a admin **estendem** a base
   `AdminUseCase<INPUT, OUTPUT>` (do `shared`) em vez de implementar `UseCase` direto. É um Template
   Method: o `execute` público checa `actor.role === 'admin'` (senão `AccessDeniedError`/`NOT_ADMIN`)
@@ -427,9 +453,11 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   erro** (`NotificationDispatcher`) — carteira creditada não pode ser desfeita porque a caixa de entrada
   falhou; no worker a notificação é gravada **dentro da transação do settlement** (mesmo precedente do
   `OddsSnapshot` dentro do `PlaceBet`), porque ali ela é derivada das mesmas linhas sendo escritas,
-  então não pode se perder nem sobreviver a um rollback. Front: `useNotifications` (hook global,
-  polling de 60s + refetch no foco — sem websocket, o stack não tem essa infra), `NotificationBell`
-  (badge, painel ancorado, fecha em Escape/clique fora) e `app/(private)/notifications`.
+  então não pode se perder nem sobreviver a um rollback. **Quem dispara cada notificação são os
+  EVENTOS DE DOMÍNIO** — ver a seção própria abaixo; nenhum controller monta `NotificationInput` na
+  mão. Front: `useNotifications` (hook global, **sem polling** — a query só refaz a leitura quando
+  alguém a invalida), `useNotificationStream` (o SSE que invalida), `NotificationBell` (badge, painel
+  ancorado, fecha em Escape/clique fora) e `app/(private)/notifications`.
 - **tournament** — chaveamento eliminatório (single-elimination) que **orquestra matches**. `Tournament`
   (status `in_progress → finished` / `cancelled`; `size` ∈ {2,4,8,16,32,64,128} — potência de 2;
   **`bestOfByRound: number[]`** — **um valor por rodada do MATA-MATA** (índice 0 = rodada mais cheia do
@@ -507,7 +535,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
   `notification` (`GET /` [caixa de entrada própria, `?limit=`; devolve `{ unreadCount, items }` — serve
-  o sininho e a tela], `POST /read-all`, `POST /:id/read`),
+  o sininho e a tela], `POST /read-all`, `POST /:id/read`, `GET /stream` [**SSE**, ver abaixo — é a
+  ÚNICA rota autenticada por token na **query string**, porque `EventSource` não manda header]),
   `admin/{deposits,withdrawals}`,
   `admin/users` (GET lista todas as contas — portaria) e `admin/users/:id/{approve,reject}`
   (libera / barra; `reject` também revoga acesso e derruba as sessões),
@@ -607,9 +636,45 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - Os literais da fila precisam bater entre backend (produtor) e worker (consumidor). O worker **não** usa
   Groq/Playwright.
 - A mesma transação do settlement grava as **notificações** de aposta/bilhete encerrado
-  (`settlement-notifications.ts`) — ver a seção do contexto `notification` pra por que ali e não depois.
-  O nome do mercado sai de **uma** consulta por liquidação (todas as apostas do lote são do mesmo
-  mercado), com fallback genérico: título faltando nunca pode quebrar o pagamento.
+  (`settlement-notifications.ts`), traduzindo os **eventos de domínio** que cada `Bet`/`ComboBet`
+  registrou (`notificationsFor(bet.pullDomainEvents(), marketTitle)`) — ver a seção do contexto
+  `notification` pra por que ali e não depois. O nome do mercado sai de **uma** consulta por
+  liquidação (todas as apostas do lote são do mesmo mercado), com fallback genérico: título faltando
+  nunca pode quebrar o pagamento. **Depois** do commit (fora do `tx`), o worker publica o ping ao
+  vivo (`pushLiveUpdates`); a lista de destinatários é **rezerada a cada tentativa** porque o
+  `inMoneyTransaction` re-executa o callback inteiro num conflito de escrita.
+
+## Notificação ao vivo (SSE) — sem polling
+
+**Não existe polling no front** (decisão do dono). O backend **empurra** um aviso e o front só
+reage:
+
+- **Redis pub/sub** é o transporte (`notifications-{userId}`, um canal por destinatário — nenhum
+  filtro no cliente e zero chance de vazar a atividade de um pro outro). Redis e não um emitter em
+  memória porque só ele funciona com **mais de uma instância** de backend: quem publica pode não ser
+  quem segura a conexão do usuário. Backend publica em `notification/live-updates.ts`, worker em
+  `settlement/live-updates.ts` (o literal do canal precisa bater entre os dois, igual aos nomes de
+  fila). Publicar exige **conexão própria**: uma conexão em modo `subscribe` recusa comando normal.
+- **O payload não tem significado** (`data: refresh`). O cliente relê `/notification`. Mandar o
+  conteúdo da notificação duplicaria o read model em dois transportes.
+- **SSE e não WebSocket**: o tráfego só vai num sentido (servidor → navegador) e o `EventSource`
+  **reconecta sozinho** depois de queda/restart — exatamente o comportamento desejado, de graça.
+- **Autenticação**: `EventSource` não manda header customizado, então o access token vai na **query
+  string** — contrapartida aceita (é o MESMO token de 15min que já circula, direto pro nosso
+  backend). Feito por **guard** (`StreamAuthGuard`) e não dentro do handler, porque guard roda antes
+  e devolve **401 de verdade**; um handler `@Sse` **não pode ser async** (o Nest não faz `await` no
+  retorno dele — ver `router-execution-context`). O guard repete as duas checagens do
+  `AuthMiddleware` (JWT + reler a conta), então conta revogada não segura stream aberto.
+- **`NotificationStreamController` fica FORA do `AuthMiddleware`** (que é aplicado por classe e é
+  baseado em header) — daí ser um controller separado do `NotificationController`.
+- **Não vaza conexão**: cada stream abre a sua conexão Redis e o teardown do `Observable` a fecha
+  quando o cliente desconecta (medido: 8 → 11 → 8 clientes com 3 streams).
+- Front: `useNotificationStream` montado **uma vez** no `AppShell`, invalidando a query
+  `['notifications']` a cada ping. O token vive numa variável de módulo
+  (`lib/api/interceptors.ts`), que um hook não consegue observar — então `setAccessToken` (porta
+  única por onde login/refresh/logout passam) **avisa** os interessados via `onAccessTokenChange`, e
+  o stream se reabre sozinho quando o token gira. **Nada de retry manual** no cliente: fechar o
+  `EventSource` é justamente o que quebraria a reconexão nativa.
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
