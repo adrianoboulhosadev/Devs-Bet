@@ -50,6 +50,12 @@ services:
       REDIS_URL: redis://redis:6379
     ports:
       - '127.0.0.1:5000:5000'
+    volumes:
+      # Uploaded files live on disk, not in the database (see the Uploads
+      # section in CLAUDE.md) — WITHOUT this volume, recreating the container
+      # erases every deposit receipt, avatar and match image. Receipts are proof
+      # of payment, so losing them is losing audit material, not just pixels.
+      - uploads_data:/repo/apps/backend/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -95,3 +101,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:

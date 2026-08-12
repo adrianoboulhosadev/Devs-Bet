@@ -781,6 +781,26 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   (incl. `NEXTAUTH_*`/`GOOGLE_CLIENT_*` do web, lidas em runtime pela rota do NextAuth) vêm do
   `env_file` de cada app. `.env.example` na raiz cobre as credenciais do Postgres
   (`POSTGRES_USER`/`PASSWORD`/`DB`) que o compose interpola no `DATABASE_URL` de backend/worker.
+  **Validado de verdade em 2026-08-12** (antes disso nunca tinha rodado), e o que a validação
+  descobriu — tudo já corrigido, mas cada item é uma armadilha que volta se alguém mexer:
+  - **Todo Dockerfile PRECISA de `RUN npm ci`.** O `.dockerignore` exclui `node_modules`, então sem
+    isso a imagem não tem dependência nenhuma e o build morre com **exit 127** (`tsup`/`next` não
+    encontrado) no primeiro pacote do workspace. O do `web` estava sem, e não buildava.
+  - **`.dockerignore`: padrão sem `**/` só casa na RAIZ.** `.env` sozinho deixava
+    `apps/backend/.env`, `apps/web/.env` e `packages/database/.env` entrarem na imagem (JWT_SECRET,
+    NEXTAUTH_SECRET, chave Pix). Os `**/.env` são obrigatórios; conferir com
+    `docker run --rm --entrypoint sh <img> -c 'ls /repo/apps/backend/.env'` deve dar "No such file".
+  - **`uploads` é volume nomeado** (`uploads_data`) — sem ele, recriar o container **apaga todo
+    comprovante de depósito** (prova de pagamento), avatar e imagem de partida. E a pasta precisa
+    existir **e pertencer ao `node`** na imagem (o `RUN mkdir -p ... && chown` no Dockerfile do
+    backend): o volume herda dono do que a imagem tem naquele caminho, e como o processo roda como
+    `node`, um volume `root` derruba o backend no boot com `EACCES` em `mkdir`. Se mudar isso,
+    **apagar o volume** pra ele reinicializar (`docker volume rm devs-bet_uploads_data`).
+  - **Não existe passo de schema no compose** (decisão do dono: nada de dev vaza pro ambiente de
+    produção). O projeto não tem migration — num banco novo é preciso rodar o `prisma db push`
+    **na mão** uma vez, senão a API sobe e responde erro em tudo.
+  - **Se puser um proxy (nginx/Caddy) na frente**, o SSE (`GET /notification/stream`) precisa de
+    buffering desligado e timeout de leitura longo, senão o sininho volta a parecer travado.
 - **Antes de declarar pronto** (não bootar servidor — precisa de Postgres/Redis):
   ```bash
   npx turbo run check-types test build

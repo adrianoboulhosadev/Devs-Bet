@@ -12,8 +12,22 @@ coverage
 **/coverage
 *.log
 
+# Uploaded files: they live in a volume at runtime (see docker-compose), so
+# baking the local ones into the image would only ship stale files — including
+# other people's deposit receipts.
+apps/backend/uploads
+
 # Secrets: never bake these into an image layer.
+#
+# The `**/` variants are NOT redundant: a bare `.env` pattern matches ONLY the
+# context root, so apps/backend/.env, apps/web/.env and packages/database/.env
+# were all being copied in (verified with `ls` inside the built image) —
+# JWT_SECRET, NEXTAUTH_SECRET and the Pix key included. Every service gets its
+# real values at RUNTIME via env_file/environment in docker-compose, so nothing
+# needs them at build time.
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
 !**/.env.example
