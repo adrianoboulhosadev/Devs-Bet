@@ -13,7 +13,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
   // instead of the whole app.
   return (
     <SessionProvider>
-      {!allowed ? <Loading /> : children}
+      {!allowed ? <Loading fullScreen /> : children}
     </SessionProvider>
   )
 }

@@ -9,7 +9,7 @@ import { useProtectRoute } from '@/hooks/use-protect-route'
 
 export default function PrivateLayout({ children }: { children: ReactNode }) {
   const { allowed } = useProtectRoute()
-  if (!allowed) return <Loading />
+  if (!allowed) return <Loading fullScreen />
   // The slip lives at the layout level so picks survive navigation between a
   // match, a tournament and back.
   return (

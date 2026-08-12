@@ -100,7 +100,7 @@ export function Tournaments() {
       <div className="space-y-3.5">
         <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">CHAVES E CAMPEÕES</h2>
         {loading ? (
-          <Loading />
+          <Loading compact />
         ) : tournaments.length === 0 ? (
           <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
             Nenhum torneio ainda.

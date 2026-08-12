@@ -22,9 +22,7 @@ export function MyCombos() {
       </h2>
 
       {loading ? (
-        <div className="p-5">
-          <Loading />
-        </div>
+        <Loading compact />
       ) : combos.length === 0 ? (
         <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhuma aposta múltipla ainda.</p>
       ) : (

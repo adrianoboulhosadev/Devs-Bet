@@ -18,7 +18,7 @@ export function SelfExclusion() {
     starting,
   } = useSelfExclusionPanel()
 
-  if (loading) return <Loading />
+  if (loading) return <Loading compact />
 
   if (isSelfExcluded && exclusion) {
     return (

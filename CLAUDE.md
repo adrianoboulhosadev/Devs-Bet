@@ -663,6 +663,24 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 **Stack travada**: Next.js (App Router) + **Tailwind** + **TanStack Query** + **Axios** + **react-hook-form**.
 **SEM zod** no front (validação de negócio já está no domínio; no front só validação de UI simples).
 
+**`components/loading.tsx`**: uma ficha `$` girando (`animate-coinSpin`), "CARREGANDO" com
+cursor piscando (`animate-blink`) e uma barrinha de progresso indeterminada (`animate-sweep`,
+keyframe que já existia na config e nunca tinha sido usada). **Três tamanhos, um por contexto de
+uso** — nenhum aceita filho, então quem chama sempre escolhe um dos três:
+`fullScreen` (`min-h-screen`, só as duas guardas de auth que rodam **antes** do `AppShell` montar —
+`(private)/layout.tsx` e `(public)/layout.tsx` — ali não existe header ainda pra medir contra);
+default sem prop (`h-full`, todo componente de página que faz `if (loading) return <Loading />`
+**antes de qualquer outro JSX**, porque é o único filho do `<main>` do `AppShell`, que é uma caixa
+`flex-1` cuja altura o próprio flexbox já calculou como "tela menos o header" — inclusive quando o
+header quebra em 2 linhas numa tela estreita; é exatamente essa conta que uma altura fixa em `vh`
+nunca acerta, e foi o que descentralizava o loading antigo dependendo da tela); `compact` (sem
+altura própria, pra quando o loading é só uma seção dentro de uma página que já tem outra coisa
+renderizada em volta — um card, uma lista, a aba de usuários do admin). **`flex flex-col
+items-center justify-center`, nunca `grid place-items-center`**, apesar do ícone+texto serem dois
+filhos empilhados: grid com linhas implícitas **estica cada linha pra dividir a caixa igualmente e
+centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o ícone e o texto —
+`justify-content` do flex centraliza o par como um grupo só, que é o efeito certo.
+
 > **Vocabulário do produto: "aposta", NUNCA "bilhete".** Decisão do dono — o texto que o usuário lê
 > fala em *aposta simples* e *aposta múltipla*; "bilhete" foi varrido da interface inteira. No CÓDIGO
 > o domínio segue em inglês (`ComboBet`, `ComboLeg`, `bet-slip`), e neste guia a palavra ainda aparece

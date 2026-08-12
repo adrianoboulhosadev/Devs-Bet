@@ -54,7 +54,7 @@ export function Admin() {
         </p>
 
         {usersLoading ? (
-          <Loading />
+          <Loading compact />
         ) : (
           // Capped so a long roster does not push the payments section off the
           // page. `pr-2` keeps the cards' 6px pixel shadow from being clipped by

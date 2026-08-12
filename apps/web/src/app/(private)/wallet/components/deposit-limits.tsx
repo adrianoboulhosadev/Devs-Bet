@@ -11,7 +11,7 @@ export function DepositLimits() {
   const { loading, limitFor, editingPeriod, startEditing, cancelEditing, form, onSubmit, saving } =
     useDepositLimits()
 
-  if (loading) return <Loading />
+  if (loading) return <Loading compact />
 
   return (
     <div className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-6 shadow-pixel">

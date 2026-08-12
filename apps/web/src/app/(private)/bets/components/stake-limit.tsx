@@ -11,7 +11,7 @@ export function StakeLimit() {
   const { loading, limit, editing, startEditing, cancelEditing, form, onSubmit, saving } =
     useStakeLimit()
 
-  if (loading) return <Loading />
+  if (loading) return <Loading compact />
 
   return (
     <div className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-5 shadow-pixel">
