@@ -19,7 +19,7 @@ export function StakeLimit() {
         <h2 className="font-pixel text-xs tracking-wide text-arcade-text">LIMITE DE APOSTA DIÁRIA</h2>
         <p className="mt-1 font-arcade text-lg text-arcade-text-muted">
           Jogo responsável: defina um teto pro quanto você pode apostar (somando apostas simples e
-          bilhetes) nas últimas 24h. Diminuir vale na hora; aumentar só entra em vigor 24h depois.
+          múltiplas) nas últimas 24h. Diminuir vale na hora; aumentar só entra em vigor 24h depois.
         </p>
       </div>
 

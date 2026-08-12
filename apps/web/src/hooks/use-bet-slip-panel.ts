@@ -160,9 +160,9 @@ export function useBetSlipPanel() {
       clear()
       setComboStake('')
       invalidate()
-      notify.success('Bilhete confirmado.')
+      notify.success('Aposta múltipla confirmada.')
     },
-    onError: (failure) => notify.failure(failure, 'Não foi possível confirmar o bilhete.'),
+    onError: (failure) => notify.failure(failure, 'Não foi possível confirmar a aposta múltipla.'),
   })
 
   const confirm = () => {
@@ -179,17 +179,17 @@ export function useBetSlipPanel() {
       return
     }
     if (selections.length < 2) {
-      notify.error('O bilhete precisa de pelo menos 2 seleções.')
+      notify.error('A múltipla precisa de pelo menos 2 seleções.')
       return
     }
     if (notCombinable.length) {
       notify.error(
-        `"${notCombinable[0].selectionLabel}" está com odd ${notCombinable[0].odd}x e não pode entrar num bilhete múltiplo.`,
+        `"${notCombinable[0].selectionLabel}" está com odd ${notCombinable[0].odd}x e não pode entrar numa aposta múltipla.`,
       )
       return
     }
     if (comboStakeCents <= 0) {
-      notify.error('Informe o valor do bilhete.')
+      notify.error('Informe o valor da múltipla.')
       return
     }
     placeCombo.mutate()

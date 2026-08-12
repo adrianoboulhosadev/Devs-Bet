@@ -64,7 +64,7 @@ export function BetSlip() {
             <span className="grid h-6 min-w-6 place-items-center bg-arcade-bg px-1.5 text-[10px] text-arcade-magenta">
               {count}
             </span>
-            BILHETE
+            APOSTA
           </span>
           <span className="flex items-center gap-3 font-pixel text-[11px]">
             {mode === 'multiplas' && canCombo && <span>{totalOdd}x</span>}
@@ -150,7 +150,7 @@ export function BetSlip() {
                   step="0.01"
                   min="0"
                   inputMode="decimal"
-                  placeholder="valor do bilhete (R$)"
+                  placeholder="valor da múltipla (R$)"
                   value={comboStake}
                   onChange={(event) => setComboStake(event.target.value)}
                   className="w-full border-2 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-lg text-arcade-amber outline-none focus:border-arcade-cyan"
@@ -183,7 +183,7 @@ export function BetSlip() {
             {count >= 2 && notCombinable.length > 0 && (
               <p className="border-2 border-arcade-amber bg-[#0b0714] px-3 py-2 font-arcade text-base text-arcade-amber">
                 {notCombinable.map((entry) => `"${entry.selectionLabel}"`).join(', ')} está com odd
-                abaixo de 1.01 (detém todo o pool) e não pode entrar num bilhete múltiplo — só como
+                abaixo de 1.01 (detém todo o pool) e não pode entrar numa aposta múltipla — só como
                 aposta simples.
               </p>
             )}
@@ -194,7 +194,7 @@ export function BetSlip() {
               </p>
             ) : (
               <Button variant="success" onClick={confirm} disabled={placing} className="w-full">
-                {placing ? 'Confirmando…' : mode === 'simples' ? 'Apostar' : 'Confirmar bilhete'}
+                {placing ? 'Confirmando…' : mode === 'simples' ? 'Apostar' : 'Confirmar múltipla'}
               </Button>
             )}
           </div>

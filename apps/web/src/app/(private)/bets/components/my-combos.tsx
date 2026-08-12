@@ -18,7 +18,7 @@ export function MyCombos() {
   return (
     <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
       <h2 className="border-b-3 border-arcade-border-strong px-5 py-3 font-pixel text-[11px] tracking-wide text-arcade-text">
-        MEUS BILHETES MÚLTIPLOS
+        APOSTAS MÚLTIPLAS
       </h2>
 
       {loading ? (
@@ -26,7 +26,7 @@ export function MyCombos() {
           <Loading />
         </div>
       ) : combos.length === 0 ? (
-        <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum bilhete ainda.</p>
+        <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhuma aposta múltipla ainda.</p>
       ) : (
         combos.map((combo) => (
           <div key={combo.id} className="space-y-2.5 border-b border-arcade-border-strong px-5 py-4">
@@ -64,9 +64,9 @@ export function MyCombos() {
 
       <ConfirmDialog
         open={pendingCancelId !== null}
-        title="Cancelar o bilhete?"
-        description="O valor volta para a sua carteira. Só dá pra cancelar enquanto NENHUMA das partidas do bilhete começou."
-        confirmLabel="Cancelar bilhete"
+        title="Cancelar a aposta múltipla?"
+        description="O valor volta para a sua carteira. Só dá pra cancelar enquanto NENHUMA das partidas da múltipla começou."
+        confirmLabel="Cancelar múltipla"
         onConfirm={() => {
           if (pendingCancelId) cancelCombo(pendingCancelId)
           setPendingCancelId(null)

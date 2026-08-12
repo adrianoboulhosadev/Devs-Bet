@@ -11,6 +11,7 @@ import { mediaUrl } from '@/lib/media'
 import { formatBRL } from '@/lib/money'
 import { api } from '@/lib/api'
 import { Button } from './button'
+import { NotificationBell } from './notification-bell'
 
 // Every icon is a 16x16 grid of blocky rects — same pixel-art language as the
 // mockup. The "cutout" rects are hardcoded to the sidebar's own background
@@ -112,7 +113,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Início', icon: DashboardIcon },
   { href: '/matches', label: 'Partidas', icon: MatchesIcon },
   { href: '/tournaments', label: 'Torneios', icon: TournamentsIcon },
-  { href: '/bets', label: 'Meus bilhetes', icon: BetsIcon },
+  { href: '/bets', label: 'Minhas apostas', icon: BetsIcon },
   { href: '/leaderboard', label: 'Placar geral', icon: LeaderboardIcon },
   { href: '/wallet', label: 'Créditos', icon: WalletIcon },
   { href: '/categories', label: 'Categorias', icon: CategoriesIcon, adminOnly: true },
@@ -126,13 +127,14 @@ const SCREEN_TITLES: Record<string, [string, string]> = {
   'matches-detail': ['MODO ARENA', 'DETALHE DA PARTIDA'],
   tournaments: ['CHAVES E CAMPEÕES', 'TORNEIOS'],
   'tournaments-detail': ['CHAVE E CONFRONTOS', 'DETALHE DO TORNEIO'],
-  bets: ['SEUS BILHETES', 'MINHAS APOSTAS'],
+  bets: ['SUAS APOSTAS', 'MINHAS APOSTAS'],
   leaderboard: ['TEMPORADA ATUAL', 'PLACAR GERAL'],
   wallet: ['CARTEIRA E PIX', 'CRÉDITOS'],
   categories: ['ORGANIZAÇÃO', 'CATEGORIAS'],
   participants: ['CATÁLOGO', 'PARTICIPANTES'],
   admin: ['ACESSO RESTRITO', 'SALA DE CONTROLE'],
   profile: ['FICHA DO JOGADOR', 'PERFIL'],
+  notifications: ['CAIXA DE ENTRADA', 'NOTIFICAÇÕES'],
 }
 
 function screenTitleFor(pathname: string): [string, string] {
@@ -234,6 +236,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="font-pixel text-[9px] leading-relaxed tracking-widest text-arcade-text-muted">{kicker}</span>
             <span className="font-pixel text-xs leading-relaxed text-arcade-lime sm:text-sm">{title}</span>
           </div>
+          <NotificationBell />
           <div className="flex items-center gap-3 border-3 border-arcade-border bg-arcade-surface px-4 py-2">
             <span className="font-pixel text-[9px] tracking-wide text-arcade-text-muted">CRÉDITOS</span>
             <span className="text-2xl leading-none text-arcade-amber">

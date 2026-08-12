@@ -83,9 +83,9 @@ export function useMyCombos() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['combo-mine'] })
       queryClient.invalidateQueries({ queryKey: ['wallet'] })
-      notify.success('Bilhete cancelado — o valor voltou para a carteira.')
+      notify.success('Aposta múltipla cancelada — o valor voltou para a carteira.')
     },
-    onError: (failure) => notify.failure(failure, 'Não foi possível cancelar o bilhete.'),
+    onError: (failure) => notify.failure(failure, 'Não foi possível cancelar a aposta múltipla.'),
   })
 
   return {

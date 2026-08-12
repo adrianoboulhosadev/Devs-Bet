@@ -21,7 +21,7 @@ export function Bets() {
     <div className="animate-scrIn space-y-5">
       <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))]">
         <div className="border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">
-          <p className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">BILHETES ABERTOS</p>
+          <p className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">APOSTAS ABERTAS</p>
           <p className="text-4xl leading-tight text-arcade-cyan">{stats.openCount}</p>
         </div>
         <div className="border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">

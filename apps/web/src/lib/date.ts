@@ -13,6 +13,26 @@ export function formatDateTime(value: Date | string): string {
 }
 
 /**
+ * Short "how long ago" label for the notification inbox, where the exact
+ * timestamp matters far less than the freshness. Falls back to the plain date
+ * once a week has passed — "há 34d" stops telling anyone anything.
+ */
+export function formatRelativeTime(value: Date | string): string {
+  const elapsedMs = Date.now() - new Date(value).getTime()
+  const minutes = Math.floor(elapsedMs / 60_000)
+  if (minutes < 1) return 'agora'
+  if (minutes < 60) return `há ${minutes} min`
+
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `há ${hours}h`
+
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `há ${days}d`
+
+  return formatDateTime(value).split(' ')[0]
+}
+
+/**
  * Converts a date (Date or ISO string) into the value a
  * <input type="datetime-local"> expects: local "YYYY-MM-DDTHH:mm".
  */

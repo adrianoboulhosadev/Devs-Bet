@@ -30,7 +30,7 @@ export function Dashboard() {
             {formatBRL(summary.available)}
           </p>
           <p className="font-arcade text-xl text-arcade-text-soft">
-            você tem {formatBRL(summary.held)} em jogo · {summary.openCount} bilhete
+            você tem {formatBRL(summary.held)} em jogo · {summary.openCount} aposta
             {summary.openCount === 1 ? '' : 's'} em aberto
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -54,7 +54,7 @@ export function Dashboard() {
               <p className="text-4xl leading-tight text-arcade-cyan">{formatBRL(summary.held)}</p>
             </div>
             <p className="whitespace-pre-line text-right font-arcade text-lg text-arcade-text-muted">
-              {summary.openCount} {summary.openCount === 1 ? 'bilhete\naberto' : 'bilhetes\nabertos'}
+              {summary.openCount} {summary.openCount === 1 ? 'aposta\naberta' : 'apostas\nabertas'}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">

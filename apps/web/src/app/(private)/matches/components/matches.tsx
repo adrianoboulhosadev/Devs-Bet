@@ -63,7 +63,7 @@ export function Matches() {
               {...form.register('allowsDraw')}
               className="mt-0.5 h-5 w-5 flex-none accent-arcade-amber"
             />
-            Permite empate — vira uma seleção extra no bilhete (só em MD1)
+            Permite empate — vira uma seleção extra pra apostar (só em MD1)
           </label>
 
           <ParticipantPicker

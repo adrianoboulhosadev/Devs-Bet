@@ -25,7 +25,8 @@
     "react-hook-form": "^7.54.2",
     "qrcode": "^1.5.4",
     "sonner": "^1.7.4",
-    "shared": "*"
+    "shared": "*",
+    "@notification/adapters": "*"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

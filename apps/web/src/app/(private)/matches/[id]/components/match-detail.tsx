@@ -205,7 +205,7 @@ export function MatchDetail({ matchId }: { matchId: string }) {
               {isSelfExcluded
                 ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
                 : isOpen
-                  ? 'clica num resultado pra jogar no bilhete · odd parimutuel, muda conforme a galera aposta'
+                  ? 'clica num resultado pra montar sua aposta · odd parimutuel, muda conforme a galera aposta'
                   : 'mercado fechado — mostrando o pool final'}
             </p>
           </div>

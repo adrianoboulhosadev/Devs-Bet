@@ -49,8 +49,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.BETTING_CLOSED]: 'As apostas para esta partida estão encerradas.',
   [Errors.BET_NOT_FOUND]: 'Aposta não encontrada.',
   [Errors.BET_NOT_OPEN]: 'Esta aposta já foi resolvida e não pode mais ser cancelada.',
-  [Errors.INVALID_COMBO_LEGS]: 'O bilhete precisa de pelo menos 2 seleções.',
-  [Errors.DUPLICATE_COMBO_MARKET]: 'Você já tem uma seleção desta partida/torneio no bilhete.',
+  [Errors.INVALID_COMBO_LEGS]: 'A múltipla precisa de pelo menos 2 seleções.',
+  [Errors.DUPLICATE_COMBO_MARKET]: 'Você já tem uma seleção desta partida/torneio na múltipla.',
   [Errors.INVALID_COMBO_ODD]: 'Não foi possível calcular a odd desta seleção.',
   [Errors.STAKE_LIMIT_EXCEEDED]: 'Essa aposta ultrapassa o limite diário que você definiu.',
   // category

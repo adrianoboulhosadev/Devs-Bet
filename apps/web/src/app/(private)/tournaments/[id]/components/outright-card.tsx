@@ -110,7 +110,7 @@ export function OutrightCard({
           ? 'Apostas no campeão encerradas.'
           : isSelfExcluded
             ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
-            : 'Toque em um participante para adicioná-lo ao bilhete.'}
+            : 'Toque em um participante para adicioná-lo à sua aposta.'}
       </p>
     </div>
   )
