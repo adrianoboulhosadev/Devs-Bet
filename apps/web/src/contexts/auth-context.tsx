@@ -61,13 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadUser],
   )
 
-  const register = useCallback(
-    async (input: RegisterUserInput) => {
-      await api.post('/auth/register', input)
-      await login(input)
-    },
-    [login],
-  )
+  // Sign-up does NOT log anyone in: this is a closed platform, so the account is
+  // created and then waits for an admin to release it (see the pending screen).
+  const register = useCallback(async (input: RegisterUserInput) => {
+    await api.post('/auth/register', input)
+  }, [])
 
   const loginWithGoogle = useCallback(
     async (idToken: string) => {

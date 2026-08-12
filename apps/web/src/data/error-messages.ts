@@ -17,6 +17,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.NOT_AUTHENTICATED]: 'Sua sessão expirou. Entre novamente.',
   [Errors.INVALID_SESSION]: 'Sua sessão expirou. Entre novamente.',
   [Errors.NOT_ADMIN]: 'Ação restrita ao administrador.',
+  [Errors.ACCOUNT_PENDING_APPROVAL]:
+    'Seu cadastro ainda não foi aprovado. Assim que o administrador liberar, você consegue entrar.',
   [Errors.OAUTH_TOKEN_INVALID]: 'Não foi possível validar seu login com o Google.',
   [Errors.OAUTH_EMAIL_NOT_VERIFIED]: 'O Google não confirmou este e-mail. Use e-mail e senha.',
   // wallet

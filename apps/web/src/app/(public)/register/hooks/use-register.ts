@@ -20,7 +20,8 @@ export function useRegister() {
   const onSubmit = form.handleSubmit(async (data) => {
     try {
       await registerUser({ email: data.email, password: data.password })
-      router.replace('/dashboard')
+      // No session yet — the account is created and waits for an admin.
+      router.replace('/pending')
     } catch (failure) {
       notify.failure(failure, 'Não foi possível criar a conta.')
     }
@@ -28,6 +29,8 @@ export function useRegister() {
 
   // "Continuar com Google" doubles as register+login: the backend creates the
   // User on the first sign-in (see LoginWithGoogle) — same bridge as /login.
+  // A brand-new Google account is held for approval, so the bridge surfaces the
+  // backend's error as a toast and this redirect only runs for an approved one.
   const onGoogleSuccess = useCallback(() => router.replace('/dashboard'), [router])
   useGoogleOAuthBridge(onGoogleSuccess)
 
