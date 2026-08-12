@@ -1,4 +1,4 @@
-import { UseCase, UnauthorizedError, NotFoundError, Errors, Id } from 'shared'
+import { UseCase, UnauthorizedError, AccessDeniedError, NotFoundError, Errors, Id } from 'shared'
 import { User, AuthSession, calculateRefreshExpiration, OAuthAccount } from '../model'
 import {
   UserRepository,
@@ -45,6 +45,13 @@ export default class LoginWithGoogle implements UseCase<Input, JwtTokens> {
 
     const user = await this.resolveUser(profile)
     if (!user.active) UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+
+    // Same gate as LoginUser: a Google sign-in creates the account but does not
+    // let anyone in — the admin still releases it (see User.approvalStatus).
+    if (user.approvalStatus === 'rejected') {
+      UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+    }
+    if (!user.isApproved) AccessDeniedError.throwError(Errors.ACCOUNT_PENDING_APPROVAL)
 
     await this.userRepository.updateLastLogin(user.id.value)
 

@@ -1,4 +1,4 @@
-import { UserRepository, UserQueryRepository, User, UserDTO } from '../../src'
+import { UserRepository, UserQueryRepository, User, UserDTO, ApprovalStatus } from '../../src'
 import { Role } from 'shared'
 
 /**
@@ -16,6 +16,7 @@ interface UserRow {
   active: boolean
   nickname: string | null
   avatarUrl: string | null
+  approvalStatus: ApprovalStatus
   createdAt: Date
   lastLoginAt: Date | null
 }
@@ -32,6 +33,7 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
       active: row.active,
       nickname: row.nickname,
       avatarUrl: row.avatarUrl,
+      approvalStatus: row.approvalStatus,
     })
   }
 
@@ -44,6 +46,7 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
       active: user.active,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
+      approvalStatus: user.approvalStatus,
       createdAt: new Date(),
       lastLoginAt: null,
     })
@@ -84,6 +87,11 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
     if (fields.avatarUrl !== undefined) row.avatarUrl = fields.avatarUrl
   }
 
+  async updateApprovalStatus(id: string, status: ApprovalStatus): Promise<void> {
+    const row = this.rows.find((current) => current.id === id)
+    if (row) row.approvalStatus = status
+  }
+
   async delete(id: string): Promise<void> {
     const index = this.rows.findIndex((current) => current.id === id)
     if (index >= 0) this.rows.splice(index, 1)
@@ -91,17 +99,26 @@ export default class UserRepositoryInMemory implements UserRepository, UserQuery
 
   async findByIdQuery(id: string): Promise<UserDTO | null> {
     const row = this.rows.find((current) => current.id === id)
-    return row
-      ? {
-          id: row.id,
-          email: row.email,
-          role: row.role,
-          active: row.active,
-          nickname: row.nickname,
-          avatarUrl: row.avatarUrl,
-          createdAt: row.createdAt,
-          lastLoginAt: row.lastLoginAt,
-        }
-      : null
+    return row ? this.toDTO(row) : null
+  }
+
+  async listUsersQuery(): Promise<UserDTO[]> {
+    return [...this.rows]
+      .sort((first, second) => second.createdAt.getTime() - first.createdAt.getTime())
+      .map((row) => this.toDTO(row))
+  }
+
+  private toDTO(row: UserRow): UserDTO {
+    return {
+      id: row.id,
+      email: row.email,
+      role: row.role,
+      active: row.active,
+      nickname: row.nickname,
+      avatarUrl: row.avatarUrl,
+      approvalStatus: row.approvalStatus,
+      createdAt: row.createdAt,
+      lastLoginAt: row.lastLoginAt,
+    }
   }
 }

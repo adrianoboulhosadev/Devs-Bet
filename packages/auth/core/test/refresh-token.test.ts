@@ -15,6 +15,8 @@ async function setupLoggedIn() {
 
   await new RegisterUser(userRepository, hash).execute({ email: 'a@b.com', password: 'Senha@123' })
   const user = await userRepository.findByEmail('a@b.com')
+  // A sign-up starts pending on this closed platform — release it so the login works.
+  await userRepository.updateApprovalStatus(user!.id.value, 'approved')
   const { refreshToken } = await new LoginUser(userRepository, hash, jwt, sessionRepository).execute(
     { email: 'a@b.com', password: 'Senha@123' },
   )
@@ -65,6 +67,14 @@ test('rejects when the session was revoked', async () => {
 test('rejects when the user was deactivated', async () => {
   const { refresh, refreshToken, userRepository, userId } = await setupLoggedIn()
   await userRepository.deactivate(userId)
+  await expect(refresh.execute({ token: refreshToken }, 'secret')).rejects.toMatchObject({
+    code: Errors.INVALID_SESSION,
+  })
+})
+
+test('rejects when the account had its access revoked', async () => {
+  const { refresh, refreshToken, userRepository, userId } = await setupLoggedIn()
+  await userRepository.updateApprovalStatus(userId, 'rejected')
   await expect(refresh.execute({ token: refreshToken }, 'secret')).rejects.toMatchObject({
     code: Errors.INVALID_SESSION,
   })

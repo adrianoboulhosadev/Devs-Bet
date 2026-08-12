@@ -1,4 +1,5 @@
 import { Role } from 'shared'
+import { ApprovalStatus } from './user'
 
 /**
  * READ projection (CQRS) of the user — what the database query brings, minus the
@@ -13,6 +14,7 @@ export interface UserDTO {
   active: boolean
   nickname: string | null
   avatarUrl: string | null
+  approvalStatus: ApprovalStatus
   createdAt: Date
   lastLoginAt: Date | null
 }

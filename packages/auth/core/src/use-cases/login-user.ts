@@ -1,4 +1,4 @@
-import { UseCase, UnauthorizedError, Errors, Id } from 'shared'
+import { UseCase, UnauthorizedError, AccessDeniedError, Errors, Id } from 'shared'
 import { AuthSession, calculateRefreshExpiration } from '../model'
 import {
   UserRepository,
@@ -35,6 +35,15 @@ export default class LoginUser implements UseCase<Input, JwtTokens> {
     }
     // Inactive user is treated as invalid credentials (does not reveal account state).
     if (!user.active) UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+
+    // A REJECTED account answers exactly like a wrong password: someone the admin
+    // barred must not be able to tell that the account exists at all. A PENDING
+    // one is the opposite — it is a legitimate sign-up waiting in the queue, and
+    // the person needs to know why they cannot get in yet.
+    if (user.approvalStatus === 'rejected') {
+      UnauthorizedError.throwError(Errors.INVALID_EMAIL_OR_PASSWORD)
+    }
+    if (!user.isApproved) AccessDeniedError.throwError(Errors.ACCOUNT_PENDING_APPROVAL)
 
     await this.repository.updateLastLogin(user.id.value)
 

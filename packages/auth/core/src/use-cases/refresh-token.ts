@@ -48,8 +48,12 @@ export default class RefreshToken implements UseCase<Input, JwtTokens> {
       UnauthorizedError.throwError(Errors.INVALID_SESSION)
     }
 
+    // An account whose access was revoked (or that was never released) cannot
+    // renew itself, even holding an otherwise valid refresh.
     const user = await this.userRepository.findById(session.userId)
-    if (!user || !user.active) UnauthorizedError.throwError(Errors.INVALID_SESSION)
+    if (!user || !user.active || !user.isApproved) {
+      UnauthorizedError.throwError(Errors.INVALID_SESSION)
+    }
 
     // Rotation: new pair with the SAME sessionId; the session now stores the new hash.
     const newPayload: JwtPayload = {

@@ -35,6 +35,28 @@ test('deactivate flips the active flag', () => {
   expect(user.active).toBe(false)
 })
 
+test('a brand-new user is pending, not approved (closed platform)', () => {
+  const user = new User({ email: 'a@b.com' })
+  expect(user.approvalStatus).toBe('pending')
+  expect(user.isApproved).toBe(false)
+})
+
+test('approve/reject move the account in and out', () => {
+  const user = new User({ email: 'a@b.com' })
+
+  user.approve()
+  expect(user.isApproved).toBe(true)
+
+  // Rejecting an approved account is how access gets revoked.
+  user.reject()
+  expect(user.approvalStatus).toBe('rejected')
+  expect(user.isApproved).toBe(false)
+
+  // And a rejected one can be let back in.
+  user.approve()
+  expect(user.isApproved).toBe(true)
+})
+
 test('rejects an invalid email at construction', () => {
   try {
     new User({ email: 'bad' })

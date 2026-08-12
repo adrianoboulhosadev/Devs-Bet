@@ -14,6 +14,8 @@ async function setup() {
 
   await new RegisterUser(userRepository, hash).execute({ email: 'a@b.com', password: 'Senha@123' })
   const user = await userRepository.findByEmail('a@b.com')
+  // A sign-up starts pending on this closed platform — release it so the login works.
+  await userRepository.updateApprovalStatus(user!.id.value, 'approved')
   const login = new LoginUser(userRepository, hash, jwt, sessionRepository)
   const logout = new LogoutUser(sessionRepository, hash)
   return { sessionRepository, login, logout, userId: user!.id.value }

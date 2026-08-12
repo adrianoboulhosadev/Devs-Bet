@@ -22,6 +22,9 @@ test('registers user, normalizes email and stores the password as hash (never pl
   expect(user!.password!.value).toMatch(/^\$2a\$/)
   expect(user!.role).toBe('user')
   expect(user!.active).toBe(true)
+  // Closed platform: signing up only creates the identity — an admin releases it.
+  expect(user!.approvalStatus).toBe('pending')
+  expect(user!.isApproved).toBe(false)
 })
 
 test('rejects invalid email with INVALID_EMAIL', async () => {
