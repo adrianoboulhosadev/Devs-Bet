@@ -1,4 +1,5 @@
-import { Entity, EntityProps, Money, ConflictError, ValidationError, Errors } from 'shared'
+import { AggregateRoot, EntityProps, Money, ConflictError, ValidationError, Errors } from 'shared'
+import { BetWon, BetLost, BetRefunded } from './events'
 
 // open: still live. won/lost/refunded: terminal after settlement.
 export type BetStatus = 'open' | 'won' | 'lost' | 'refunded'
@@ -30,7 +31,7 @@ export interface BetProps extends EntityProps {
  * otherwise MATCH_ALREADY_SETTLED — the payout is the parimutuel share computed by
  * the PayoutCalculator (identical math for every market type).
  */
-export class Bet extends Entity<Bet, BetProps> {
+export class Bet extends AggregateRoot<Bet, BetProps> {
   readonly marketType: BetMarketType
   readonly marketId: string
   readonly bettorId: string
@@ -62,6 +63,7 @@ export class Bet extends Entity<Bet, BetProps> {
     this.status = 'won'
     this.payout = payout
     this.settledAt = new Date()
+    this.record(new BetWon(this.id.value, this.bettorId, this.marketType, this.marketId, this.payout.cents))
   }
 
   settleAsLoser(): void {
@@ -69,6 +71,7 @@ export class Bet extends Entity<Bet, BetProps> {
     this.status = 'lost'
     this.payout = Money.zero()
     this.settledAt = new Date()
+    this.record(new BetLost(this.id.value, this.bettorId, this.marketType, this.marketId, this.stake.cents))
   }
 
   refund(): void {
@@ -76,5 +79,6 @@ export class Bet extends Entity<Bet, BetProps> {
     this.status = 'refunded'
     this.payout = this.stake
     this.settledAt = new Date()
+    this.record(new BetRefunded(this.id.value, this.bettorId, this.marketType, this.marketId, this.stake.cents))
   }
 }

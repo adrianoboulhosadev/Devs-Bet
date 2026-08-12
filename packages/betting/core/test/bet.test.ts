@@ -1,5 +1,5 @@
 import { Money, Errors, ValidationError, ConflictError } from 'shared'
-import { Bet } from '../src'
+import { Bet, BetWon, BetLost, BetRefunded } from '../src'
 
 function openBet(stake = 1000): Bet {
   return new Bet({ marketId: 'm1', bettorId: 'u1', selectionId: 'A', stake })
@@ -58,4 +58,26 @@ test('a settled bet cannot be settled again', () => {
   const bet = openBet()
   bet.settleAsLoser()
   expect(() => bet.refund()).toThrow(ConflictError)
+})
+
+test('each settlement transition records its own domain event', () => {
+  const winner = openBet()
+  winner.settleAsWinner(new Money(3333))
+  expect(winner.pullDomainEvents()).toEqual([expect.any(BetWon)])
+
+  const loser = openBet()
+  loser.settleAsLoser()
+  expect(loser.pullDomainEvents()).toEqual([expect.any(BetLost)])
+
+  const refunded = openBet()
+  refunded.refund()
+  expect(refunded.pullDomainEvents()).toEqual([expect.any(BetRefunded)])
+})
+
+test('pullDomainEvents drains the list — a second call comes back empty', () => {
+  const bet = openBet()
+  bet.settleAsWinner(new Money(3333))
+
+  expect(bet.pullDomainEvents()).toHaveLength(1)
+  expect(bet.pullDomainEvents()).toHaveLength(0)
 })

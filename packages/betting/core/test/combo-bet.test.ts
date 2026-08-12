@@ -1,5 +1,5 @@
 import { ValidationError, Errors } from 'shared'
-import { ComboBet } from '../src'
+import { ComboBet, ComboWon, ComboLost, ComboRefunded } from '../src'
 
 function twoLegs(odds: [number, number] = [1.5, 2]) {
   return [
@@ -80,4 +80,37 @@ test('resolveLeg is idempotent once the ticket already settled', () => {
   combo.resolveLeg('m1', 'lost')
   combo.resolveLeg('m1', 'won') // no-op: the ticket is already lost
   expect(combo.status).toBe('lost')
+})
+
+test('a leg resolving under an otherwise-open ticket raises NO event yet', () => {
+  const combo = new ComboBet({ bettorId: 'u1', stake: 1000, legs: twoLegs() })
+  combo.resolveLeg('m1', 'won') // m2 still pending — not news yet
+  expect(combo.pullDomainEvents()).toHaveLength(0)
+})
+
+test('the ticket winning records exactly one ComboWon, only when it finalizes', () => {
+  const combo = new ComboBet({ bettorId: 'u1', stake: 1000, legs: twoLegs([1.5, 2]) })
+  combo.resolveLeg('m1', 'won')
+  combo.resolveLeg('m2', 'won')
+  expect(combo.pullDomainEvents()).toEqual([expect.any(ComboWon)])
+})
+
+test('one lost leg records ComboLost — and settling the rest afterwards records nothing more', () => {
+  const combo = new ComboBet({ bettorId: 'u1', stake: 1000, legs: twoLegs() })
+  combo.resolveLeg('m1', 'lost')
+  combo.resolveLeg('m2', 'won') // bookkeeping only, ticket already lost
+  expect(combo.pullDomainEvents()).toEqual([expect.any(ComboLost)])
+})
+
+test('a void leg that refunds the ticket records ComboRefunded', () => {
+  const combo = new ComboBet({ bettorId: 'u1', stake: 1000, legs: twoLegs() })
+  combo.resolveLeg('m1', 'won')
+  combo.resolveLeg('m2', 'void')
+  expect(combo.pullDomainEvents()).toEqual([expect.any(ComboRefunded)])
+})
+
+test('cancel (the bettor pulling out) raises no domain event', () => {
+  const combo = new ComboBet({ bettorId: 'u1', stake: 1000, legs: twoLegs() })
+  combo.cancel()
+  expect(combo.pullDomainEvents()).toHaveLength(0)
 })

@@ -83,6 +83,18 @@ test('an already settled bet cannot be cancelled (BET_NOT_OPEN)', async () => {
   await expect(cancel).rejects.toMatchObject({ code: Errors.BET_NOT_OPEN })
 })
 
+test('CancelBet takes no EventPublisher — a self-cancel is never turned into a notification', async () => {
+  const repository = new BettingRepositoryInMemory()
+  const bet = openBet(repository)
+
+  await new CancelBet(repository).execute({ betId: bet.id.value, bettorId: BETTOR, marketOpen: true })
+
+  // refund() still records its event (consistent entity behavior)...
+  expect(bet.pullDomainEvents()).toHaveLength(1)
+  // ...but CancelBet's constructor has no port to pull/publish it through —
+  // enforced by the type system (there is no eventPublisher param to pass).
+})
+
 test('cancelling a combo refunds the stake and voids every leg', async () => {
   const repository = new BettingRepositoryInMemory()
   const combo = openCombo(repository)

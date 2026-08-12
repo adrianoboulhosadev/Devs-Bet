@@ -1,5 +1,6 @@
 export * from './bet'
 export * from './bet-dto'
+export * from './events'
 export * from './market-odds-dto'
 export * from './leaderboard-entry-dto'
 export * from './profile-stats-dto'

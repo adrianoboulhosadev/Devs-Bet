@@ -1,6 +1,7 @@
-import { Entity, EntityProps, Money, ValidationError, ConflictError, Errors } from 'shared'
+import { AggregateRoot, EntityProps, Money, ValidationError, ConflictError, Errors } from 'shared'
 import { BetStatus } from './bet'
 import { ComboLeg, ComboLegProps } from './combo-leg'
+import { ComboWon, ComboLost, ComboRefunded } from './events'
 
 export interface ComboBetProps extends EntityProps {
   bettorId: string
@@ -24,7 +25,7 @@ const MIN_COMBO_LEGS = 2
  * is placed, regardless of what the underlying markets' pools do afterwards.
  * Legs never touch those pools — a combo is a parallel, house-priced wager.
  */
-export class ComboBet extends Entity<ComboBet, ComboBetProps> {
+export class ComboBet extends AggregateRoot<ComboBet, ComboBetProps> {
   readonly bettorId: string
   readonly legs: ComboLeg[]
   readonly stake: Money
@@ -84,6 +85,7 @@ export class ComboBet extends Entity<ComboBet, ComboBetProps> {
       this.status = 'lost'
       this.payout = Money.zero()
       this.settledAt = new Date()
+      this.record(new ComboLost(this.id.value, this.bettorId, this.legs.length, this.stake.cents))
       return
     }
     if (this.legs.some((candidate) => candidate.isPending)) return
@@ -91,9 +93,11 @@ export class ComboBet extends Entity<ComboBet, ComboBetProps> {
     if (this.legs.some((candidate) => candidate.result === 'void')) {
       this.status = 'refunded'
       this.payout = this.stake
+      this.record(new ComboRefunded(this.id.value, this.bettorId, this.legs.length, this.stake.cents))
     } else {
       this.status = 'won'
       this.payout = this.stake.multiply(this.totalOdd)
+      this.record(new ComboWon(this.id.value, this.bettorId, this.legs.length, this.payout.cents))
     }
     this.settledAt = new Date()
   }
