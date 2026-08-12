@@ -579,6 +579,26 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `{ url: '/uploads/participants/<arquivo>' }`, guardado em `Participant.imageUrl`.
 - Novo tema = nova subpasta em `UPLOADS_SUBDIRS` (+ constante `<TEMA>_UPLOAD_DIR`) + controller (decidir
   se é admin-only ou do próprio usuário autenticado, caso a caso).
+- **Recorte no cliente antes de subir (cropper)**: todo upload de IMAGEM (partida, torneio, avatar,
+  participante) passa por um enquadramento — o usuário arrasta e dá zoom, e o que sobe é o recorte,
+  não o arquivo original. Antes disso quem decidia o enquadramento era o `object-cover` do CSS, que
+  cortava pelo centro e sumia com o assunto de fotos altas ou muito largas. Implementado **sem lib
+  nova** (mesmo precedente do gráfico de odds em SVG puro): `apps/web/src/lib/image-crop.ts` tem a
+  parte pura (presets + canvas) e `components/{image-cropper,image-picker}.tsx` a UI — o `ImagePicker`
+  substituiu o `<Field type="file">` nos formulários, e o campo do form virou `File | null`
+  (alimentado por `form.setValue`, mesmo padrão do `CategoryPicker`/`ParticipantPicker`). Dois presets:
+  `square` (1:1, saída máx 512×512 — avatar e participante) e `banner` (16:9, máx 1600×900 — partida e
+  torneio). Saída sempre **JPEG q=0.9 chamado `crop.jpg`**: o nome importa porque o backend salva como
+  `randomUUID() + extname(originalname)`, então um nome sem `.jpg` gravaria extensão mentirosa. Antes
+  de desenhar, o canvas pinta o fundo de `#150d26` (`arcade-surface`) pra transparência de PNG não
+  virar preto. O zoom mínimo é travado no "cobrir a janela", então **não existe recorte com faixa
+  vazia**. Efeito colateral bem-vindo: reencodar derruba o peso, então foto de celular não esbarra
+  mais no limite de 5 MB. Os cards de partida/torneio usam `aspect-video` (bate com o preset → zero
+  corte extra); os **heros** de `matches/[id]` e `tournaments/[id]` mantêm `aspect-video
+  max-h-[280px]`, ou seja **ainda cortam na vertical** em tela larga — limitação consciente, porque
+  16:9 em largura total daria ~675px de altura e engoliria a página.
+  ⚠️ O **comprovante de depósito fica FORA** do cropper: é documento (recortar prova de pagamento
+  seria adulterar) e é o único upload que também aceita PDF.
 
 ## apps/web (Next.js SPA)
 
