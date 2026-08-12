@@ -11,12 +11,13 @@ import { useParticipants, PARTICIPANTS_KEY } from '@/hooks/use-participants'
 interface CreateFields {
   name: string
   nickname: string
-  image?: FileList
+  // Already CROPPED by the ImagePicker — what the admin framed is what uploads.
+  image: File | null
 }
 
-const emptyForm: CreateFields = { name: '', nickname: '' }
+const emptyForm: CreateFields = { name: '', nickname: '', image: null }
 
-async function uploadImage(file?: File): Promise<string | null> {
+async function uploadImage(file?: File | null): Promise<string | null> {
   if (!file) return null
   const upload = new FormData()
   upload.append('image', file)
@@ -34,7 +35,7 @@ export function useParticipantsAdmin() {
 
   const create = useMutation({
     mutationFn: async (data: CreateFields) => {
-      const imageUrl = await uploadImage(data.image?.[0])
+      const imageUrl = await uploadImage(data.image)
       const input: CreateParticipantInput = {
         name: data.name.trim(),
         nickname: data.nickname.trim() || null,

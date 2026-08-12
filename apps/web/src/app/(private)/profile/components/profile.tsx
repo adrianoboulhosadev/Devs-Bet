@@ -1,8 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/button'
 import { Loading } from '@/components/loading'
+import { ImageCropper } from '@/components/image-cropper'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useProfile } from '../hooks/use-profile'
@@ -21,6 +22,8 @@ export function Profile() {
     uploadingAvatar,
   } = useProfile()
   const fileInput = useRef<HTMLInputElement>(null)
+  // The picked file waits here while the user frames it; only the crop uploads.
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null)
 
   if (loading || !profile) return <Loading />
 
@@ -47,7 +50,12 @@ export function Profile() {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(event) => onAvatarChange(event.target.files?.[0])}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) setPendingAvatar(file)
+              // Clearing lets the SAME file be picked again (no change event otherwise).
+              event.target.value = ''
+            }}
           />
           <button
             type="button"
@@ -119,6 +127,18 @@ export function Profile() {
           <p className="text-4xl leading-tight text-arcade-amber">{winRate === null ? '—' : `${winRate}%`}</p>
         </div>
       </div>
+
+      {pendingAvatar && (
+        <ImageCropper
+          file={pendingAvatar}
+          preset="square"
+          onConfirm={(cropped) => {
+            setPendingAvatar(null)
+            onAvatarChange(cropped)
+          }}
+          onCancel={() => setPendingAvatar(null)}
+        />
+      )}
     </div>
   )
 }

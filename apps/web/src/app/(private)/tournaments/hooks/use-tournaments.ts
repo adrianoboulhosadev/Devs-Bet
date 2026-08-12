@@ -41,7 +41,8 @@ interface TournamentForm {
   scheduledAt: string
   size: number
   bestOfByRound: number[]
-  image?: FileList
+  // Already CROPPED by the ImagePicker — what the admin framed is what uploads.
+  image: File | null
   participantIds: string[]
 }
 
@@ -53,6 +54,7 @@ const emptyForm = (): TournamentForm => ({
   scheduledAt: '',
   size: DEFAULT_SIZE,
   bestOfByRound: Array(Math.log2(DEFAULT_SIZE)).fill(1),
+  image: null,
   participantIds: [],
 })
 
@@ -101,7 +103,7 @@ export function useTournaments() {
       // Optional image: upload first (multipart, reusing the matchs folder), then
       // create the tournament with the returned URL. No cloud.
       let imageUrl: string | null = null
-      const file = data.image?.[0]
+      const file = data.image
       if (file) {
         const upload = new FormData()
         upload.append('image', file)

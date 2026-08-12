@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
 import { ParticipantPicker } from '@/components/participant-picker'
+import { ImagePicker } from '@/components/image-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useTournaments, TOURNAMENT_SIZES, TOURNAMENT_BEST_OF_OPTIONS } from '../hooks/use-tournaments'
@@ -76,7 +77,12 @@ export function Tournaments() {
             ))}
           </div>
 
-          <Field label="IMAGEM (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
+          <ImagePicker
+            label="IMAGEM (OPCIONAL)"
+            preset="banner"
+            value={form.watch('image')}
+            onChange={(file) => form.setValue('image', file)}
+          />
 
           <ParticipantPicker
             participants={participants}
@@ -113,7 +119,7 @@ export function Tournaments() {
                 </div>
                 {tournament.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="h-32 w-full border-b-3 border-arcade-border-strong object-cover" />
+                  <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="aspect-video w-full border-b-3 border-arcade-border-strong object-cover" />
                 )}
                 <div className="p-4">
                   <p className="font-arcade text-lg text-arcade-text-muted">{tournament.size} participantes</p>

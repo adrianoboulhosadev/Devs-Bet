@@ -6,6 +6,7 @@ import { Field } from '@/components/field'
 import { Loading } from '@/components/loading'
 import { mediaUrl } from '@/lib/media'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ImagePicker } from '@/components/image-picker'
 import { useParticipantsAdmin } from '../hooks/use-participants-admin'
 
 export function Participants() {
@@ -51,7 +52,12 @@ export function Participants() {
 
         <Field label="NOME" required {...form.register('name')} />
         <Field label="APELIDO (OPCIONAL)" {...form.register('nickname')} />
-        <Field label="FOTO (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
+        <ImagePicker
+          label="FOTO (OPCIONAL)"
+          preset="square"
+          value={form.watch('image')}
+          onChange={(file) => form.setValue('image', file)}
+        />
 
         <Button type="submit" variant="warning" disabled={submitting}>
           {submitting ? 'Criando…' : 'Criar participante'}

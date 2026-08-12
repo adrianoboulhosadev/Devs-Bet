@@ -23,7 +23,8 @@ interface MatchForm {
   title: string
   categoryId: string
   scheduledAt: string
-  image?: FileList
+  // Already CROPPED by the ImagePicker — what the admin framed is what uploads.
+  image: File | null
   bestOf: number
   allowsDraw: boolean
   participantIds: string[]
@@ -33,6 +34,7 @@ const emptyForm: MatchForm = {
   title: '',
   categoryId: '',
   scheduledAt: '',
+  image: null,
   bestOf: 1,
   allowsDraw: true,
   participantIds: [],
@@ -56,7 +58,7 @@ export function useMatches() {
       // Optional image: upload the file first (multipart), then create the match
       // with the returned URL. No cloud — the backend stores it under uploads/matchs.
       let imageUrl: string | null = null
-      const file = data.image?.[0]
+      const file = data.image
       if (file) {
         const upload = new FormData()
         upload.append('image', file)

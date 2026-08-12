@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
 import { ParticipantPicker } from '@/components/participant-picker'
+import { ImagePicker } from '@/components/image-picker'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
 import { useMatches, MATCH_BEST_OF_OPTIONS } from '../hooks/use-matches'
@@ -34,7 +35,12 @@ export function Matches() {
             />
           </div>
           <Field label="DATA E HORA" type="datetime-local" required {...form.register('scheduledAt')} />
-          <Field label="IMAGEM (OPCIONAL)" type="file" accept="image/*" {...form.register('image')} />
+          <ImagePicker
+            label="IMAGEM (OPCIONAL)"
+            preset="banner"
+            value={form.watch('image')}
+            onChange={(file) => form.setValue('image', file)}
+          />
 
           <label className="block space-y-2">
             <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">MELHOR DE</span>
@@ -95,8 +101,10 @@ export function Matches() {
                   <StatusBadge status={match.status} />
                 </div>
                 {match.imageUrl && (
+                  // aspect-video matches the cropper's banner preset, so the card
+                  // shows exactly the framing that was chosen — no extra cropping.
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaUrl(match.imageUrl)} alt={match.title} className="h-36 w-full border-b-3 border-arcade-border-strong object-cover" />
+                  <img src={mediaUrl(match.imageUrl)} alt={match.title} className="aspect-video w-full border-b-3 border-arcade-border-strong object-cover" />
                 )}
                 <div className="p-4">
                   <p className="mb-2 text-2xl leading-tight text-arcade-text">{match.title}</p>

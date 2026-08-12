@@ -78,7 +78,10 @@ export function MatchDetail({ matchId }: { matchId: string }) {
         </div>
 
         {match.imageUrl && (
-          <div className="mb-6 h-[clamp(140px,20vw,210px)] border-3 border-arcade-border">
+          // Capped: a full-width 16:9 would be ~675px tall on a wide screen and
+          // swallow the page. Still crops vertically here, but symmetrically —
+          // and the subject the user centred in the crop stays in view.
+          <div className="mb-6 aspect-video max-h-[280px] border-3 border-arcade-border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mediaUrl(match.imageUrl)} alt={match.title} className="h-full w-full object-cover" />
           </div>

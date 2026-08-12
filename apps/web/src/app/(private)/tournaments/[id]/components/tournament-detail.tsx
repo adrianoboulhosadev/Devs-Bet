@@ -55,9 +55,10 @@ export function TournamentDetail({ tournamentId }: { tournamentId: string }) {
       </div>
 
       {tournament.imageUrl && (
-        <div className="max-h-64 w-full border-3 border-arcade-border">
+        // Same reasoning as the match hero: 16:9 with a height cap.
+        <div className="aspect-video max-h-[280px] w-full border-3 border-arcade-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="max-h-64 w-full object-cover" />
+          <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="h-full w-full object-cover" />
         </div>
       )}
 
