@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { NotificationFacade, NotificationInput } from '@notification/adapters'
 import { PrismaNotificationRepository } from './prisma-notification-repository'
+import { LiveUpdates } from './live-updates'
 
 /**
  * How the rest of the backend raises notifications.
@@ -24,12 +25,18 @@ import { PrismaNotificationRepository } from './prisma-notification-repository'
 export class NotificationDispatcher {
   private readonly logger = new Logger(NotificationDispatcher.name)
 
-  constructor(private readonly notificationRepository: PrismaNotificationRepository) {}
+  constructor(
+    private readonly notificationRepository: PrismaNotificationRepository,
+    private readonly liveUpdates: LiveUpdates,
+  ) {}
 
   async notify(items: NotificationInput[]): Promise<void> {
     if (items.length === 0) return
     try {
       await new NotificationFacade(this.notificationRepository).send(items)
+      // Only after the write succeeded: a ping for a notification that failed
+      // to save would make the client re-read and find nothing.
+      await this.liveUpdates.notifyUsers(items.map((item) => item.userId))
     } catch (error) {
       this.logger.error(`failed to deliver ${items.length} notification(s)`, error as Error)
     }

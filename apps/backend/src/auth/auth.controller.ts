@@ -10,7 +10,7 @@ import { JsonWebTokenProvider } from './jsonwebtoken-jwt-provider'
 import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { REFRESH_COOKIE_OPTIONS } from './refresh-cookie-options'
 import { GoogleLoginGuard } from './google-login.guard'
-import { NotificationDispatcher } from '../notification/notification.dispatcher'
+import { DomainEventListener } from '../notification/domain-event-listener'
 
 @Controller('auth')
 export class AuthController {
@@ -21,7 +21,7 @@ export class AuthController {
     private readonly jwtProvider: JsonWebTokenProvider,
     private readonly oauthAccountRepository: PrismaOAuthAccountRepository,
     private readonly googleVerifier: GoogleOAuthVerifier,
-    private readonly notifications: NotificationDispatcher,
+    private readonly events: DomainEventListener,
   ) {}
 
   // Optional ports: each method uses only what it needs (register, login, refresh).
@@ -34,23 +34,16 @@ export class AuthController {
       this.sessionRepository,
       this.oauthAccountRepository,
       this.googleVerifier,
+      this.events,
     )
   }
 
+  // The account is born pending (see the front door in CLAUDE.md); telling the
+  // admins someone is at the gate is the DomainEventListener's job, off the
+  // UserRegistered event the use case publishes.
   @Post('register')
   async register(@Body() input: RegisterUserInput) {
     await this.facade().registerUser(input)
-
-    // The account is born pending (see the front door in CLAUDE.md), so the
-    // admins are told there is someone at the gate. The e-mail is in the text
-    // on purpose and only reaches admins: without it the owner cannot tell
-    // which friend to let in — the same reason the control room shows it.
-    const adminIds = await this.userRepository.findAdminIds()
-    await this.notifications.notifyAdmins(adminIds, (adminId) => ({
-      userId: adminId,
-      type: 'admin_signup_pending',
-      signupEmail: input.email,
-    }))
   }
 
   @Post('login')

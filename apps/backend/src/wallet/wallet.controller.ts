@@ -12,29 +12,23 @@ import {
   WalletFacade,
 } from '@wallet/adapters'
 import { UserDTO } from '@auth/adapters'
-import { NotificationInput } from '@notification/adapters'
 import { PrismaWalletRepository } from './prisma-wallet-repository'
 import { ManualPaymentGateway } from './manual-payment-gateway'
-import { PrismaUserRepository } from '../auth/prisma-user-repository'
-import { NotificationDispatcher } from '../notification/notification.dispatcher'
+import { DomainEventListener } from '../notification/domain-event-listener'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
-
-/** How a requester is named to the admin. The nickname when there is one, else
- * a TRUNCATED id — the same choice the payments panel already makes, so a
- * pending-payment alert never carries someone's e-mail around. */
-function bettorLabel(user: UserDTO): string {
-  return user.nickname?.trim() || user.id.slice(0, 8)
-}
 
 // User-facing wallet routes. Protected by the AuthMiddleware (see wallet.module).
 // The userId ALWAYS comes from the token (anti-IDOR), never the body.
+//
+// Alerting the admins about a new deposit/withdrawal is NOT done here: the use
+// case publishes DepositRequested/WithdrawalRequested and the
+// DomainEventListener resolves who the admins are and what they are told.
 @Controller('wallet')
 export class WalletController {
   constructor(
     private readonly walletRepository: PrismaWalletRepository,
     private readonly paymentGateway: ManualPaymentGateway,
-    private readonly userRepository: PrismaUserRepository,
-    private readonly notifications: NotificationDispatcher,
+    private readonly events: DomainEventListener,
   ) {}
 
   // PrismaWalletRepository serves write + every query port (payments + deposit limits).
@@ -45,6 +39,7 @@ export class WalletController {
       this.walletRepository,
       this.paymentGateway,
       this.walletRepository,
+      this.events,
     )
   }
 
@@ -67,37 +62,12 @@ export class WalletController {
   @HttpCode(201)
   async deposit(@Body() input: DepositInput, @authenticatedUser() user: UserDTO) {
     await this.facade().requestDeposit(input, user.id)
-    await this.alertAdmins((adminId) => ({
-      userId: adminId,
-      type: 'admin_deposit_pending',
-      bettorLabel: bettorLabel(user),
-      amount: input.amount,
-    }))
   }
 
   @Post('withdraw')
   @HttpCode(201)
   async withdraw(@Body() input: WithdrawalInput, @authenticatedUser() user: UserDTO) {
     await this.facade().requestWithdrawal(input, user.id)
-    await this.alertAdmins((adminId) => ({
-      userId: adminId,
-      type: 'admin_withdrawal_pending',
-      bettorLabel: bettorLabel(user),
-      amount: input.amount,
-    }))
-  }
-
-  /**
-   * Puts the new request in every admin's inbox — until now the only way to
-   * learn about it was opening the control room.
-   *
-   * No `referenceId`: the command returns void (CQRS), so the payment's id is
-   * not in hand here, and each request genuinely IS a separate event that
-   * deserves its own line (null never collides in the unique index).
-   */
-  private async alertAdmins(build: (adminId: string) => NotificationInput): Promise<void> {
-    const adminIds = await this.userRepository.findAdminIds()
-    await this.notifications.notifyAdmins(adminIds, build)
   }
 
   @Get('deposit-limits')

@@ -125,24 +125,6 @@ export class PrismaUserRepository implements UserRepository, UserQueryRepository
     return rows.map((row) => this.toDTO(row))
   }
 
-  /**
-   * Who to notify when something lands in the control room (a signup waiting
-   * for approval, a deposit waiting for confirmation).
-   *
-   * Deliberately NOT part of the UserQueryRepository port: no auth use case
-   * needs it — it is app-layer orchestration, the same shape as the bet
-   * controller reading the wallet's self-exclusion straight off its own
-   * repository. Only active, approved admins: a revoked one must stop
-   * receiving the queue.
-   */
-  async findAdminIds(): Promise<string[]> {
-    const rows = await this.prisma.user.findMany({
-      where: { role: 'admin', active: true, approvalStatus: 'approved' },
-      select: { id: true },
-    })
-    return rows.map((row) => row.id)
-  }
-
   private toDTO(row: UserDTORow): UserDTO {
     return { ...row, role: row.role as Role, approvalStatus: row.approvalStatus as ApprovalStatus }
   }
