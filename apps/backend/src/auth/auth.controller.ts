@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common'
+import { Body, Controller, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { UnauthorizedError, Errors } from 'shared'
 import { LoginUserInput, RegisterUserInput, LoginWithGoogleInput, UserFacade } from '@auth/adapters'
@@ -9,6 +9,7 @@ import { BcryptHashProvider } from './bcrypt-hash-provider'
 import { JsonWebTokenProvider } from './jsonwebtoken-jwt-provider'
 import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { REFRESH_COOKIE_OPTIONS } from './refresh-cookie-options'
+import { GoogleLoginGuard } from './google-login.guard'
 import { NotificationDispatcher } from '../notification/notification.dispatcher'
 
 @Controller('auth')
@@ -80,7 +81,9 @@ export class AuthController {
   // token here. The token is verified against Google's JWKS (GoogleOAuthVerifier)
   // — never trusted as-is — then the SAME access/refresh session as /login is
   // issued (identical cookie + response contract).
+  // Closed with a plain 404 while GOOGLE_CLIENT_ID is unset — see the guard.
   @Post('oauth/google')
+  @UseGuards(GoogleLoginGuard)
   @HttpCode(200)
   async loginWithGoogle(
     @Body() input: LoginWithGoogleInput,

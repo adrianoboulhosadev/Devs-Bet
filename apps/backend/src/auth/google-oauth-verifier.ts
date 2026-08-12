@@ -15,6 +15,14 @@ export class GoogleOAuthVerifier implements GoogleTokenVerifier {
   async verify(idToken: string): Promise<GoogleProfile> {
     let payload: TokenPayload | undefined
 
+    // Without a client id there is no audience to require, and the library
+    // then SKIPS the audience check — a token minted for any other Google app
+    // would sail through. Refuse instead of verifying loosely. The route is
+    // already closed by GoogleLoginGuard; this is the second lock.
+    if (!process.env.GOOGLE_CLIENT_ID?.trim()) {
+      UnauthorizedError.throwError(Errors.OAUTH_TOKEN_INVALID)
+    }
+
     try {
       const ticket = await this.client.verifyIdToken({
         idToken,
