@@ -59,7 +59,7 @@ export function Admin() {
           // Capped so a long roster does not push the payments section off the
           // page. `pr-2` keeps the cards' 6px pixel shadow from being clipped by
           // the scroll container.
-          <ul className="max-h-[26rem] space-y-2.5 overflow-y-auto pr-2">
+          <ul className="max-h-[400px] space-y-2.5 overflow-y-auto pr-2">
             {users.map((entry) => {
               const isMe = entry.id === currentUserId
               return (
@@ -120,7 +120,7 @@ export function Admin() {
             Nada pendente.
           </p>
         ) : (
-          <ul className="max-h-[26rem] space-y-2.5 overflow-y-auto pr-2">
+          <ul className="max-h-[400px] space-y-2.5 overflow-y-auto pr-2">
             {payments.map((payment) => (
               <li
                 key={payment.id}
