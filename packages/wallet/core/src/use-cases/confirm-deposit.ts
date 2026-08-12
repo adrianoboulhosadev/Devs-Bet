@@ -1,4 +1,4 @@
-import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
+import { AdminUseCase, AuthenticatedActor, EventPublisher, NotFoundError, Errors } from 'shared'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -11,7 +11,10 @@ interface Input {
  * provisioned lazily on the first deposit. Admin-only (AdminUseCase).
  */
 export default class ConfirmDeposit extends AdminUseCase<Input, void> {
-  constructor(private readonly walletRepository: WalletRepository) {
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly eventPublisher?: EventPublisher,
+  ) {
     super()
   }
 
@@ -27,5 +30,6 @@ export default class ConfirmDeposit extends AdminUseCase<Input, void> {
     // repository's transaction (see the port), which also provisions the wallet
     // when this is the user's first deposit.
     await this.walletRepository.applyDepositConfirmation(payment)
+    await this.eventPublisher?.publish(payment.pullDomainEvents())
   }
 }

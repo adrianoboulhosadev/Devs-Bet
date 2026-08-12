@@ -1,5 +1,5 @@
-import { UseCase, Money, ValidationError, ConflictError, Errors, Id } from 'shared'
-import { Payment, PERIOD_WINDOW_MS } from '../model'
+import { UseCase, EventPublisher, Money, ValidationError, ConflictError, Errors, Id } from 'shared'
+import { Payment, PERIOD_WINDOW_MS, DepositRequested } from '../model'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -22,7 +22,10 @@ interface Input {
  * just-activated) cap.
  */
 export default class RequestDeposit implements UseCase<Input, void> {
-  constructor(private readonly walletRepository: WalletRepository) {}
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly eventPublisher?: EventPublisher,
+  ) {}
 
   async execute({ userId, amount, receiptUrl }: Input): Promise<void> {
     const value = new Money(amount)
@@ -47,5 +50,6 @@ export default class RequestDeposit implements UseCase<Input, void> {
     })
 
     await this.walletRepository.saveDepositRequest(payment)
+    await this.eventPublisher?.publish([new DepositRequested(payment.id.value, userId, amount)])
   }
 }

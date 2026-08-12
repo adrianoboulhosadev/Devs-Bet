@@ -1,4 +1,4 @@
-import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
+import { AdminUseCase, AuthenticatedActor, EventPublisher, NotFoundError, Errors } from 'shared'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -11,7 +11,10 @@ interface Input {
  * with the payment status change. Admin-only (AdminUseCase).
  */
 export default class ConfirmWithdrawal extends AdminUseCase<Input, void> {
-  constructor(private readonly walletRepository: WalletRepository) {
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly eventPublisher?: EventPublisher,
+  ) {
     super()
   }
 
@@ -26,5 +29,6 @@ export default class ConfirmWithdrawal extends AdminUseCase<Input, void> {
     // Settling the hold + writing the ledger entry happens INSIDE the
     // repository's transaction (see the port).
     await this.walletRepository.applyWithdrawalConfirmation(payment)
+    await this.eventPublisher?.publish(payment.pullDomainEvents())
   }
 }

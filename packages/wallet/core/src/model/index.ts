@@ -1,6 +1,7 @@
 export * from './wallet'
 export * from './ledger-entry'
 export * from './payment'
+export * from './events'
 export * from './wallet-dto'
 export * from './payment-dto'
 export * from './deposit-limit'

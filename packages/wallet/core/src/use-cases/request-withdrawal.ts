@@ -1,5 +1,5 @@
-import { UseCase, Money, ValidationError, Errors, Id } from 'shared'
-import { Payment } from '../model'
+import { UseCase, EventPublisher, Money, ValidationError, Errors, Id } from 'shared'
+import { Payment, WithdrawalRequested } from '../model'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -13,7 +13,10 @@ interface Input {
  * out (settling the hold) or rejects it (releasing the hold).
  */
 export default class RequestWithdrawal implements UseCase<Input, void> {
-  constructor(private readonly walletRepository: WalletRepository) {}
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly eventPublisher?: EventPublisher,
+  ) {}
 
   async execute({ userId, amount }: Input): Promise<void> {
     const value = new Money(amount)
@@ -30,5 +33,6 @@ export default class RequestWithdrawal implements UseCase<Input, void> {
     // loads the wallet there and calls `wallet.hold`, which is what raises
     // INSUFFICIENT_BALANCE when the funds are not available.
     await this.walletRepository.holdForWithdrawal(payment)
+    await this.eventPublisher?.publish([new WithdrawalRequested(payment.id.value, userId, amount)])
   }
 }

@@ -1,4 +1,5 @@
-import { Entity, EntityProps, Money, ConflictError, ValidationError, Errors } from 'shared'
+import { AggregateRoot, EntityProps, Money, ConflictError, ValidationError, Errors } from 'shared'
+import { DepositConfirmed, WithdrawalPaid, PaymentRejected } from './events'
 
 export type PaymentDirection = 'deposit' | 'withdrawal'
 // deposit: pending -> confirmed | rejected. withdrawal: pending -> paid | rejected.
@@ -22,7 +23,7 @@ export interface PaymentProps extends EntityProps {
  * acts is stamped on `confirmedBy`. A deposit is only real once the user attaches
  * proof of the Pix (`receiptUrl`) — a withdrawal never has one (nothing to prove).
  */
-export class Payment extends Entity<Payment, PaymentProps> {
+export class Payment extends AggregateRoot<Payment, PaymentProps> {
   readonly userId: string
   readonly direction: PaymentDirection
   readonly amount: Money
@@ -59,6 +60,7 @@ export class Payment extends Entity<Payment, PaymentProps> {
     this.ensurePending()
     this.status = 'confirmed'
     this.stamp(adminId)
+    this.record(new DepositConfirmed(this.id.value, this.userId, this.amount.cents))
   }
 
   /** Withdrawal effectively paid out by the admin. */
@@ -66,6 +68,7 @@ export class Payment extends Entity<Payment, PaymentProps> {
     this.ensurePending()
     this.status = 'paid'
     this.stamp(adminId)
+    this.record(new WithdrawalPaid(this.id.value, this.userId, this.amount.cents))
   }
 
   /** Request denied (deposit not received / withdrawal refused). */
@@ -73,6 +76,7 @@ export class Payment extends Entity<Payment, PaymentProps> {
     this.ensurePending()
     this.status = 'rejected'
     this.stamp(adminId)
+    this.record(new PaymentRejected(this.id.value, this.userId, this.amount.cents, this.direction))
   }
 
   private stamp(adminId: string): void {

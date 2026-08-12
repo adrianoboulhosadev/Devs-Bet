@@ -10,7 +10,7 @@ import {
   DepositLimitDTO,
   SelfExclusionDTO,
 } from '@wallet/core'
-import { AuthenticatedActor } from 'shared'
+import { AuthenticatedActor, EventPublisher } from 'shared'
 import {
   RequestDepositController,
   RequestWithdrawalController,
@@ -40,26 +40,44 @@ export default class WalletFacade {
     private readonly paymentQueryRepository?: PaymentQueryRepository,
     private readonly paymentGateway?: PaymentGateway,
     private readonly depositLimitQueryRepository?: DepositLimitQueryRepository,
+    // Domain events raised by the money moves below (see @wallet/core's events):
+    // the app turns them into notifications + a live update.
+    private readonly eventPublisher?: EventPublisher,
   ) {}
 
   async requestDeposit(input: DepositInput, userId: string): Promise<void> {
-    await new RequestDepositController(this.walletRepository!).execute(input, userId)
+    await new RequestDepositController(this.walletRepository!, this.eventPublisher).execute(
+      input,
+      userId,
+    )
   }
 
   async requestWithdrawal(input: WithdrawalInput, userId: string): Promise<void> {
-    await new RequestWithdrawalController(this.walletRepository!).execute(input, userId)
+    await new RequestWithdrawalController(this.walletRepository!, this.eventPublisher).execute(
+      input,
+      userId,
+    )
   }
 
   async confirmDeposit(paymentId: string, actor: AuthenticatedActor): Promise<void> {
-    await new ConfirmDepositController(this.walletRepository!).execute(paymentId, actor)
+    await new ConfirmDepositController(this.walletRepository!, this.eventPublisher).execute(
+      paymentId,
+      actor,
+    )
   }
 
   async confirmWithdrawal(paymentId: string, actor: AuthenticatedActor): Promise<void> {
-    await new ConfirmWithdrawalController(this.walletRepository!).execute(paymentId, actor)
+    await new ConfirmWithdrawalController(this.walletRepository!, this.eventPublisher).execute(
+      paymentId,
+      actor,
+    )
   }
 
   async rejectPayment(paymentId: string, actor: AuthenticatedActor): Promise<void> {
-    await new RejectPaymentController(this.walletRepository!).execute(paymentId, actor)
+    await new RejectPaymentController(this.walletRepository!, this.eventPublisher).execute(
+      paymentId,
+      actor,
+    )
   }
 
   async getMyWallet(userId: string): Promise<WalletDTO> {

@@ -1,4 +1,4 @@
-import { AdminUseCase, AuthenticatedActor, NotFoundError, Errors } from 'shared'
+import { AdminUseCase, AuthenticatedActor, EventPublisher, NotFoundError, Errors } from 'shared'
 import { WalletRepository } from '../providers'
 
 interface Input {
@@ -11,7 +11,10 @@ interface Input {
  * deposit simply never credited anything. Admin-only (AdminUseCase).
  */
 export default class RejectPayment extends AdminUseCase<Input, void> {
-  constructor(private readonly walletRepository: WalletRepository) {
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly eventPublisher?: EventPublisher,
+  ) {
     super()
   }
 
@@ -25,5 +28,6 @@ export default class RejectPayment extends AdminUseCase<Input, void> {
     // repository's transaction (see the port); a rejected deposit never
     // credited anything, so there is nothing to undo.
     await this.walletRepository.applyPaymentRejection(payment)
+    await this.eventPublisher?.publish(payment.pullDomainEvents())
   }
 }
