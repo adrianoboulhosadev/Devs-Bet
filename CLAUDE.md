@@ -187,6 +187,30 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   e-mail). Editáveis via `PATCH /user/me` (`UpdateProfile`, use-case simples que carrega o `User` e
   chama `user.editProfile(...)`); o avatar é upload self-service (`POST /upload/avatars`, mesmo padrão do
   de comprovante — só `image/*`, 5 MB) que devolve a URL pro front então gravar com o PATCH.
+  **Plataforma fechada — aprovação de cadastro (portaria)**: o produto fica exposto na internet mas é
+  só pros amigos do dono, então o auto-cadastro continua aberto e quem barra estranho é um **admin**.
+  `User.approvalStatus` (`pending`/`approved`/`rejected`, campo solto igual `nickname`, com
+  `isApproved`/`approve()`/`reject()` na entidade) nasce **`pending`** — vale pro cadastro por
+  formulário E pro primeiro login via Google (o `LoginWithGoogle` cria o `User` sem passar o campo, então
+  cai no default; a conta e o vínculo `OAuthAccount` são criados normalmente, só o acesso é barrado).
+  O que cada estado responde no login (`LoginUser` e `LoginWithGoogle`, mesma ordem nos dois):
+  `rejected` → `UnauthorizedError`/`INVALID_EMAIL_OR_PASSWORD` (401) — **de propósito idêntico a senha
+  errada**, pra quem foi barrado não descobrir nem que a conta existe; `pending` →
+  `AccessDeniedError`/`ACCOUNT_PENDING_APPROVAL` (403, explícito — é um amigo legítimo na fila, e ele
+  precisa saber por que não entra). O 403 também evita o interceptor de 401 do axios, que tentaria um
+  refresh inútil. `RefreshToken` exige `isApproved` (senão `INVALID_SESSION`) e o **`AuthMiddleware`
+  relê o estado a cada request** — é isso que faz revogar acesso valer na hora, em vez de esperar o
+  access token de 15m expirar. Admin decide por `SetUserApproval` (`AdminUseCase`): recusa alterar o
+  **próprio** status (`NOT_ADMIN` — auto-revogação travaria a plataforma sem ninguém pra reabrir) e,
+  ao rejeitar, chama `AuthSessionRepository.deleteAllByUser` pra derrubar as sessões abertas —
+  **rejeitar é também o "revogar acesso"** de quem já estava dentro. `ListUsersQuery` (admin) lista
+  todo mundo pra tela `/admin`; é a **única** tela que mostra e-mail de terceiros, e é deliberado: sem
+  o e-mail o admin não reconhece o amigo pra liberar. **Coluna `approval_status` tem default
+  `"approved"` no Prisma de propósito** — o projeto usa `db push` (sem migration), e um default
+  `pending` marcaria todas as contas já existentes como pendentes, trancando o dono pra fora; o default
+  da *entidade* é que garante `pending` pra conta nova, e o repositório sempre grava o valor explícito.
+  ⚠️ Num banco **zerado** o primeiro usuário nasce pendente sem ninguém pra aprovar — desbloquear por
+  SQL, mesmo processo que já se usa pra promover alguém a admin.
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
   `Payment` (depósito/saque). Porta `PaymentGateway` (adapter manual/admin-confirmado). Endpoints admin
   para confirmar depósito e efetivar saque. **Depósito é um wizard de 2 passos no front**: (1) o usuário
@@ -445,6 +469,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
   `admin/{deposits,withdrawals}`,
+  `admin/users` (GET lista todas as contas — portaria) e `admin/users/:id/{approve,reject}`
+  (libera / barra; `reject` também revoga acesso e derruba as sessões),
   `upload/{matchs [admin], receipts [usuário autenticado], participants [admin], avatars [usuário
   autenticado]}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
@@ -497,7 +523,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 - Prisma em **`packages/database`**: `prisma/schema.prisma` + client gerado em `generated/` (gitignored).
   Backend e worker fazem `import { PrismaClient } from 'database'`. Repos Prisma são adapters em cada app.
 - **Models/tabelas previstas**: `User`(users; `password` nullable — null pra quem só entra via
-  Google), `AuthSession`(auth_sessions), `OAuthAccount`(oauth_accounts; `@@unique([provider,
+  Google; `approval_status` com default `"approved"` **só por causa do `db push`**, ver a seção auth),
+  `AuthSession`(auth_sessions), `OAuthAccount`(oauth_accounts; `@@unique([provider,
   providerAccountId])`, `userId` FK lógica igual `AuthSession`), `Wallet`(wallets),
   `LedgerEntry`(ledger_entries), `Payment`(payments), `DepositLimit`(deposit_limits; `@@unique([userId, period])`),
   `SelfExclusion`(self_exclusions; append-only), `Match`(matches), `MatchParticipant`(match_participants),
