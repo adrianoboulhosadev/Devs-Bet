@@ -15,16 +15,23 @@ datasource db {
 // the wallet context, never here. `password` is nullable: a user created via an
 // OAuth provider (see OAuthAccount) has none — LoginUser (email+password)
 // already rejects a null password as invalid credentials.
+// `approvalStatus` gates the closed platform (pending | approved | rejected).
+// The COLUMN defaults to "approved" on purpose: `db push` applies it to every
+// existing row, so the accounts that predate this feature keep working instead
+// of locking their owners out. New accounts are never decided by this default —
+// the User entity defaults to "pending" and the repository always writes the
+// entity's value explicitly.
 model User {
-  id          String    @id @default(uuid())
-  email       String    @unique
-  password    String?
-  role        String    @default("user")
-  active      Boolean   @default(true)
-  nickname    String?
-  avatarUrl   String?   @map("avatar_url")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  lastLoginAt DateTime? @map("last_login_at")
+  id             String    @id @default(uuid())
+  email          String    @unique
+  password       String?
+  role           String    @default("user")
+  active         Boolean   @default(true)
+  nickname       String?
+  avatarUrl      String?   @map("avatar_url")
+  approvalStatus String    @default("approved") @map("approval_status")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  lastLoginAt    DateTime? @map("last_login_at")
 
   @@map("users")
 }
