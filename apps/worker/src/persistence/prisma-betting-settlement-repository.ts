@@ -1,7 +1,14 @@
 import { BettingSettlementRepository, Bet, ComboBet, BetStatus, BetMarketType, ComboLegResult } from '@betting/adapters'
 import { Wallet } from '@wallet/adapters'
+import { NotificationInput } from '@notification/adapters'
 import { PrismaClient } from 'database'
 import { applyBetToWallet, applyComboToWallet } from '../settlement/apply-settlement'
+import {
+  betNotification,
+  comboNotification,
+  resolveMarketTitle,
+  writeNotifications,
+} from '../settlement/settlement-notifications'
 import { inMoneyTransaction } from './money-transaction'
 
 /**
@@ -33,6 +40,8 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
   }
 
   async applySettlement(bets: Bet[]): Promise<void> {
+    if (bets.length === 0) return // nothing to move, and no market to name
+
     const byBettor = new Map<string, Bet[]>()
     for (const bet of bets) {
       const list = byBettor.get(bet.bettorId) ?? []
@@ -41,6 +50,11 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
     }
 
     await inMoneyTransaction(this.prisma, async (tx) => {
+      // Every bet of a settlement belongs to the same market, so its name is
+      // resolved once and reused by all the inbox lines below.
+      const marketTitle = await resolveMarketTitle(tx, bets[0].marketType, bets[0].marketId)
+      const notifications: NotificationInput[] = []
+
       for (const [bettorId, userBets] of byBettor) {
         const walletRow = await tx.wallet.findUnique({ where: { userId: bettorId } })
         if (!walletRow) continue // a bet always implies a held wallet; skip defensively
@@ -66,6 +80,9 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
               referenceId: line.referenceId,
             },
           })
+
+          const notification = betNotification(bet, marketTitle)
+          if (notification) notifications.push(notification)
         }
 
         await tx.wallet.update({
@@ -73,6 +90,8 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
           data: { balance: wallet.balance.cents, held: wallet.held.cents },
         })
       }
+
+      await writeNotifications(tx, notifications)
     })
   }
 
@@ -112,6 +131,8 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
     }
 
     await inMoneyTransaction(this.prisma, async (tx) => {
+      const notifications: NotificationInput[] = []
+
       for (const [bettorId, userCombos] of byBettor) {
         const walletRow = await tx.wallet.findUnique({ where: { userId: bettorId } })
         if (!walletRow) continue // a combo always implies a held wallet; skip defensively
@@ -133,6 +154,11 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
           const line = applyComboToWallet(wallet, combo)
           if (!line) continue // still open, no money movement this round
 
+          // Only a ticket that REACHED a final status this round is news; a leg
+          // resolving under an otherwise-open ticket says nothing yet.
+          const notification = comboNotification(combo)
+          if (notification) notifications.push(notification)
+
           await tx.comboBet.update({
             where: { id: combo.id.value },
             data: { status: combo.status, payout: combo.payout.cents, settledAt: combo.settledAt },
@@ -152,6 +178,8 @@ export class PrismaBettingSettlementRepository implements BettingSettlementRepos
           data: { balance: wallet.balance.cents, held: wallet.held.cents },
         })
       }
+
+      await writeNotifications(tx, notifications)
     })
   }
 }
