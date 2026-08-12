@@ -1,0 +1,46 @@
+import {
+  NotificationRepository,
+  NotificationQueryRepository,
+  NotificationInput,
+  NotificationFeedDTO,
+} from '@notification/core'
+import {
+  SendNotificationsController,
+  ListMyNotificationsController,
+  MarkNotificationAsReadController,
+  MarkAllNotificationsAsReadController,
+} from '../controllers'
+
+/**
+ * Single entry point the apps (NestJS backend and the BullMQ worker) call.
+ * Optional ports in the constructor; each method builds its controller.
+ *
+ * `send` is the write side and has NO HTTP route behind it: notifications are
+ * always a consequence of something else that just happened (a confirmed
+ * deposit, a settled market), never something a client asks for.
+ */
+export default class NotificationFacade {
+  constructor(
+    private readonly notificationRepository?: NotificationRepository,
+    private readonly notificationQueryRepository?: NotificationQueryRepository,
+  ) {}
+
+  async send(items: NotificationInput[]): Promise<void> {
+    await new SendNotificationsController(this.notificationRepository!).execute(items)
+  }
+
+  async listMyNotifications(userId: string, limit?: number): Promise<NotificationFeedDTO> {
+    return new ListMyNotificationsController(this.notificationQueryRepository!).execute(userId, limit)
+  }
+
+  async markAsRead(notificationId: string, userId: string): Promise<void> {
+    await new MarkNotificationAsReadController(this.notificationRepository!).execute(
+      notificationId,
+      userId,
+    )
+  }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await new MarkAllNotificationsAsReadController(this.notificationRepository!).execute(userId)
+  }
+}
