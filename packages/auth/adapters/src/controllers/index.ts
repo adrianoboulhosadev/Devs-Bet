@@ -7,6 +7,8 @@ import DeactivateUserController from './deactivate-user-controller'
 import RefreshTokenController from './refresh-token-controller'
 import LoginWithGoogleController from './login-with-google-controller'
 import UpdateProfileController from './update-profile-controller'
+import SetUserApprovalController from './set-user-approval-controller'
+import ListUsersController from './list-users-controller'
 
 export {
   RegisterUserController,
@@ -18,4 +20,6 @@ export {
   RefreshTokenController,
   LoginWithGoogleController,
   UpdateProfileController,
+  SetUserApprovalController,
+  ListUsersController,
 }

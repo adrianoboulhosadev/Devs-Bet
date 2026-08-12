@@ -14,6 +14,12 @@ export interface ChangePasswordInput {
   newPassword: string
 }
 
+/** Admin releasing or barring an account. The userId comes from the route. */
+export interface SetUserApprovalInput {
+  userId: string
+  status: 'approved' | 'rejected'
+}
+
 /** Display-only fields; omit a key to leave it unchanged. */
 export interface UpdateProfileInput {
   nickname?: string | null

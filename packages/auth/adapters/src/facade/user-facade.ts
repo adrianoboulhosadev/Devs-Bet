@@ -9,6 +9,7 @@ import {
   OAuthAccountRepository,
   GoogleTokenVerifier,
 } from '@auth/core'
+import { AuthenticatedActor } from 'shared'
 import {
   RegisterUserController,
   LoginUserController,
@@ -19,6 +20,8 @@ import {
   RefreshTokenController,
   LoginWithGoogleController,
   UpdateProfileController,
+  SetUserApprovalController,
+  ListUsersController,
 } from '../controllers'
 import {
   RegisterUserInput,
@@ -26,6 +29,7 @@ import {
   ChangePasswordInput,
   LoginWithGoogleInput,
   UpdateProfileInput,
+  SetUserApprovalInput,
 } from '../@types'
 
 /**
@@ -93,6 +97,17 @@ export default class UserFacade {
   async updateProfile(input: UpdateProfileInput, userId: string): Promise<void> {
     const controller = new UpdateProfileController(this.userRepository!)
     await controller.execute(input, userId)
+  }
+
+  // Admin-only (the AdminUseCase base re-checks the actor's role in the domain).
+  async setUserApproval(input: SetUserApprovalInput, actor: AuthenticatedActor): Promise<void> {
+    const controller = new SetUserApprovalController(this.userRepository!, this.sessionRepository!)
+    await controller.execute(input, actor)
+  }
+
+  async listUsers(actor: AuthenticatedActor): Promise<UserDTO[]> {
+    const controller = new ListUsersController(this.userQueryRepository!)
+    return controller.execute(actor)
   }
 
   async loginWithGoogle(input: LoginWithGoogleInput): Promise<JwtTokens> {

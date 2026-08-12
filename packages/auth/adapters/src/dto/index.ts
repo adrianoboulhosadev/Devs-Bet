@@ -1,3 +1,3 @@
-import type { UserDTO } from '@auth/core'
+import type { UserDTO, ApprovalStatus } from '@auth/core'
 
-export type { UserDTO }
+export type { UserDTO, ApprovalStatus }
