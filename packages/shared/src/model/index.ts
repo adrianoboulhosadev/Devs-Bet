@@ -1,4 +1,6 @@
 export * from './id'
 export * from './entity'
+export * from './aggregate-root'
+export * from './domain-event'
 export * from './money'
 export * from './authenticated-actor'
