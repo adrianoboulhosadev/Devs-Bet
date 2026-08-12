@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { DbModule } from '../db/db.module'
+import { NotificationStoreModule } from '../notification/notification-store.module'
 import { AuthController } from './auth.controller'
 import { PrismaUserRepository } from './prisma-user-repository'
 import { PrismaAuthSessionRepository } from './prisma-auth-session-repository'
@@ -10,7 +11,7 @@ import { GoogleOAuthVerifier } from './google-oauth-verifier'
 import { AuthMiddleware } from './auth.middleware'
 
 @Module({
-  imports: [DbModule],
+  imports: [DbModule, NotificationStoreModule],
   controllers: [AuthController],
   providers: [
     PrismaUserRepository,

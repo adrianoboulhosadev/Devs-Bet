@@ -3,6 +3,7 @@ import { UserDTO, UserFacade } from '@auth/adapters'
 import { AuthenticatedActor } from 'shared'
 import { PrismaUserRepository } from '../auth/prisma-user-repository'
 import { PrismaAuthSessionRepository } from '../auth/prisma-auth-session-repository'
+import { NotificationDispatcher } from '../notification/notification.dispatcher'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { AdminGuard } from '../shared/admin.guard'
 
@@ -20,6 +21,7 @@ export class AdminUserController {
   constructor(
     private readonly userRepository: PrismaUserRepository,
     private readonly sessionRepository: PrismaAuthSessionRepository,
+    private readonly notifications: NotificationDispatcher,
   ) {}
 
   private facade(): UserFacade {
@@ -45,6 +47,14 @@ export class AdminUserController {
   @HttpCode(204)
   async approve(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
     await this.facade().setUserApproval({ userId: id, status: 'approved' }, this.actor(user))
+
+    // Waiting for it in the inbox: the person only reads this once they can
+    // finally log in, which is exactly when it is useful. Rejection stays
+    // silent on purpose — being barred must look like a wrong password
+    // (see LoginUser), and an inbox line would give that away.
+    await this.notifications.notify([
+      { userId: id, type: 'account_approved', referenceId: id },
+    ])
   }
 
   // Also the way to revoke access from an already-approved account: the use case

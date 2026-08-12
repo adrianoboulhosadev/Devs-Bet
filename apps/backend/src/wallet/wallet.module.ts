@@ -2,13 +2,14 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { DbModule } from '../db/db.module'
 import { AuthModule } from '../auth/auth.module'
 import { AuthMiddleware } from '../auth/auth.middleware'
+import { NotificationStoreModule } from '../notification/notification-store.module'
 import { WalletController } from './wallet.controller'
 import { AdminWalletController } from './admin-wallet.controller'
 import { PrismaWalletRepository } from './prisma-wallet-repository'
 import { ManualPaymentGateway } from './manual-payment-gateway'
 
 @Module({
-  imports: [DbModule, AuthModule],
+  imports: [DbModule, AuthModule, NotificationStoreModule],
   controllers: [WalletController, AdminWalletController],
   providers: [PrismaWalletRepository, ManualPaymentGateway],
 })

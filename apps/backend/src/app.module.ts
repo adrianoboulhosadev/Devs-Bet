@@ -10,6 +10,7 @@ import { CategoryModule } from './category/category.module'
 import { ParticipantModule } from './participant/participant.module'
 import { TournamentModule } from './tournament/tournament.module'
 import { UploadModule } from './upload/upload.module'
+import { NotificationModule } from './notification/notification.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UploadModule } from './upload/upload.module'
     ParticipantModule,
     TournamentModule,
     UploadModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}
