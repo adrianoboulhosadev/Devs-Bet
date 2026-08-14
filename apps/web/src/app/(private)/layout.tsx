@@ -27,7 +27,9 @@ export default function PrivateLayout({ children }: { children: ReactNode }) {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
           <Header />
-          <main className="min-w-0 flex-1 p-4 sm:p-6" style={{ maxWidth: 1320 }}>
+          {/* mx-auto é o que centraliza: um max-width sozinho cappa a largura mas
+              deixa a caixa encostada na esquerda, sobrando espaço só de um lado. */}
+          <main className="mx-auto w-full min-w-0 max-w-[1320px] flex-1 p-4 sm:p-6">
             {children}
           </main>
         </div>
