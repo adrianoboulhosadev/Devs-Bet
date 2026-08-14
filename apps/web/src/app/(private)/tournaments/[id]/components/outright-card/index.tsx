@@ -2,8 +2,8 @@
 
 import type { TournamentParticipantDTO } from '@tournament/adapters'
 import { formatBRL } from '@/lib/money'
-import { colorForId, initialsOf } from '@/lib/participant-colors'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
+import { ParticipantAvatar } from '@/components/participant-avatar'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useBetSlip } from '@/contexts/bet-slip-context'
 import { useOutright } from './hooks/use-outright'
@@ -54,12 +54,12 @@ export function OutrightCard({
 
         const content = (
           <span className="flex flex-wrap items-center gap-3.5">
-            <span
-              className="grid h-10 w-10 flex-none place-items-center font-pixel text-[10px] text-arcade-bg"
-              style={{ backgroundColor: colorForId(participant.id) }}
-            >
-              {initialsOf(participant.displayName)}
-            </span>
+            <ParticipantAvatar
+              id={participant.id}
+              name={participant.displayName}
+              imageUrl={participant.imageUrl}
+              className="h-10 w-10"
+            />
             <span className="min-w-[120px] flex-1 text-2xl leading-tight text-arcade-text">
               {participant.displayName}
               {isChampion && <span className="ml-2 font-pixel text-[9px] text-arcade-lime">CAMPEÃO</span>}

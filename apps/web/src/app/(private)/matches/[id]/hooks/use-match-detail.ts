@@ -98,11 +98,43 @@ export function useMatchDetail(matchId: string) {
     onError: (failure) => notify.failure(failure, 'Não foi possível travar as apostas.'),
   })
 
+  // Whether this match is a tournament confrontation (bracket or group-stage)
+  // — if it is, the result has to go through the tournament's own route (it
+  // advances the bracket/group); a standalone match posts to its own route.
+  // This is the ONLY place a result can be declared any more — the tournament
+  // page's bracket/group cards no longer offer it (see BracketSlotCard).
+  const tournamentLink = useQuery({
+    queryKey: ['tournament-by-match', matchId],
+    queryFn: async (): Promise<{ tournamentId: string | null }> =>
+      (await api.get<{ tournamentId: string | null }>(`/tournament/by-match/${matchId}`)).data,
+  })
+
   // Records the winner of the match's next unit (map/leg/round/fight). A bestOf-1
-  // match settles right away; a bestOf-3/5 one may need this called again.
+  // match settles right away; a bestOf-3/5 one may need this called again. The
+  // proof photo is uploaded first — recording a result without one is rejected
+  // by the domain (MatchUnit.proofImageUrl).
   const recordUnitResult = useMutation({
-    mutationFn: (winnerParticipantId: string | null) =>
-      api.post(`/match/${matchId}/units`, { winnerParticipantId }),
+    mutationFn: async ({
+      winnerParticipantId,
+      proof,
+    }: {
+      winnerParticipantId: string | null
+      proof: File
+    }) => {
+      const upload = new FormData()
+      upload.append('image', proof)
+      const { url: proofImageUrl } = (await api.post<{ url: string }>('/upload/results', upload)).data
+
+      const tournamentId = tournamentLink.data?.tournamentId
+      if (tournamentId) {
+        await api.post(`/tournament/${tournamentId}/matches/${matchId}/result`, {
+          winnerParticipantId,
+          proofImageUrl,
+        })
+      } else {
+        await api.post(`/match/${matchId}/units`, { winnerParticipantId, proofImageUrl })
+      }
+    },
     onSuccess: () => {
       invalidate()
       notify.success('Resultado registrado.')
@@ -164,7 +196,9 @@ export function useMatchDetail(matchId: string) {
     isAdmin,
     isOpen,
     lock: () => lock.mutate(),
-    recordUnitResult: (winnerParticipantId: string | null) => recordUnitResult.mutate(winnerParticipantId),
+    recordUnitResult: (winnerParticipantId: string | null, proof: File) =>
+      recordUnitResult.mutate({ winnerParticipantId, proof }),
+    recordingUnitResult: recordUnitResult.isPending,
     cancel: () => cancel.mutate(),
     isEditing,
     startEdit,

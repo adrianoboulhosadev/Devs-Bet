@@ -5,23 +5,19 @@ import { useQuery } from '@tanstack/react-query'
 import type { BracketSlotDTO } from '@tournament/adapters'
 import type { MatchDTO } from '@match/adapters'
 import { api } from '@/lib/api'
-import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 
 interface BracketSlotCardProps {
   slot: BracketSlotDTO
-  isAdmin: boolean
-  declaring: boolean
-  onDeclare: (matchId: string, winnerParticipantId: string) => void
 }
 
 /**
  * One confrontation in the bracket. When a Match is attached, it fetches it to
- * show the live status, a link to bet on the match page, and (for admins) the
- * buttons to declare the winner — which settles the match AND advances the
- * bracket through the dedicated tournament route.
+ * show the live status and a link into the match page — declaring the winner
+ * happens there now (the match's own "Sala de Controle"), never from this
+ * card, so there is exactly one place that can define a result.
  */
-export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: BracketSlotCardProps) {
+export function BracketSlotCard({ slot }: BracketSlotCardProps) {
   const match = useQuery({
     queryKey: ['match', slot.matchId],
     queryFn: async (): Promise<MatchDTO> => (await api.get<MatchDTO>(`/match/${slot.matchId}`)).data,
@@ -31,7 +27,6 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
   const nameA = slot.playerA?.displayName ?? 'A definir'
   const nameB = slot.playerB?.displayName ?? 'A definir'
   const status = match.data?.status
-  const canDeclare = isAdmin && (status === 'open' || status === 'locked')
   const winnerName = match.data?.participants.find(
     (participant) => participant.id === match.data?.winnerParticipantId,
   )?.displayName
@@ -66,16 +61,6 @@ export function BracketSlotCard({ slot, isAdmin, declaring, onDeclare }: Bracket
                 )
                 .join('-')}
             </p>
-          )}
-
-          {canDeclare && match.data && (
-            <div className="flex flex-wrap gap-2">
-              {match.data.participants.map((participant) => (
-                <Button key={participant.id} variant="warning" disabled={declaring} onClick={() => onDeclare(slot.matchId!, participant.id)}>
-                  {participant.displayName} venceu{match.data!.bestOf > 1 ? ' a unidade' : ''}
-                </Button>
-              ))}
-            </div>
           )}
         </div>
       ) : (

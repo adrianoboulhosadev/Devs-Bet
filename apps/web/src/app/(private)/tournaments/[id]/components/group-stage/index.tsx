@@ -6,9 +6,6 @@ import { GroupMatchCard } from '../group-match-card'
 interface GroupStageProps {
   groups: GroupDTO[]
   phase: 'group' | 'knockout'
-  isAdmin: boolean
-  declaring: boolean
-  onDeclare: (matchId: string, winnerParticipantId: string) => void
 }
 
 /**
@@ -18,7 +15,7 @@ interface GroupStageProps {
  * completes (phase flips to 'knockout') so the qualification history stays
  * visible alongside the knockout bracket below.
  */
-export function GroupStage({ groups, phase, isAdmin, declaring, onDeclare }: GroupStageProps) {
+export function GroupStage({ groups, phase }: GroupStageProps) {
   if (groups.length === 0) return null
 
   return (
@@ -67,13 +64,7 @@ export function GroupStage({ groups, phase, isAdmin, declaring, onDeclare }: Gro
 
               <div className="space-y-2">
                 {group.matches.map((match) => (
-                  <GroupMatchCard
-                    key={match.id}
-                    match={match}
-                    isAdmin={isAdmin}
-                    declaring={declaring}
-                    onDeclare={onDeclare}
-                  />
+                  <GroupMatchCard key={match.id} match={match} />
                 ))}
               </div>
             </div>

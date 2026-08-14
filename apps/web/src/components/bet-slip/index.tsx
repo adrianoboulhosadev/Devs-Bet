@@ -2,7 +2,7 @@
 
 import { createPortal } from 'react-dom'
 import { Button } from '../button'
-import { formatBRL } from '@/lib/money'
+import { formatBRL, sanitizeMoneyInput } from '@/lib/money'
 import { useBetSlipPanel } from './hooks/use-bet-slip-panel'
 import { MODES } from './data/modes'
 
@@ -123,13 +123,11 @@ export function BetSlip() {
 
                   {mode === 'simples' && (
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
                       inputMode="decimal"
                       placeholder="quanto vai de ficha? R$"
                       value={singleStakes[selection.marketId] ?? ''}
-                      onChange={(event) => setSingleStake(selection.marketId, event.target.value)}
+                      onChange={(event) => setSingleStake(selection.marketId, sanitizeMoneyInput(event.target.value))}
                       className="w-full border-2 border-arcade-border bg-[#0b0714] px-2.5 py-2 font-arcade text-lg text-arcade-amber outline-none focus:border-arcade-cyan"
                     />
                   )}
@@ -140,13 +138,11 @@ export function BetSlip() {
             {mode === 'multiplas' && (
               <div className="space-y-2.5">
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
                   inputMode="decimal"
                   placeholder="valor da múltipla (R$)"
                   value={comboStake}
-                  onChange={(event) => setComboStake(event.target.value)}
+                  onChange={(event) => setComboStake(sanitizeMoneyInput(event.target.value))}
                   className="w-full border-2 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-lg text-arcade-amber outline-none focus:border-arcade-cyan"
                 />
                 <div className="flex items-center justify-between">

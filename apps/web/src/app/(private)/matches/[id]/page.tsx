@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { StatusBadge } from '@/components/status-badge'
@@ -7,10 +8,11 @@ import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
 import { mediaUrl } from '@/lib/media'
-import { colorForId, initialsOf } from '@/lib/participant-colors'
+import { colorForId } from '@/lib/participant-colors'
 import { CategoryPicker } from '@/components/category-picker'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { ParticipantAvatar } from '@/components/participant-avatar'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useBetSlip } from '@/contexts/bet-slip-context'
 import { useMatchDetail } from './hooks/use-match-detail'
@@ -29,6 +31,7 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
     marketClosed,
     lock,
     recordUnitResult,
+    recordingUnitResult,
     cancel,
     isEditing,
     startEdit,
@@ -43,6 +46,11 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
   } = useMatchDetail(matchId)
   const { isSelfExcluded } = useSelfExclusion()
   const { toggle, has } = useBetSlip()
+  // Declaring a unit's result requires a proof photo — staged here until the
+  // admin attaches one and confirms (see MatchUnit.proofImageUrl).
+  const [pendingResult, setPendingResult] = useState<{ winnerParticipantId: string | null; file: File | null } | null>(
+    null,
+  )
 
   if (loading || !match) return <Loading />
 
@@ -52,9 +60,13 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
     ...match.participants.map((participant) => ({
       id: participant.id,
       label: participant.displayName,
+      participantId: participant.participantId as string | null,
+      imageUrl: participant.imageUrl,
       color: colorForId(participant.participantId),
     })),
-    ...(match.allowsDraw ? [{ id: MATCH_DRAW_SELECTION_ID, label: 'Empate', color: '#8b7bb8' }] : []),
+    ...(match.allowsDraw
+      ? [{ id: MATCH_DRAW_SELECTION_ID, label: 'Empate', participantId: null, imageUrl: null, color: '#8b7bb8' }]
+      : []),
   ]
   const selectionLabel = (selectionId: string) =>
     selections.find((selection) => selection.id === selectionId)?.label ?? '—'
@@ -80,10 +92,10 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         {match.imageUrl && (
-          // Capped: a full-width 16:9 would be ~675px tall on a wide screen and
-          // swallow the page. Still crops vertically here, but symmetrically —
-          // and the subject the user centred in the crop stays in view.
-          <div className="mb-6 aspect-video max-h-[280px] border-3 border-arcade-border">
+          // Full width of the hero card, right above the participants — height
+          // is capped instead of derived from the aspect ratio, so the banner
+          // never narrows to fit a 16:9 box within the available height.
+          <div className="-mx-6 mb-6 h-56 border-y-3 border-arcade-border sm:h-72">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mediaUrl(match.imageUrl)} alt={match.title} className="h-full w-full object-cover" />
           </div>
@@ -98,19 +110,29 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <span
-              className="grid h-[86px] w-[86px] place-items-center font-pixel text-lg text-arcade-bg shadow-pixel"
-              style={{ backgroundColor: p1 ? colorForId(p1.participantId) : '#8b7bb8' }}
-            >
-              {p1 && initialsOf(p1.displayName)}
-            </span>
+            {p1 ? (
+              <ParticipantAvatar
+                id={p1.participantId}
+                name={p1.displayName}
+                imageUrl={p1.imageUrl}
+                className="h-[86px] w-[86px] shadow-pixel"
+                textClassName="text-lg"
+              />
+            ) : (
+              <span className="h-[86px] w-[86px] flex-none bg-[#8b7bb8] shadow-pixel" />
+            )}
             <span className="font-pixel text-xl text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.7)]">VS</span>
-            <span
-              className="grid h-[86px] w-[86px] place-items-center font-pixel text-lg text-arcade-bg shadow-pixel"
-              style={{ backgroundColor: p2 ? colorForId(p2.participantId) : '#8b7bb8' }}
-            >
-              {p2 && initialsOf(p2.displayName)}
-            </span>
+            {p2 ? (
+              <ParticipantAvatar
+                id={p2.participantId}
+                name={p2.displayName}
+                imageUrl={p2.imageUrl}
+                className="h-[86px] w-[86px] shadow-pixel"
+                textClassName="text-lg"
+              />
+            ) : (
+              <span className="h-[86px] w-[86px] flex-none bg-[#8b7bb8] shadow-pixel" />
+            )}
           </div>
           <div className="min-w-0 flex-1 basis-40">
             <p className="text-3xl leading-tight text-arcade-text">{p2?.displayName}</p>
@@ -128,13 +150,23 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
       </div>
 
       {match.status === 'settled' && (
-        <p className="border-3 border-arcade-lime bg-arcade-surface px-4 py-3 font-arcade text-xl text-arcade-lime">
+        <p className="flex flex-wrap items-center gap-3 border-3 border-arcade-lime bg-arcade-surface px-4 py-3 font-arcade text-xl text-arcade-lime">
           {match.winnerParticipantId === null ? (
             <span>Empate</span>
           ) : (
             <>
               Vencedor: <span>{winnerName ?? '—'}</span>
             </>
+          )}
+          {match.units[match.units.length - 1]?.proofImageUrl && (
+            <a
+              href={mediaUrl(match.units[match.units.length - 1].proofImageUrl!)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-base text-arcade-cyan underline"
+            >
+              ver comprovante
+            </a>
           )}
         </p>
       )}
@@ -156,12 +188,13 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
 
               const content = (
                 <span className="flex flex-wrap items-center gap-3.5">
-                  <span
-                    className="grid h-10 w-10 flex-none place-items-center font-pixel text-[10px] text-arcade-bg"
-                    style={{ backgroundColor: selection.color }}
-                  >
-                    {initialsOf(selection.label)}
-                  </span>
+                  <ParticipantAvatar
+                    id={selection.participantId ?? selection.id}
+                    name={selection.label}
+                    imageUrl={selection.imageUrl}
+                    color={selection.color}
+                    className="h-10 w-10"
+                  />
                   <span className="min-w-[120px] flex-1">
                     <span className="block text-2xl leading-tight text-arcade-text">{selection.label}</span>
                     <span className="mt-1.5 block h-2 bg-[#0b0714]">
@@ -224,9 +257,21 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
                 <p className="px-4 py-4 font-arcade text-lg text-arcade-text-muted">Nenhuma unidade disputada ainda.</p>
               ) : (
                 match.units.map((unit) => (
-                  <div key={unit.unitNumber} className="flex items-center justify-between border-b border-arcade-border-strong px-4 py-3 font-arcade text-lg">
+                  <div key={unit.unitNumber} className="flex items-center justify-between gap-3 border-b border-arcade-border-strong px-4 py-3 font-arcade text-lg">
                     <span className="text-arcade-text-muted">Unidade {unit.unitNumber}</span>
-                    <span className="text-arcade-text">{selectionLabel(unit.winnerParticipantId ?? '')}</span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-arcade-text">{selectionLabel(unit.winnerParticipantId ?? '')}</span>
+                      {unit.proofImageUrl && (
+                        <a
+                          href={mediaUrl(unit.proofImageUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-base text-arcade-cyan underline"
+                        >
+                          ver foto
+                        </a>
+                      )}
+                    </span>
                   </div>
                 ))
               )}
@@ -288,12 +333,16 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
             )}
             {match.status === 'locked' &&
               match.participants.map((participant) => (
-                <Button key={participant.id} variant="warning" onClick={() => recordUnitResult(participant.id)}>
+                <Button
+                  key={participant.id}
+                  variant="warning"
+                  onClick={() => setPendingResult({ winnerParticipantId: participant.id, file: null })}
+                >
                   {match.bestOf > 1 ? participant.displayName : `Vencedor: ${participant.displayName}`}
                 </Button>
               ))}
             {match.status === 'locked' && match.allowsDraw && (
-              <Button variant="secondary" onClick={() => recordUnitResult(null)}>
+              <Button variant="secondary" onClick={() => setPendingResult({ winnerParticipantId: null, file: null })}>
                 Empate
               </Button>
             )}
@@ -339,6 +388,28 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
         }}
         onCancel={() => setConfirmingCancel(false)}
       />
+
+      <ConfirmDialog
+        open={pendingResult !== null}
+        title="Registrar resultado"
+        description="Anexe uma foto que comprove o resultado — obrigatória para registrar."
+        confirmLabel={recordingUnitResult ? 'Enviando…' : 'Registrar resultado'}
+        confirmDisabled={!pendingResult?.file || recordingUnitResult}
+        onConfirm={() => {
+          if (pendingResult?.file) recordUnitResult(pendingResult.winnerParticipantId, pendingResult.file)
+          setPendingResult(null)
+        }}
+        onCancel={() => setPendingResult(null)}
+      >
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(event) =>
+            setPendingResult((current) => (current ? { ...current, file: event.target.files?.[0] ?? null } : current))
+          }
+          className="w-full border-2 border-arcade-border bg-[#0b0714] px-2.5 py-2 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
+        />
+      </ConfirmDialog>
     </div>
   )
 }

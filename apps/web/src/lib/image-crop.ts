@@ -5,7 +5,7 @@
  * subject out of tall or very wide photos.
  */
 
-export type CropPresetName = 'square' | 'banner'
+export type CropPresetName = 'square' | 'banner' | 'tournament'
 
 export interface CropPreset {
   aspect: number
@@ -18,8 +18,10 @@ export interface CropPreset {
 export const CROP_PRESETS: Record<CropPresetName, CropPreset> = {
   // Avatars and participant photos are rendered in square boxes everywhere.
   square: { aspect: 1, maxWidth: 512, maxHeight: 512 },
-  // Match/tournament banners: 16:9, the proportion the cards now use.
+  // Match banners: 16:9, the proportion the match cards use.
   banner: { aspect: 16 / 9, maxWidth: 1600, maxHeight: 900 },
+  // Tournament banners: 3:2, taller than a match banner.
+  tournament: { aspect: 3 / 2, maxWidth: 1500, maxHeight: 1000 },
 }
 
 /** Rectangle to keep, in the SOURCE image's own pixel coordinates. */

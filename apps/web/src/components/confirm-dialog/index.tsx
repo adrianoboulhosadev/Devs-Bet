@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '../button'
 import { useConfirmDialog } from './hooks/use-confirm-dialog'
@@ -11,6 +12,12 @@ interface ConfirmDialogProps {
   confirmLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  // Extra form fields between the description and the buttons (e.g. a
+  // mandatory reason or receipt upload) — the dialog stays the same chrome,
+  // the caller owns the field's state.
+  children?: ReactNode
+  // Blocks confirming until a required field above is filled in.
+  confirmDisabled?: boolean
 }
 
 /**
@@ -25,6 +32,8 @@ export function ConfirmDialog({
   confirmLabel = 'Excluir',
   onConfirm,
   onCancel,
+  children,
+  confirmDisabled = false,
 }: ConfirmDialogProps) {
   const { mounted } = useConfirmDialog(open, onCancel)
 
@@ -46,11 +55,13 @@ export function ConfirmDialog({
         <h2 className="font-pixel text-sm leading-relaxed text-arcade-text">{title}</h2>
         {description && <p className="font-arcade text-lg text-arcade-text-soft">{description}</p>}
 
+        {children}
+
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button variant="danger" autoFocus onClick={onConfirm}>
+          <Button variant="danger" autoFocus onClick={onConfirm} disabled={confirmDisabled}>
             {confirmLabel}
           </Button>
         </div>

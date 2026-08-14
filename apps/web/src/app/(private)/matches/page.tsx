@@ -1,15 +1,12 @@
 'use client'
 
-import Link from 'next/link'
 import { Field } from '@/components/field'
 import { Button } from '@/components/button'
-import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { CategoryPicker } from '@/components/category-picker'
 import { ParticipantPicker } from '@/components/participant-picker'
 import { ImagePicker } from '@/components/image-picker'
-import { formatDateTime } from '@/lib/date'
-import { mediaUrl } from '@/lib/media'
+import { MatchCard } from '@/components/match-card'
 import { useMatches } from './hooks/use-matches'
 import { MATCH_BEST_OF_OPTIONS } from './data/best-of-options'
 
@@ -25,7 +22,7 @@ export default function MatchesPage() {
           onSubmit={onSubmit}
           className="space-y-5 border-3 border-arcade-amber bg-arcade-surface p-6 shadow-pixel-lg"
         >
-          <h2 className="font-pixel text-xs tracking-wide text-arcade-amber">CRIAR MESA</h2>
+          <h2 className="font-pixel text-xs tracking-wide text-arcade-amber">CRIAR PARTIDA</h2>
           <Field label="TÍTULO" required {...form.register('title')} />
           <div className="space-y-2">
             <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">CATEGORIA</span>
@@ -74,13 +71,13 @@ export default function MatchesPage() {
           />
 
           <Button type="submit" variant="warning" disabled={submitting}>
-            {submitting ? 'Criando…' : 'Criar mesa'}
+            {submitting ? 'Criando…' : 'Criar partida'}
           </Button>
         </form>
       )}
 
       <div className="space-y-3.5">
-        <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">ESCOLHA SUA MESA</h2>
+        <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">FAÇA SUAS APOSTAS</h2>
         {loading ? (
           <Loading compact />
         ) : matches.length === 0 ? (
@@ -90,34 +87,7 @@ export default function MatchesPage() {
         ) : (
           <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
             {matches.map((match) => (
-              <Link
-                key={match.id}
-                href={`/matches/${match.id}`}
-                className="block border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg transition-all hover:-translate-x-1 hover:-translate-y-1 hover:border-arcade-magenta hover:shadow-pixel-hover"
-              >
-                <div className="flex items-center justify-between border-b-3 border-arcade-border-strong bg-[#1d1233] px-4 py-2.5">
-                  <span className="font-pixel text-[8px] tracking-widest text-arcade-text-muted">
-                    {pathOf(match.categoryId).toUpperCase()}
-                  </span>
-                  <StatusBadge status={match.status} />
-                </div>
-                {match.imageUrl && (
-                  // aspect-video matches the cropper's banner preset, so the card
-                  // shows exactly the framing that was chosen — no extra cropping.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={mediaUrl(match.imageUrl)} alt={match.title} className="aspect-video w-full border-b-3 border-arcade-border-strong object-cover" />
-                )}
-                <div className="p-4">
-                  <p className="mb-2 text-2xl leading-tight text-arcade-text">{match.title}</p>
-                  <p className="font-arcade text-lg text-arcade-text-muted">
-                    {match.participants.map((participant) => participant.displayName).join(' × ')}
-                  </p>
-                  <p className="mt-1 font-arcade text-base text-arcade-text-muted">
-                    {formatDateTime(match.scheduledAt)}
-                    {match.bestOf > 1 && ` · MD${match.bestOf}`}
-                  </p>
-                </div>
-              </Link>
+              <MatchCard key={match.id} match={match} categoryPath={pathOf(match.categoryId)} />
             ))}
           </div>
         )}

@@ -36,3 +36,17 @@ button {
   background: #34215c;
   border: 2px solid #0d0818;
 }
+
+/* No native spinner arrows on a number input, anywhere — they clash with the
+   pixel-art inputs and, in some browsers, hijack the page's scroll wheel to
+   change the value instead. Money fields use Field's `money` mode (plain
+   text) instead of type="number" entirely; this is the safety net for the
+   few numeric inputs that are genuinely counts, not amounts. */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

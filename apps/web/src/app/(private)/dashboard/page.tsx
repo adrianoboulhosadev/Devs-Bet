@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
+import { MatchCard } from '@/components/match-card'
+import { TournamentCard } from '@/components/tournament-card'
 import { formatBRL } from '@/lib/money'
 import { formatDateTime } from '@/lib/date'
-import { colorForId, initialsOf } from '@/lib/participant-colors'
 import { useDashboard } from './hooks/use-dashboard'
 import { MATCH_FILTERS } from './data/match-filters'
 
@@ -15,7 +15,8 @@ import { MATCH_FILTERS } from './data/match-filters'
  * to every section, so cards saying "go to Partidas" would be pure duplication.
  */
 export default function DashboardPage() {
-  const { pathOf, loading, summary, filter, setFilter, countsByStatus, matches, nextMatch } = useDashboard()
+  const { pathOf, loading, summary, filter, setFilter, countsByStatus, matches, nextMatch, openTournaments } =
+    useDashboard()
 
   if (loading) return <Loading />
 
@@ -96,9 +97,9 @@ export default function DashboardPage() {
 
       <div className="space-y-3.5">
         <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-2">
-          <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">MESAS ABERTAS</h2>
-          <Link href="/tournaments" className="font-arcade text-lg text-arcade-text-muted underline">
-            ver os torneios ▸
+          <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">APOSTAS</h2>
+          <Link href="/matches" className="font-arcade text-lg text-arcade-text-muted underline">
+            ver todas ▸
           </Link>
         </div>
 
@@ -128,36 +129,32 @@ export default function DashboardPage() {
             Nenhuma partida nesse filtro.
           </p>
         ) : (
-          <ul className="space-y-2.5">
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
             {matches.map((match) => (
-              <li key={match.id}>
-                <Link
-                  href={`/matches/${match.id}`}
-                  className="flex flex-wrap items-center gap-3.5 border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-arcade-magenta hover:shadow-pixel-hover"
-                >
-                  <div className="flex flex-none items-center gap-2">
-                    {match.participants.slice(0, 2).map((participant) => (
-                      <span
-                        key={participant.id}
-                        className="grid h-11 w-11 flex-none place-items-center font-pixel text-[11px] text-arcade-bg"
-                        style={{ backgroundColor: colorForId(participant.participantId) }}
-                      >
-                        {initialsOf(participant.displayName)}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="min-w-[150px] flex-1">
-                    <p className="text-2xl leading-tight text-arcade-text">{match.title}</p>
-                    <p className="font-arcade text-lg text-arcade-text-muted">
-                      {pathOf(match.categoryId)} · {formatDateTime(match.scheduledAt)}
-                      {match.bestOf > 1 && ` · MD${match.bestOf}`}
-                    </p>
-                  </div>
-                  <StatusBadge status={match.status} />
-                </Link>
-              </li>
+              <MatchCard key={match.id} match={match} categoryPath={pathOf(match.categoryId)} />
             ))}
-          </ul>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3.5">
+        <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-2">
+          <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">TORNEIOS</h2>
+          <Link href="/tournaments" className="font-arcade text-lg text-arcade-text-muted underline">
+            ver todos ▸
+          </Link>
+        </div>
+
+        {openTournaments.length === 0 ? (
+          <p className="border-3 border-arcade-border bg-arcade-surface px-5 py-6 font-arcade text-lg text-arcade-text-muted">
+            Não há nenhum torneio em aberto no momento.
+          </p>
+        ) : (
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr))]">
+            {openTournaments.map((tournament) => (
+              <TournamentCard key={tournament.id} tournament={tournament} categoryPath={pathOf(tournament.categoryId)} />
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -8,11 +8,10 @@ import { Button } from '@/components/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { formatBRL } from '@/lib/money'
 import { useBets } from './hooks/use-bets'
-import { StakeLimit } from './components/stake-limit'
 import { MyCombos } from './components/my-combos'
 
 export default function BetsPage() {
-  const { bets, loading, stats, canCancel, cancelBet, cancelling } = useBets()
+  const { bets, loading, stats, marketInfoOf, canCancel, cancelBet, cancelling } = useBets()
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null)
 
   if (loading) return <Loading />
@@ -34,8 +33,6 @@ export default function BetsPage() {
         </div>
       </div>
 
-      <StakeLimit />
-
       <h2 className="pt-1 font-pixel text-[13px] tracking-wide text-arcade-text">APOSTAS SIMPLES</h2>
 
       {bets.length === 0 ? (
@@ -44,34 +41,37 @@ export default function BetsPage() {
         </p>
       ) : (
         <ul className="space-y-2.5">
-          {bets.map((bet) => (
-            <li
-              key={bet.id}
-              className="flex flex-wrap items-center justify-between gap-3 border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel"
-            >
-              <div>
-                <p className="text-2xl leading-tight text-arcade-text">{formatBRL(bet.stake)}</p>
-                {bet.marketType === 'tournament_outright' ? (
-                  <Link href={`/tournaments/${bet.marketId}`} className="font-arcade text-lg text-arcade-text-muted underline">
-                    ver torneio (campeão)
-                  </Link>
-                ) : (
-                  <Link href={`/matches/${bet.marketId}`} className="font-arcade text-lg text-arcade-text-muted underline">
-                    ver partida
-                  </Link>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {bet.status !== 'open' && <span className="text-xl text-arcade-lime">{formatBRL(bet.payout)}</span>}
-                <StatusBadge status={bet.status} />
-                {canCancel(bet) && (
-                  <Button variant="secondary" disabled={cancelling} onClick={() => setPendingCancelId(bet.id)}>
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
+          {bets.map((bet) => {
+            const info = marketInfoOf(bet)
+            const marketHref = bet.marketType === 'tournament_outright' ? `/tournaments/${bet.marketId}` : `/matches/${bet.marketId}`
+            return (
+              <li key={bet.id} className="space-y-3 border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xl leading-tight text-arcade-text">{info.participants}</p>
+                    <p className="text-left font-arcade text-lg text-arcade-text-muted">{info.title}</p>
+                  </div>
+                  <StatusBadge status={bet.status} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl leading-tight text-arcade-text">{formatBRL(bet.stake)}</span>
+                    {bet.status !== 'open' && <span className="text-xl text-arcade-lime">{formatBRL(bet.payout)}</span>}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    {canCancel(bet) && (
+                      <Button variant="secondary" disabled={cancelling} onClick={() => setPendingCancelId(bet.id)}>
+                        Cancelar
+                      </Button>
+                    )}
+                    <Link href={marketHref}>
+                      <Button variant="secondary">Ver partida</Button>
+                    </Link>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 

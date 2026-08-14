@@ -29,16 +29,6 @@ export function useTournamentDetail(tournamentId: string) {
     queryClient.invalidateQueries({ queryKey: ['wallet'] })
   }
 
-  const declare = useMutation({
-    mutationFn: ({ matchId, winnerParticipantId }: { matchId: string; winnerParticipantId: string }) =>
-      api.post(`/tournament/${tournamentId}/matches/${matchId}/result`, { winnerParticipantId }),
-    onSuccess: () => {
-      invalidate()
-      notify.success('Resultado registrado.')
-    },
-    onError: (failure) => notify.failure(failure, 'Não foi possível declarar o vencedor.'),
-  })
-
   const cancel = useMutation({
     mutationFn: () => api.post(`/tournament/${tournamentId}/cancel`),
     onSuccess: () => {
@@ -71,10 +61,6 @@ export function useTournamentDetail(tournamentId: string) {
     roundCount,
     roundLabel,
     championName,
-    declareResult: (matchId: string, winnerParticipantId: string) => {
-      declare.mutate({ matchId, winnerParticipantId })
-    },
-    declaring: declare.isPending,
     cancel: () => {
       cancel.mutate()
     },

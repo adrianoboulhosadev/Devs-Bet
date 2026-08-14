@@ -21,8 +21,6 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
     roundCount,
     roundLabel,
     championName,
-    declareResult,
-    declaring,
     cancel,
     confirmingCancel,
     setConfirmingCancel,
@@ -56,8 +54,9 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
       </div>
 
       {tournament.imageUrl && (
-        // Same reasoning as the match hero: 16:9 with a height cap.
-        <div className="aspect-video max-h-[280px] w-full border-3 border-arcade-border">
+        // 3:2 — the tournament banner's crop preset — with a height cap, same
+        // reasoning as the match hero.
+        <div className="aspect-[3/2] max-h-[280px] w-full border-3 border-arcade-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="h-full w-full object-cover" />
         </div>
@@ -77,13 +76,7 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
         championParticipantId={tournament.championParticipantId}
       />
 
-      <GroupStage
-        groups={tournament.groups}
-        phase={tournament.phase}
-        isAdmin={isAdmin}
-        declaring={declaring}
-        onDeclare={declareResult}
-      />
+      <GroupStage groups={tournament.groups} phase={tournament.phase} />
 
       {tournament.phase === 'group' ? (
         <p className="border-3 border-arcade-border bg-arcade-surface px-4 py-3 font-arcade text-lg text-arcade-text-muted">
@@ -99,13 +92,7 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
                   {tournament.bestOfByRound[round] > 1 && ` · MD${tournament.bestOfByRound[round]}`}
                 </h2>
                 {slotsOfRound(round).map((slot) => (
-                  <BracketSlotCard
-                    key={slot.id}
-                    slot={slot}
-                    isAdmin={isAdmin}
-                    declaring={declaring}
-                    onDeclare={declareResult}
-                  />
+                  <BracketSlotCard key={slot.id} slot={slot} />
                 ))}
               </div>
             ))}

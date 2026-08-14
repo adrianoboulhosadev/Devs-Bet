@@ -5,10 +5,12 @@ import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 import { Loading } from '@/components/loading'
 import { formatBRL } from '@/lib/money'
+import { mediaUrl } from '@/lib/media'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useWallet } from './hooks/use-wallet'
 import { DepositLimits } from './components/deposit-limits'
 import { SelfExclusion } from './components/self-exclusion'
+import { StakeLimit } from './components/stake-limit'
 
 export default function WalletPage() {
   const {
@@ -68,7 +70,7 @@ export default function WalletPage() {
           ) : depositStep === 'amount' ? (
             <form onSubmit={onChooseAmount} className="space-y-3.5">
               <p className="font-arcade text-lg text-arcade-text-muted">Quanto você deseja adicionar à carteira?</p>
-              <Field label="VALOR (R$)" type="number" step="0.01" min="0" required {...depositForm.register('amount')} />
+              <Field label="VALOR (R$)" money placeholder="0,00" required {...depositForm.register('amount')} />
               <Button type="submit" variant="success" className="w-full">
                 Continuar para pagamento
               </Button>
@@ -120,7 +122,7 @@ export default function WalletPage() {
         <div className="flex flex-col gap-5">
           <form onSubmit={onWithdraw} className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-6 shadow-pixel-lg">
             <h2 className="font-pixel text-xs tracking-wide text-arcade-cyan">SACAR FICHAS</h2>
-            <Field label="VALOR (R$)" type="number" step="0.01" min="0" required {...withdrawForm.register('amount')} />
+            <Field label="VALOR (R$)" money placeholder="0,00" required {...withdrawForm.register('amount')} />
             <Button type="submit" variant="secondary" disabled={withdrawing} className="w-full">
               {withdrawing ? 'Solicitando…' : 'Solicitar saque'}
             </Button>
@@ -137,15 +139,28 @@ export default function WalletPage() {
               <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum pagamento ainda.</p>
             ) : (
               payments.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between gap-3 border-b border-arcade-border-strong px-5 py-3">
-                  <span className="font-arcade text-lg text-arcade-text-soft">
-                    {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
-                    <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
-                  </span>
-                  <span className="flex items-center gap-3 whitespace-nowrap">
+                <div key={payment.id} className="space-y-1.5 border-b border-arcade-border-strong px-5 py-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <span className="text-xl text-arcade-text">{formatBRL(payment.amount)}</span>
                     <StatusBadge status={payment.status} />
-                  </span>
+                  </div>
+                  <p className="font-arcade text-lg text-arcade-text-soft">
+                    {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
+                    <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
+                  </p>
+                  {payment.receiptUrl && (
+                    <a
+                      href={mediaUrl(payment.receiptUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-arcade text-base text-arcade-cyan underline"
+                    >
+                      Ver comprovante
+                    </a>
+                  )}
+                  {payment.status === 'rejected' && payment.rejectionReason && (
+                    <p className="font-arcade text-base text-arcade-danger">Motivo: {payment.rejectionReason}</p>
+                  )}
                 </div>
               ))
             )}
@@ -154,6 +169,7 @@ export default function WalletPage() {
       </div>
 
       <DepositLimits />
+      <StakeLimit />
       <SelfExclusion />
     </div>
   )

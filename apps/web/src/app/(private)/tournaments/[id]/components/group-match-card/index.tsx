@@ -5,23 +5,18 @@ import { useQuery } from '@tanstack/react-query'
 import type { GroupMatchDTO } from '@tournament/adapters'
 import type { MatchDTO } from '@match/adapters'
 import { api } from '@/lib/api'
-import { Button } from '@/components/button'
 import { StatusBadge } from '@/components/status-badge'
 
 interface GroupMatchCardProps {
   match: GroupMatchDTO
-  isAdmin: boolean
-  declaring: boolean
-  onDeclare: (matchId: string, winnerParticipantId: string) => void
 }
 
 /**
- * One round-robin matchup within a group. Mirrors BracketSlotCard (same
- * declare-result flow, through the tournament's own result route — group
- * matches settle and get bet on exactly like a bracket confrontation), except
- * both players are always known upfront here.
+ * One round-robin matchup within a group. Mirrors BracketSlotCard: a link
+ * into the match page, no declare-result button here any more — that only
+ * happens on the match's own "Sala de Controle" now.
  */
-export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMatchCardProps) {
+export function GroupMatchCard({ match }: GroupMatchCardProps) {
   const liveMatch = useQuery({
     queryKey: ['match', match.matchId],
     queryFn: async (): Promise<MatchDTO> => (await api.get<MatchDTO>(`/match/${match.matchId}`)).data,
@@ -29,7 +24,6 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
   })
 
   const status = liveMatch.data?.status
-  const canDeclare = isAdmin && (status === 'open' || status === 'locked')
   const winnerName = liveMatch.data?.participants.find(
     (participant) => participant.id === liveMatch.data?.winnerParticipantId,
   )?.displayName
@@ -64,16 +58,6 @@ export function GroupMatchCard({ match, isAdmin, declaring, onDeclare }: GroupMa
                 )
                 .join('-')}
             </p>
-          )}
-
-          {canDeclare && liveMatch.data && (
-            <div className="flex flex-wrap gap-2">
-              {liveMatch.data.participants.map((participant) => (
-                <Button key={participant.id} variant="warning" disabled={declaring} onClick={() => onDeclare(match.matchId!, participant.id)}>
-                  {participant.displayName} venceu{liveMatch.data!.bestOf > 1 ? ' a unidade' : ''}
-                </Button>
-              ))}
-            </div>
           )}
         </div>
       ) : (

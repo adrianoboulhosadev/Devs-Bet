@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { BetDTO, ComboBetDTO } from '@betting/adapters'
 import type { MatchDTO } from '@match/adapters'
+import type { TournamentDTO } from '@tournament/adapters'
 import type { WalletDTO } from '@wallet/adapters'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
@@ -35,6 +36,11 @@ export function useDashboard() {
   const matches = useQuery({
     queryKey: ['matches'],
     queryFn: async (): Promise<MatchDTO[]> => (await api.get<MatchDTO[]>('/match')).data,
+  })
+
+  const tournaments = useQuery({
+    queryKey: ['tournaments'],
+    queryFn: async (): Promise<TournamentDTO[]> => (await api.get<TournamentDTO[]>('/tournament')).data,
   })
 
   const summary = useMemo(() => {
@@ -94,6 +100,11 @@ export function useDashboard() {
     })
   }, [matches.data, filter])
 
+  const openTournaments = useMemo(
+    () => (tournaments.data ?? []).filter((tournament) => tournament.status === 'in_progress'),
+    [tournaments.data],
+  )
+
   return {
     user,
     isAdmin,
@@ -105,5 +116,6 @@ export function useDashboard() {
     countsByStatus,
     matches: visibleMatches,
     nextMatch,
+    openTournaments,
   }
 }

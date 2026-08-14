@@ -56,6 +56,27 @@ export function useBets() {
   }, [query.data, combos.data])
 
   /**
+   * What to show on a bet's card: who is playing (or, for an outright, who was
+   * picked to be champion) and the market's title — so the user can tell bets
+   * apart at a glance without opening each match/tournament.
+   */
+  const marketInfoOf = (bet: BetDTO): { participants: string; title: string } => {
+    if (bet.marketType === 'tournament_outright') {
+      const tournament = tournaments.data?.find((entry) => entry.id === bet.marketId)
+      const champion = tournament?.participants.find((participant) => participant.id === bet.selectionId)
+      return {
+        participants: champion ? `Campeão: ${champion.displayName}` : '—',
+        title: tournament ? `${tournament.title} (campeão)` : '—',
+      }
+    }
+    const match = matches.data?.find((entry) => entry.id === bet.marketId)
+    return {
+      participants: match ? match.participants.map((participant) => participant.displayName).join(' vs ') : '—',
+      title: match?.title ?? '—',
+    }
+  }
+
+  /**
    * A bet can only be pulled while its market still takes bets — the backend is
    * what enforces it (BETTING_CLOSED), but the button has to know too: an `open`
    * bet on a match that already kicked off is NOT cancellable, and offering the
@@ -96,6 +117,7 @@ export function useBets() {
     bets: query.data ?? [],
     loading: query.isLoading,
     stats,
+    marketInfoOf,
     canCancel,
     cancelBet: (betId: string) => cancel.mutate(betId),
     cancelling: cancel.isPending,

@@ -45,7 +45,7 @@ export function StakeLimit() {
       {editing && (
         <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2.5">
           <div className="w-40">
-            <Field label="VALOR (R$)" type="number" step="0.01" min="0" required {...form.register('amount')} />
+            <Field label="VALOR (R$)" money placeholder="0,00" required {...form.register('amount')} />
           </div>
           <Button type="submit" variant="warning" disabled={saving}>
             {saving ? 'Salvando…' : 'Salvar'}

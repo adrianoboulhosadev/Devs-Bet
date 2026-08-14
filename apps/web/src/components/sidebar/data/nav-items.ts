@@ -29,6 +29,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/leaderboard', label: 'Placar geral', icon: LeaderboardIcon },
   { href: '/wallet', label: 'Créditos', icon: WalletIcon },
   { href: '/categories', label: 'Categorias', icon: CategoriesIcon, adminOnly: true },
-  { href: '/participants', label: 'Participantes', icon: ParticipantsIcon, adminOnly: true },
+  { href: '/participants', label: 'Participantes', icon: ParticipantsIcon },
   { href: '/admin', label: 'Sala de controle', icon: AdminIcon, adminOnly: true },
 ]

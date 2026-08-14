@@ -1,7 +1,7 @@
 /** Arcade-cabinet marquee for each screen: [kicker, title]. */
 const SCREEN_TITLES: Record<string, [string, string]> = {
   dashboard: ['BEM-VINDO DE VOLTA', 'PAINEL DO APOSTADOR'],
-  matches: ['ESCOLHA SUA MESA', 'LOBBY DE PARTIDAS'],
+  matches: ['FAÇA SUAS APOSTAS', 'LOBBY DE PARTIDAS'],
   'matches-detail': ['MODO ARENA', 'DETALHE DA PARTIDA'],
   tournaments: ['CHAVES E CAMPEÕES', 'TORNEIOS'],
   'tournaments-detail': ['CHAVE E CONFRONTOS', 'DETALHE DO TORNEIO'],
