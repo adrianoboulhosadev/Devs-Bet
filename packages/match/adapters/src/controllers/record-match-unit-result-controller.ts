@@ -7,6 +7,9 @@ export default class RecordMatchUnitResultController {
 
   async execute(matchId: string, input: RecordUnitResultInput, actor: AuthenticatedActor): Promise<void> {
     const useCase = new RecordMatchUnitResult(this.matchRepository)
-    await useCase.execute({ matchId, winnerParticipantId: input.winnerParticipantId }, actor)
+    await useCase.execute(
+      { matchId, winnerParticipantId: input.winnerParticipantId, proofImageUrl: input.proofImageUrl },
+      actor,
+    )
   }
 }

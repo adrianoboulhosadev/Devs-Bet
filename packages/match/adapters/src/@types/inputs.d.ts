@@ -44,4 +44,7 @@ export interface RecordUnitResultInput {
   // null declares a draw (match only — a tournament confrontation always
   // requires a real winner, enforced by RecordBracketResultInput).
   winnerParticipantId: string | null
+  // Photo proving the unit's result — mandatory, uploaded via POST
+  // /upload/matchs beforehand.
+  proofImageUrl: string
 }
