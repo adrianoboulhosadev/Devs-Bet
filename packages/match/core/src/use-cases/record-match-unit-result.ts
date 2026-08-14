@@ -6,6 +6,9 @@ interface Input {
   // null declares a draw for this unit — only legal on a bestOf-1 match that
   // allowsDraw; a tournament confrontation always requires a real winner.
   winnerParticipantId: string | null
+  // Photo proving the unit's result — mandatory (Match.recordUnitResult/
+  // MatchUnit enforce it).
+  proofImageUrl: string
 }
 
 /**
@@ -23,11 +26,11 @@ export default class RecordMatchUnitResult extends AdminUseCase<Input, void> {
     super()
   }
 
-  protected async executeAsAdmin({ matchId, winnerParticipantId }: Input): Promise<void> {
+  protected async executeAsAdmin({ matchId, winnerParticipantId, proofImageUrl }: Input): Promise<void> {
     const match = await this.matchRepository.findById(matchId)
     if (!match) NotFoundError.throwError(Errors.MATCH_NOT_FOUND, matchId)
 
-    match.recordUnitResult(match.units.length + 1, winnerParticipantId)
+    match.recordUnitResult(match.units.length + 1, winnerParticipantId, proofImageUrl)
     await this.matchRepository.update(match)
   }
 }

@@ -133,16 +133,28 @@ test('recordUnitResult(1, winner) settles a bestOf-1 match outright', () => {
   const match = newMatch()
   const winner = match.participants[0].id.value
   match.lockBetting()
-  match.recordUnitResult(1, winner)
+  match.recordUnitResult(1, winner, 'proof.jpg')
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBe(winner)
   expect(match.units).toHaveLength(1)
 })
 
+test('recording a unit result without a proof photo raises RESULT_PROOF_REQUIRED', () => {
+  const match = newMatch()
+  const winner = match.participants[0].id.value
+  match.lockBetting()
+  try {
+    match.recordUnitResult(1, winner, '')
+    fail('should have thrown')
+  } catch (error) {
+    expect((error as ValidationError).code).toBe(Errors.RESULT_PROOF_REQUIRED)
+  }
+})
+
 test('cannot record a result before locking (INVALID_MATCH_STATUS)', () => {
   const match = newMatch()
   try {
-    match.recordUnitResult(1, match.participants[0].id.value)
+    match.recordUnitResult(1, match.participants[0].id.value, 'proof.jpg')
     fail('should have thrown')
   } catch (error) {
     expect((error as ConflictError).code).toBe(Errors.INVALID_MATCH_STATUS)
@@ -153,7 +165,7 @@ test('the winner must be a participant (NOT_A_PARTICIPANT)', () => {
   const match = newMatch()
   match.lockBetting()
   try {
-    match.recordUnitResult(1, 'not-a-participant')
+    match.recordUnitResult(1, 'not-a-participant', 'proof.jpg')
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.NOT_A_PARTICIPANT)
@@ -164,7 +176,7 @@ test('recordUnitResult(1, null) declares a draw (allowsDraw defaults to true)', 
   const match = newMatch()
   expect(match.allowsDraw).toBe(true)
   match.lockBetting()
-  match.recordUnitResult(1, null)
+  match.recordUnitResult(1, null, 'proof.jpg')
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBeNull()
 })
@@ -180,7 +192,7 @@ test('a draw is rejected when the match does not allow one (DRAW_NOT_ALLOWED)', 
   })
   match.lockBetting()
   try {
-    match.recordUnitResult(1, null)
+    match.recordUnitResult(1, null, 'proof.jpg')
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.DRAW_NOT_ALLOWED)
@@ -191,9 +203,9 @@ test('cannot record a result once the match is already settled (MATCH_ALREADY_SE
   const match = newMatch()
   const winner = match.participants[0].id.value
   match.lockBetting()
-  match.recordUnitResult(1, winner)
+  match.recordUnitResult(1, winner, 'proof.jpg')
   try {
-    match.recordUnitResult(2, winner)
+    match.recordUnitResult(2, winner, 'proof.jpg')
     fail('should have thrown')
   } catch (error) {
     expect((error as ConflictError).code).toBe(Errors.MATCH_ALREADY_SETTLED)
@@ -207,7 +219,7 @@ test('cancel from open marks cancelled; cancelling a settled match fails', () =>
 
   const settled = newMatch()
   settled.lockBetting()
-  settled.recordUnitResult(1, settled.participants[0].id.value)
+  settled.recordUnitResult(1, settled.participants[0].id.value, 'proof.jpg')
   expect(() => settled.cancel()).toThrow(ConflictError)
 })
 
@@ -257,13 +269,13 @@ test('a bestOf-3 match settles once a participant reaches the majority (2 units)
   const [fabio, bruno] = match.participants.map((participant) => participant.id.value)
   match.lockBetting()
 
-  match.recordUnitResult(1, fabio)
+  match.recordUnitResult(1, fabio, 'proof.jpg')
   expect(match.status).toBe('locked')
 
-  match.recordUnitResult(2, bruno)
+  match.recordUnitResult(2, bruno, 'proof.jpg')
   expect(match.status).toBe('locked')
 
-  match.recordUnitResult(3, fabio)
+  match.recordUnitResult(3, fabio, 'proof.jpg')
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBe(fabio)
   expect(match.units).toHaveLength(3)
@@ -281,7 +293,7 @@ test('unit results must be recorded in order (INVALID_UNIT_NUMBER)', () => {
   })
   match.lockBetting()
   try {
-    match.recordUnitResult(2, match.participants[0].id.value)
+    match.recordUnitResult(2, match.participants[0].id.value, 'proof.jpg')
     fail('should have thrown')
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.INVALID_UNIT_NUMBER)

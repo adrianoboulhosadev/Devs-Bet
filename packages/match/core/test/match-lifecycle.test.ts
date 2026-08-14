@@ -141,7 +141,7 @@ test('admin locks, records the unit result; the flow reaches settled', async () 
   const winner = repository.participants[0].id
 
   await new LockMatch(repository).execute({ matchId }, admin)
-  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner, proofImageUrl: 'proof.jpg' }, admin)
 
   const match = await new GetMatchQuery(repository).execute(matchId)
   expect(match.status).toBe('settled')
@@ -152,7 +152,7 @@ test('admin declares a draw (null winner) via RecordMatchUnitResult', async () =
   const { repository, matchId } = await setupWithMatch()
 
   await new LockMatch(repository).execute({ matchId }, admin)
-  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: null }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: null, proofImageUrl: 'proof.jpg' }, admin)
 
   const match = await new GetMatchQuery(repository).execute(matchId)
   expect(match.status).toBe('settled')
@@ -177,13 +177,13 @@ test('a bestOf-3 match reaches settled only after the deciding unit', async () =
   const [fabio, bruno] = repository.participants.map((participant) => participant.id)
   await new LockMatch(repository).execute({ matchId }, admin)
 
-  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio, proofImageUrl: 'proof.jpg' }, admin)
   expect((await new GetMatchQuery(repository).execute(matchId)).status).toBe('locked')
 
-  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: bruno }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: bruno, proofImageUrl: 'proof.jpg' }, admin)
   expect((await new GetMatchQuery(repository).execute(matchId)).status).toBe('locked')
 
-  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio }, admin)
+  await new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: fabio, proofImageUrl: 'proof.jpg' }, admin)
   const match = await new GetMatchQuery(repository).execute(matchId)
   expect(match.status).toBe('settled')
   expect(match.winnerParticipantId).toBe(fabio)
@@ -204,7 +204,7 @@ test('declaring a result before locking fails (INVALID_MATCH_STATUS)', async () 
   const { repository, matchId } = await setupWithMatch()
   const winner = repository.participants[0].id
   await expect(
-    new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner }, admin),
+    new RecordMatchUnitResult(repository).execute({ matchId, winnerParticipantId: winner, proofImageUrl: 'proof.jpg' }, admin),
   ).rejects.toBeInstanceOf(ConflictError)
 })
 

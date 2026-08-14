@@ -13,6 +13,7 @@ interface UnitRow {
   matchId: string
   unitNumber: number
   winnerParticipantId: string | null
+  proofImageUrl: string | null
 }
 
 interface MatchRow {
@@ -74,6 +75,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
         matchId: unit.matchId,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
+        proofImageUrl: unit.proofImageUrl,
       }))
   }
 
@@ -132,6 +134,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
         matchId: match.id.value,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
+        proofImageUrl: unit.proofImageUrl,
       })),
     )
   }
@@ -172,6 +175,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       units: this.unitsOf(row.id).map((unit) => ({
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
+        proofImageUrl: unit.proofImageUrl,
       })),
       createdAt: row.createdAt,
       lockedAt: row.lockedAt,

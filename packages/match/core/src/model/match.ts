@@ -194,7 +194,7 @@ export class Match extends Entity<Match, MatchProps> {
    * a draw is just another selection (`MATCH_DRAW_SELECTION_ID`) that the
    * parimutuel payout settles like any other.
    */
-  recordUnitResult(unitNumber: number, winnerParticipantId: string | null): void {
+  recordUnitResult(unitNumber: number, winnerParticipantId: string | null, proofImageUrl: string): void {
     if (this.isDecided) ConflictError.throwError(Errors.MATCH_ALREADY_SETTLED, this.status)
     if (this.status !== 'locked') ConflictError.throwError(Errors.INVALID_MATCH_STATUS, this.status)
 
@@ -209,7 +209,8 @@ export class Match extends Entity<Match, MatchProps> {
       ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerParticipantId)
     }
 
-    this.units.push(new MatchUnit({ matchId: this.id.value, unitNumber, winnerParticipantId }))
+    // MatchUnit itself rejects a missing photo for a newly recorded unit.
+    this.units.push(new MatchUnit({ matchId: this.id.value, unitNumber, winnerParticipantId, proofImageUrl }))
 
     if (winnerParticipantId === null) {
       // Only reachable for a bestOf-1 match (allowsDraw already checked above).

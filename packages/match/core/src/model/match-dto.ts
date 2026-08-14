@@ -11,6 +11,7 @@ export interface MatchParticipantDTO {
 export interface MatchUnitDTO {
   unitNumber: number
   winnerParticipantId: string | null
+  proofImageUrl: string | null
 }
 
 /** READ projection (CQRS) of a match, with its participants, for the lobby/detail. */
