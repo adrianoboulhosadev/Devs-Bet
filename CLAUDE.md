@@ -326,7 +326,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `impliedOdd`, `recordedAt`). **Pernas de combo nunca geram snapshot** — não tocam esse pool (mesma razão
   de sempre). Read-side: `BetQueryRepository.listOddsHistoryByMarket` + `GetOddsHistoryQuery`; rotas
   `GET /bet/match/:id/odds/history` e `GET /bet/tournament/:id/odds/history`. Front
-  (`components/odds-history-chart.tsx`, reaproveitado por partida e outright): gráfico **em degrau** (odd só
+  (`components/odds-history-chart/`, reaproveitado por partida e outright): gráfico **em degrau** (odd só
   muda quando alguém aposta, então a linha fica reta entre pontos e "pula" a cada evento) via SVG puro (sem
   lib nova), paleta categórica de 8 cores neon (as mesmas do tema retrô-arcade — validada com o script da
   skill de dataviz contra o fundo escuro do card: CVD/contraste/chroma passam, só o check de "faixa de
@@ -670,7 +670,7 @@ reage:
   baseado em header) — daí ser um controller separado do `NotificationController`.
 - **Não vaza conexão**: cada stream abre a sua conexão Redis e o teardown do `Observable` a fecha
   quando o cliente desconecta (medido: 8 → 11 → 8 clientes com 3 streams).
-- Front: `useNotificationStream` montado **uma vez** no `AppShell`, invalidando a query
+- Front: `useNotificationStream` montado **uma vez** no `(private)/layout.tsx`, invalidando a query
   `['notifications']` a cada ping. O token vive numa variável de módulo
   (`lib/api/interceptors.ts`), que um hook não consegue observar — então `setAccessToken` (porta
   única por onde login/refresh/logout passam) **avisa** os interessados via `onAccessTokenChange`, e
@@ -708,7 +708,7 @@ reage:
   não o arquivo original. Antes disso quem decidia o enquadramento era o `object-cover` do CSS, que
   cortava pelo centro e sumia com o assunto de fotos altas ou muito largas. Implementado **sem lib
   nova** (mesmo precedente do gráfico de odds em SVG puro): `apps/web/src/lib/image-crop.ts` tem a
-  parte pura (presets + canvas) e `components/{image-cropper,image-picker}.tsx` a UI — o `ImagePicker`
+  parte pura (presets + canvas) e `components/{image-cropper,image-picker}/` a UI — o `ImagePicker`
   substituiu o `<Field type="file">` nos formulários, e o campo do form virou `File | null`
   (alimentado por `form.setValue`, mesmo padrão do `CategoryPicker`/`ParticipantPicker`). Dois presets:
   `square` (1:1, saída máx 512×512 — avatar e participante) e `banner` (16:9, máx 1600×900 — partida e
@@ -729,14 +729,14 @@ reage:
 **Stack travada**: Next.js (App Router) + **Tailwind** + **TanStack Query** + **Axios** + **react-hook-form**.
 **SEM zod** no front (validação de negócio já está no domínio; no front só validação de UI simples).
 
-**`components/loading.tsx`**: uma ficha `$` girando (`animate-coinSpin`), "CARREGANDO" com
+**`components/loading/`**: uma ficha `$` girando (`animate-coinSpin`), "CARREGANDO" com
 cursor piscando (`animate-blink`) e uma barrinha de progresso indeterminada (`animate-sweep`,
 keyframe que já existia na config e nunca tinha sido usada). **Três tamanhos, um por contexto de
 uso** — nenhum aceita filho, então quem chama sempre escolhe um dos três:
-`fullScreen` (`min-h-screen`, só as duas guardas de auth que rodam **antes** do `AppShell` montar —
+`fullScreen` (`min-h-screen`, só as duas guardas de auth que rodam **antes** do shell (`Sidebar`/`Header`) montar —
 `(private)/layout.tsx` e `(public)/layout.tsx` — ali não existe header ainda pra medir contra);
 default sem prop (`h-full`, todo componente de página que faz `if (loading) return <Loading />`
-**antes de qualquer outro JSX**, porque é o único filho do `<main>` do `AppShell`, que é uma caixa
+**antes de qualquer outro JSX**, porque é o único filho do `<main>` do `(private)/layout.tsx`, que é uma caixa
 `flex-1` cuja altura o próprio flexbox já calculou como "tela menos o header" — inclusive quando o
 header quebra em 2 linhas numa tela estreita; é exatamente essa conta que uma altura fixa em `vh`
 nunca acerta, e foi o que descentralizava o loading antigo dependendo da tela); `compact` (sem
@@ -752,8 +752,71 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
 > o domínio segue em inglês (`ComboBet`, `ComboLeg`, `bet-slip`), e neste guia a palavra ainda aparece
 > descrevendo esses tipos — o que não pode voltar é pra tela.
 
-- **Visual ≠ lógica**: em `app/`, cada rota tem `<rota>/components/` (só JSX) e `<rota>/hooks/` (states,
-  effects, handlers, chamadas). `page.tsx` só importa e renderiza.
+- **TODO componente é uma PASTA com `index.tsx`** — `components/button/index.tsx`, nunca
+  `components/button.tsx`. É o que deixa cada componente carregar o que é dele sem virar um monte de
+  arquivo solto na pasta de cima: `<componente>/hooks/` (o hook exclusivo dele) e `<componente>/data/`
+  (constantes/config, ex.: `sidebar/data/nav-items.ts` e `sidebar/data/icons.tsx`). O import não muda
+  (`@/components/button` resolve o `index.tsx`), então mover um componente pra pasta nunca mexe em quem
+  o usa.
+- **Visual ≠ lógica**: o `index.tsx`/`page.tsx` é só JSX; states, effects, handlers e chamadas moram
+  num hook. **Onde o hook fica é o que diz de quem ele é**: hook de UMA tela → `<rota>/hooks/`; hook de
+  UM componente → `<componente>/hooks/` (ex.: `use-bet-slip-panel` dentro do `bet-slip`,
+  `use-notification-bell` dentro do sininho); só o que várias telas compartilham fica em `src/hooks/`
+  (`use-categories`, `use-participants`, `use-notifications`, `use-profile-stats`, `use-self-exclusion`,
+  as guardas de rota e o `use-notification-stream`). Hook usado por vários pontos da MESMA rota (o
+  `page.tsx` **e** um sub-componente) fica em `<rota>/hooks/`, irmão do `page.tsx` — não tem "componente
+  raiz" pra ser dono dele. **Duas exceções**, e só essas: chamada ISOLADA de hook de terceiro sem
+  nenhum state/handler seu ao lado, e **função pura** de formatação de apresentação (não é lógica no
+  sentido da regra) — as duas podem ficar inline no arquivo visual.
+- **`hooks/`, `data/` e `types/` sempre com nome descritivo** (`use-bet-slip-panel.ts`,
+  `nav-items.ts`) — **nunca** um `index.ts` dentro delas: a pasta pode ter mais de um arquivo, então
+  um "index" único não faria sentido. Só o **componente** tem `index.tsx`.
+- **Pasta de sub-componente nunca aninha dentro da pasta de outro sub-componente** — todas irmãs,
+  direto em `<rota>/components/` (ou em `src/components/`), mesmo quando um só é usado pelo outro
+  (`group-stage` importa `../group-match-card`, não um `group-stage/group-match-card/`).
+- **As quatro pastas de um componente/rota, e quando cada uma existe**: `hooks/` (se tem lógica
+  própria), `data/` (se tem dado fixo próprio), `types/` (se tem interface **exportada** e lida por
+  mais de um arquivo dali) e, na ROTA, `lib/` (se tem função pura usada só por aquela rota — ex., no
+  projeto de referência, um `jobs/lib/parse-bulk-file.ts`). Nenhuma é obrigatória: cria quando o caso
+  aparece. ⚠️ **`<rota>/types/` e `<rota>/lib/` ainda NÃO existem neste projeto** — não porque a regra
+  não valha, mas porque o caso não apareceu: até aqui todo tipo local é interface de formulário/props
+  (fica inline) ou tipo de uma constante (fica no `data/`, ver abaixo), e toda função pura é usada por
+  mais de uma tela (fica em `src/lib/`). Quando aparecer um **modelo de dado** próprio da rota ou uma
+  função pura exclusiva dela, é lá que vai — não invente um `src/types/` global nem empurre pro hook.
+- **Dado fixo (array de opções, mapa de estilo, tabela de rótulos) SEMPRE em `data/`** — nunca solto
+  no topo de um `.tsx`/`.ts`. Um arquivo por grupo coeso (`match-filters.ts`, `round-labels.ts`), nunca
+  um `constants.ts` genérico. O nível segue **quem usa**: `data/` do componente (uso local, ex.
+  `BUTTON_VARIANT_CLASSES` em `button/data/` — nunca num `components/data/` misturando componentes),
+  `data/` da rota (vários componentes da mesma rota) ou `src/data/` global (usado por **rotas
+  diferentes**, ou por dois componentes independentes que o `layout.tsx` monta sem um dono comum).
+  **Escalar de ajuste local** (`BADGE_CAP = 99`, `INBOX_SIZE = 100`, chave de query `['wallet']`) pode
+  ficar inline junto de quem usa — a regra é sobre estrutura de dado, não sobre todo `const` maiúsculo.
+  ⚠️ **Dado igual em duas rotas é sempre bug esperando acontecer**: `ROUND_LABELS` e
+  `GROUP_STAGE_THRESHOLD` estavam copiados entre `tournaments` e `tournaments/[id]`, e
+  `MATCH_DRAW_SELECTION_ID` entre `matches/[id]` e o combo — os três foram pro `src/data/` global.
+- **Tipo união que enumera um dado mora JUNTO do dado, no `data/`** — `ButtonVariant` com
+  `BUTTON_VARIANT_CLASSES`, `MatchFilter` com `MATCH_FILTERS`, `SlipMode` com `MODES`, `InboxFilter`
+  com `FILTERS`. O `types/` é pra **modelo de dado** que não é o tipo de nenhuma constante (ainda não
+  apareceu nenhum aqui). Props que só o próprio arquivo lê (sem `export`) ficam inline — não move.
+- **JSX de wrapper repetido entre `page.tsx` do MESMO route group sobe pro `layout.tsx` do grupo** —
+  se a moldura é igual pra todo mundo do grupo, duplicá-la em cada `page.tsx` só porque cada rota tem
+  o seu arquivo é repetição à toa. Foi o caso do `(public)`: `login`, `register` e `pending` repetiam
+  o mesmo `<main>` de fundo radial + o card `max-w-md` centralizado; isso foi pro `(public)/layout.tsx`
+  (que já existia pra fazer o guard) e cada `page.tsx` ficou só com o que é dele. ⚠️ A guarda de
+  `Loading fullScreen` fica **fora** desse wrapper — ela reivindica a viewport inteira e o `max-w-md`
+  do card a espremeria. O `<h1>` do DEVS·BET **não** subiu: parece igual, mas o `pending` usa
+  `mb-1.5` (tem um kicker acima) contra `mb-8` dos outros — a regra é sobre JSX **idêntico**.
+- **Dado estático → `data/`; lógica (parse, cálculo, formatação) → `lib/`.** Paleta/constante que é a
+  implementação privada de uma função pura continua junto dela no `lib/` (ex. o `PALETTE` de
+  `participant-colors.ts`) — separar o dado da única função que o consome não ajuda ninguém.
+- **`page.tsx` É a tela** — ele mesmo tem o JSX e chama o hook da rota; não existe um
+  `components/<rota>.tsx` que é só o wrapper da página inteira (era uma indireção sem ganho: um arquivo
+  a mais pra abrir e nenhuma reutilização). `<rota>/components/` guarda só os **pedaços** da tela
+  (`wallet/components/deposit-limits/`, `tournaments/[id]/components/bracket-slot-card/`).
+- **Não existe `AppShell`**: o cromo da área privada são dois componentes independentes,
+  `components/sidebar/` e `components/header/`, compostos direto no `(private)/layout.tsx` (que é
+  também quem monta o `BetSlipProvider` e abre o SSE). Um componente que só embrulha outros dois não
+  ganha nada por existir, e escondia o layout de quem procura por ele no `layout.tsx`.
 - **Route groups por acesso**: `app/(public)/` (login/register) e `app/(private)/` (dashboard, match, wallet,
   bet, tournament). Guard no `layout.tsx` do grupo, nunca por página.
 - **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar contratos.
