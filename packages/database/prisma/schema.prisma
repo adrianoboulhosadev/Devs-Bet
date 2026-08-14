@@ -141,8 +141,13 @@ model Payment {
   amount        Int
   status        String    @default("pending")
   referenceCode String    @unique @map("reference_code")
-  // Proof of Pix, mandatory for deposits (uploads/receipts); withdrawals have none.
-  receiptUrl    String?   @map("receipt_url")
+  // Proof of the money move: mandatory for a deposit at creation (the user's Pix
+  // receipt), attached later for a withdrawal (the admin's payout receipt, set
+  // when marked paid).
+  receiptUrl      String?   @map("receipt_url")
+  // Why a rejected payment was refused — mandatory for a withdrawal, optional
+  // for a deposit (see Payment.reject).
+  rejectionReason String?   @map("rejection_reason")
   confirmedBy   String?   @map("confirmed_by")
   createdAt     DateTime  @default(now()) @map("created_at")
   confirmedAt   DateTime? @map("confirmed_at")
@@ -256,6 +261,9 @@ model MatchUnit {
   matchId             String  @map("match_id")
   unitNumber          Int     @map("unit_number")
   winnerParticipantId String? @map("winner_participant_id")
+  // Admin-attached photo proving the unit's result — mandatory when recorded
+  // (see MatchUnit in @match/core), shown to users as proof.
+  proofImageUrl       String? @map("proof_image_url")
   match               Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
   @@unique([matchId, unitNumber])
