@@ -34,4 +34,7 @@ export interface CreateTournamentInput {
 // id (as shown on the match); the backend resolves it to a displayName to advance.
 export interface RecordBracketResultInput {
   winnerParticipantId: string
+  // Photo proving the unit's result — mandatory, same as a standalone match's
+  // RecordUnitResultInput.
+  proofImageUrl: string
 }
