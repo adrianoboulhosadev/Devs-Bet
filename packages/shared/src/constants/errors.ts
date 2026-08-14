@@ -38,6 +38,7 @@ export const Errors = {
   PAYMENT_NOT_FOUND: 'PAYMENT_NOT_FOUND',
   PAYMENT_ALREADY_SETTLED: 'PAYMENT_ALREADY_SETTLED',
   RECEIPT_REQUIRED: 'RECEIPT_REQUIRED',
+  REJECTION_REASON_REQUIRED: 'REJECTION_REASON_REQUIRED',
   DEPOSIT_LIMIT_EXCEEDED: 'DEPOSIT_LIMIT_EXCEEDED',
   // Too many money moves hit the same wallet at once and the database kept
   // refusing the interleaving (see the apps' inMoneyTransaction). Transient:
@@ -57,6 +58,7 @@ export const Errors = {
   DRAW_NOT_ALLOWED: 'DRAW_NOT_ALLOWED',
   INVALID_BEST_OF: 'INVALID_BEST_OF',
   INVALID_UNIT_NUMBER: 'INVALID_UNIT_NUMBER',
+  RESULT_PROOF_REQUIRED: 'RESULT_PROOF_REQUIRED',
 
   // betting
   BETTING_CLOSED: 'BETTING_CLOSED',
