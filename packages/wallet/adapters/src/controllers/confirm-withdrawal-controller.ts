@@ -7,8 +7,8 @@ export default class ConfirmWithdrawalController {
     private readonly eventPublisher?: EventPublisher,
   ) {}
 
-  async execute(paymentId: string, actor: AuthenticatedActor): Promise<void> {
+  async execute(paymentId: string, receiptUrl: string, actor: AuthenticatedActor): Promise<void> {
     const useCase = new ConfirmWithdrawal(this.walletRepository, this.eventPublisher)
-    await useCase.execute({ paymentId }, actor)
+    await useCase.execute({ paymentId, receiptUrl }, actor)
   }
 }

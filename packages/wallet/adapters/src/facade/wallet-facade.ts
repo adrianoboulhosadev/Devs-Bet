@@ -26,7 +26,14 @@ import {
   StartSelfExclusionController,
   GetMySelfExclusionController,
 } from '../controllers'
-import { DepositInput, WithdrawalInput, SetDepositLimitInput, StartSelfExclusionInput } from '../@types'
+import {
+  DepositInput,
+  WithdrawalInput,
+  SetDepositLimitInput,
+  StartSelfExclusionInput,
+  ConfirmWithdrawalInput,
+  RejectPaymentInput,
+} from '../@types'
 
 /**
  * Single entry point the backend (NestJS) calls. Optional ports in the
@@ -66,16 +73,26 @@ export default class WalletFacade {
     )
   }
 
-  async confirmWithdrawal(paymentId: string, actor: AuthenticatedActor): Promise<void> {
+  async confirmWithdrawal(
+    paymentId: string,
+    input: ConfirmWithdrawalInput,
+    actor: AuthenticatedActor,
+  ): Promise<void> {
     await new ConfirmWithdrawalController(this.walletRepository!, this.eventPublisher).execute(
       paymentId,
+      input.receiptUrl,
       actor,
     )
   }
 
-  async rejectPayment(paymentId: string, actor: AuthenticatedActor): Promise<void> {
+  async rejectPayment(
+    paymentId: string,
+    input: RejectPaymentInput,
+    actor: AuthenticatedActor,
+  ): Promise<void> {
     await new RejectPaymentController(this.walletRepository!, this.eventPublisher).execute(
       paymentId,
+      input.reason,
       actor,
     )
   }

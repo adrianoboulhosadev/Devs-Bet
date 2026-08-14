@@ -7,8 +7,8 @@ export default class RejectPaymentController {
     private readonly eventPublisher?: EventPublisher,
   ) {}
 
-  async execute(paymentId: string, actor: AuthenticatedActor): Promise<void> {
+  async execute(paymentId: string, reason: string | undefined, actor: AuthenticatedActor): Promise<void> {
     const useCase = new RejectPayment(this.walletRepository, this.eventPublisher)
-    await useCase.execute({ paymentId }, actor)
+    await useCase.execute({ paymentId, reason }, actor)
   }
 }
