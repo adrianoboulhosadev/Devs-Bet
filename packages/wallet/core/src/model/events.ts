@@ -53,6 +53,8 @@ export class WithdrawalPaid extends DomainEvent {
  * Raised by `Payment.reject()`, for either direction — carries `direction` so
  * whoever turns this into a notification does not have to re-fetch the
  * payment just to pick between "deposit rejected" and "withdrawal rejected".
+ * `reason` is always set for a withdrawal (the domain requires it); a
+ * deposit's stays optional, same as before.
  */
 export class PaymentRejected extends DomainEvent {
   constructor(
@@ -60,6 +62,7 @@ export class PaymentRejected extends DomainEvent {
     readonly userId: string,
     readonly amount: number,
     readonly direction: 'deposit' | 'withdrawal',
+    readonly reason: string | null,
   ) {
     super()
   }

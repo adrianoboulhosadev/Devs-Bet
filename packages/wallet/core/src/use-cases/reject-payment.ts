@@ -3,6 +3,9 @@ import { WalletRepository } from '../providers'
 
 interface Input {
   paymentId: string
+  // Mandatory for a withdrawal (Payment.reject enforces it), optional for a
+  // deposit — see Payment.reject.
+  reason?: string
 }
 
 /**
@@ -18,11 +21,11 @@ export default class RejectPayment extends AdminUseCase<Input, void> {
     super()
   }
 
-  protected async executeAsAdmin({ paymentId }: Input, actor: AuthenticatedActor): Promise<void> {
+  protected async executeAsAdmin({ paymentId, reason }: Input, actor: AuthenticatedActor): Promise<void> {
     const payment = await this.walletRepository.findPaymentById(paymentId)
     if (!payment) NotFoundError.throwError(Errors.PAYMENT_NOT_FOUND, paymentId)
 
-    payment.reject(actor.id)
+    payment.reject(actor.id, reason)
 
     // Releasing the hold of a rejected WITHDRAWAL happens INSIDE the
     // repository's transaction (see the port); a rejected deposit never

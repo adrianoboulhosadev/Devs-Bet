@@ -33,29 +33,40 @@ test('confirm records a DepositConfirmed domain event', () => {
   expect(events[0]).toMatchObject({ paymentId: payment.id.value, userId: 'user-1', amount: 5000 })
 })
 
-test('markPaid moves a withdrawal to paid', () => {
-  const payment = new Payment({
+function withdrawal(): Payment {
+  return new Payment({
     userId: 'user-1',
     direction: 'withdrawal',
     amount: 5000,
     referenceCode: 'WTH-1',
   })
-  payment.markPaid('admin-1')
+}
+
+test('markPaid moves a withdrawal to paid and attaches the payout receipt', () => {
+  const payment = withdrawal()
+  payment.markPaid('admin-1', '/uploads/receipts/payout.png')
   expect(payment.status).toBe('paid')
+  expect(payment.receiptUrl).toBe('/uploads/receipts/payout.png')
 })
 
 test('markPaid records a WithdrawalPaid domain event', () => {
-  const payment = new Payment({
-    userId: 'user-1',
-    direction: 'withdrawal',
-    amount: 5000,
-    referenceCode: 'WTH-1',
-  })
-  payment.markPaid('admin-1')
+  const payment = withdrawal()
+  payment.markPaid('admin-1', '/uploads/receipts/payout.png')
 
   const events = payment.pullDomainEvents()
   expect(events).toHaveLength(1)
   expect(events[0]).toBeInstanceOf(WithdrawalPaid)
+})
+
+test('markPaid without a receipt raises RECEIPT_REQUIRED', () => {
+  const payment = withdrawal()
+  try {
+    payment.markPaid('admin-1', '')
+    fail('should have thrown')
+  } catch (error) {
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).code).toBe(Errors.RECEIPT_REQUIRED)
+  }
 })
 
 test('reject moves a pending payment to rejected', () => {
@@ -72,6 +83,26 @@ test('reject records a PaymentRejected event carrying the direction', () => {
   expect(events).toHaveLength(1)
   expect(events[0]).toBeInstanceOf(PaymentRejected)
   expect(events[0]).toMatchObject({ direction: 'deposit', amount: 5000 })
+})
+
+test('rejecting a withdrawal without a reason raises REJECTION_REASON_REQUIRED', () => {
+  const payment = withdrawal()
+  try {
+    payment.reject('admin-1')
+    fail('should have thrown')
+  } catch (error) {
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).code).toBe(Errors.REJECTION_REASON_REQUIRED)
+  }
+})
+
+test('rejecting a withdrawal with a reason stores it and carries it on the event', () => {
+  const payment = withdrawal()
+  payment.reject('admin-1', 'chave Pix inválida')
+  expect(payment.rejectionReason).toBe('chave Pix inválida')
+
+  const events = payment.pullDomainEvents()
+  expect(events[0]).toMatchObject({ direction: 'withdrawal', reason: 'chave Pix inválida' })
 })
 
 test('pullDomainEvents drains the list — a second call comes back empty', () => {

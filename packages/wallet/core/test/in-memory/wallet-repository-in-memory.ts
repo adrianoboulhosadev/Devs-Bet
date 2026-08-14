@@ -33,6 +33,7 @@ interface PaymentRow {
   status: PaymentStatus
   referenceCode: string
   receiptUrl: string | null
+  rejectionReason: string | null
   createdAt: Date
   confirmedBy: string | null
   confirmedAt: Date | null
@@ -84,6 +85,7 @@ export default class WalletRepositoryInMemory
       status: payment.status,
       referenceCode: payment.referenceCode,
       receiptUrl: payment.receiptUrl,
+      rejectionReason: payment.rejectionReason,
       createdAt: new Date(),
       confirmedBy: payment.confirmedBy,
       confirmedAt: payment.confirmedAt,
@@ -94,6 +96,8 @@ export default class WalletRepositoryInMemory
     const row = this.payments.find((current) => current.id === payment.id.value)
     if (row) {
       row.status = payment.status
+      row.receiptUrl = payment.receiptUrl
+      row.rejectionReason = payment.rejectionReason
       row.confirmedBy = payment.confirmedBy
       row.confirmedAt = payment.confirmedAt
     }
@@ -127,6 +131,7 @@ export default class WalletRepositoryInMemory
           status: row.status,
           referenceCode: row.referenceCode,
           receiptUrl: row.receiptUrl,
+          rejectionReason: row.rejectionReason,
           confirmedBy: row.confirmedBy,
           confirmedAt: row.confirmedAt,
         })
@@ -272,6 +277,7 @@ export default class WalletRepositoryInMemory
       status: row.status,
       referenceCode: row.referenceCode,
       receiptUrl: row.receiptUrl,
+      rejectionReason: row.rejectionReason,
       createdAt: row.createdAt,
       confirmedAt: row.confirmedAt,
     }

@@ -52,7 +52,10 @@ test('admin paying the withdrawal settles the hold (balance and held down)', asy
   await requestWithdrawal.execute({ userId: 'user-1', amount: 4000 })
   const withdrawal = repository.payments.find((payment) => payment.direction === 'withdrawal')!
 
-  await confirmWithdrawal.execute({ paymentId: withdrawal.id }, admin)
+  await confirmWithdrawal.execute(
+    { paymentId: withdrawal.id, receiptUrl: '/uploads/receipts/payout.png' },
+    admin,
+  )
 
   const wallet = await getWallet.execute('user-1')
   expect(wallet.balance).toBe(6000)
@@ -67,7 +70,7 @@ test('rejecting a withdrawal releases the hold back to available', async () => {
   await requestWithdrawal.execute({ userId: 'user-1', amount: 4000 })
   const withdrawal = repository.payments.find((payment) => payment.direction === 'withdrawal')!
 
-  await rejectPayment.execute({ paymentId: withdrawal.id }, admin)
+  await rejectPayment.execute({ paymentId: withdrawal.id, reason: 'chave Pix inválida' }, admin)
 
   const wallet = await getWallet.execute('user-1')
   expect(wallet.balance).toBe(10000)

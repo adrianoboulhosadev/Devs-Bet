@@ -3,6 +3,7 @@ import { WalletRepository } from '../providers'
 
 interface Input {
   paymentId: string
+  receiptUrl: string
 }
 
 /**
@@ -18,13 +19,13 @@ export default class ConfirmWithdrawal extends AdminUseCase<Input, void> {
     super()
   }
 
-  protected async executeAsAdmin({ paymentId }: Input, actor: AuthenticatedActor): Promise<void> {
+  protected async executeAsAdmin({ paymentId, receiptUrl }: Input, actor: AuthenticatedActor): Promise<void> {
     const payment = await this.walletRepository.findPaymentById(paymentId)
     if (!payment || payment.direction !== 'withdrawal') {
       NotFoundError.throwError(Errors.PAYMENT_NOT_FOUND, paymentId)
     }
 
-    payment.markPaid(actor.id)
+    payment.markPaid(actor.id, receiptUrl)
 
     // Settling the hold + writing the ledger entry happens INSIDE the
     // repository's transaction (see the port).
