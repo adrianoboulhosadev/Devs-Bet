@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { api } from '@/lib/api'
@@ -53,6 +55,11 @@ export function useCategoriesAdmin() {
     create.mutate({ name: data.name.trim(), parentId: data.parentId || null })
   })
 
+  // Inline rename: which row is in edit mode and the draft name.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+
   // Categories sorted by their full path so the hierarchy reads top-down.
   const ordered = [...categories].sort((first, second) =>
     pathOf(first.id).localeCompare(pathOf(second.id)),
@@ -67,7 +74,20 @@ export function useCategoriesAdmin() {
     form,
     onSubmit,
     submitting: create.isPending,
-    rename: (id: string, name: string) => rename.mutate({ id, name }),
     remove: (id: string) => remove.mutate(id),
+    editingId,
+    editName,
+    setEditName,
+    pendingDeleteId,
+    setPendingDeleteId,
+    startRename: (id: string, current: string) => {
+      setEditingId(id)
+      setEditName(current)
+    },
+    cancelRename: () => setEditingId(null),
+    saveRename: () => {
+      if (editingId && editName.trim()) rename.mutate({ id: editingId, name: editName.trim() })
+      setEditingId(null)
+    },
   }
 }

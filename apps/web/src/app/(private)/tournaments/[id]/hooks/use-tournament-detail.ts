@@ -1,17 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/notify'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
-
-// Round labels by distance to the final (a 32-entrant bracket reaches
-// "16-avos"; a 64-entrant one, from a 128-size tournament's group stage,
-// reaches "32-avos").
-const ROUND_LABELS = ['Final', 'Semifinal', 'Quartas', 'Oitavas', '16-avos', '32-avos']
-const GROUP_STAGE_THRESHOLD = 32
+import { qualifierCountOf, roundCountOf, roundLabelOf } from '@/lib/tournament-bracket'
 
 export function useTournamentDetail(tournamentId: string) {
   const queryClient = useQueryClient()
@@ -53,19 +49,21 @@ export function useTournamentDetail(tournamentId: string) {
   })
 
   const size = tournament.data?.size ?? 0
-  // The bracket's actual entrant count: everyone below the group-stage
-  // threshold, or each group's top two above it.
-  const qualifierCount = size > GROUP_STAGE_THRESHOLD ? size / 2 : size
-  const roundCount = qualifierCount >= 2 ? Math.log2(qualifierCount) : 0
-  const roundLabel = (round: number): string =>
-    ROUND_LABELS[roundCount - 1 - round] ?? `Rodada ${round + 1}`
+  const qualifierCount = qualifierCountOf(size)
+  const roundCount = roundCountOf(size)
+  const roundLabel = (round: number): string => roundLabelOf(round, roundCount)
 
   const championName =
     tournament.data?.participants.find(
       (participant) => participant.id === tournament.data?.championParticipantId,
     )?.displayName ?? null
 
+  // Destructive action guard for the cancel button.
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+
   return {
+    confirmingCancel,
+    setConfirmingCancel,
     tournament: tournament.data,
     loading: tournament.isLoading,
     isAdmin,

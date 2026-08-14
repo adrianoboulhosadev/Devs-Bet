@@ -19,7 +19,7 @@ import { NOTIFICATIONS_KEY } from './use-notifications'
  * The token goes in the query string because EventSource cannot send an
  * Authorization header — the connection is therefore recreated whenever the
  * token rotates (login, silent refresh, logout), which is what
- * onAccessTokenChange is for. Mounted ONCE, in AppShell.
+ * onAccessTokenChange is for. Mounted ONCE, in the private layout.
  */
 export function useNotificationStream() {
   const queryClient = useQueryClient()

@@ -2,19 +2,36 @@
 
 import type { ReactNode } from 'react'
 import { Loading } from '@/components/loading'
-import { AppShell } from '@/components/app-shell'
+import { Sidebar } from '@/components/sidebar'
+import { Header } from '@/components/header'
 import { BetSlip } from '@/components/bet-slip'
 import { BetSlipProvider } from '@/contexts/bet-slip-context'
 import { useProtectRoute } from '@/hooks/use-protect-route'
+import { useNotificationStream } from '@/hooks/use-notification-stream'
 
 export default function PrivateLayout({ children }: { children: ReactNode }) {
   const { allowed } = useProtectRoute()
+  // One live connection for the whole private area (the bell is only ever
+  // mounted in here), so the inbox never needs a timer.
+  useNotificationStream()
+
   if (!allowed) return <Loading fullScreen />
+
+  // The outer box never scrolls: the rail stays put and only the column beside
+  // it scrolls, which is what keeps the header sticky.
   // The slip lives at the layout level so picks survive navigation between a
   // match, a tournament and back.
   return (
     <BetSlipProvider>
-      <AppShell>{children}</AppShell>
+      <div className="flex h-screen overflow-hidden bg-arcade-bg">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          <Header />
+          <main className="min-w-0 flex-1 p-4 sm:p-6" style={{ maxWidth: 1320 }}>
+            {children}
+          </main>
+        </div>
+      </div>
       <BetSlip />
     </BetSlipProvider>
   )

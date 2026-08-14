@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { CreateParticipantInput, UpdateParticipantInput } from '@participant/adapters'
@@ -70,6 +72,12 @@ export function useParticipantsAdmin() {
     onError: (failure) => notify.failure(failure, 'Não foi possível excluir o participante.'),
   })
 
+  // Inline edit: which row is open and the draft fields.
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editNickname, setEditNickname] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+
   const onSubmit = form.handleSubmit((data) => create.mutate(data))
 
   return {
@@ -79,7 +87,28 @@ export function useParticipantsAdmin() {
     form,
     onSubmit,
     submitting: create.isPending,
-    updateParticipant: (id: string, input: UpdateParticipantInput) => update.mutate({ id, input }),
     remove: (id: string) => remove.mutate(id),
+    editingId,
+    editName,
+    setEditName,
+    editNickname,
+    setEditNickname,
+    pendingDeleteId,
+    setPendingDeleteId,
+    startEdit: (id: string, name: string, nickname: string | null) => {
+      setEditingId(id)
+      setEditName(name)
+      setEditNickname(nickname ?? '')
+    },
+    cancelEdit: () => setEditingId(null),
+    saveEdit: () => {
+      if (editingId && editName.trim()) {
+        update.mutate({
+          id: editingId,
+          input: { name: editName.trim(), nickname: editNickname.trim() || null },
+        })
+      }
+      setEditingId(null)
+    },
   }
 }

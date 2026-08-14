@@ -13,7 +13,6 @@ const MATCHES_KEY = ['matches']
 
 // bestOf a match can be played over — first to the majority wins (odd, so it's
 // always decisive). Must match Match.VALID_BEST_OF in packages/match/core.
-export const MATCH_BEST_OF_OPTIONS = [1, 3, 5] as const
 
 // The form mirrors CreateMatchInput but participants are picked from the
 // catalog (see ParticipantPicker), not typed. scheduledAt comes from

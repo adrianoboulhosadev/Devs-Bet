@@ -10,10 +10,7 @@ import { notify } from '@/lib/notify'
 import { toDateTimeLocalValue } from '@/lib/date'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
-
-// Betting selection id for "the match ends in a draw" (must match the sentinel
-// in packages/match/core's Match model and the backend's bet.controller).
-export const MATCH_DRAW_SELECTION_ID = 'draw'
+import { MATCH_DRAW_SELECTION_ID } from '@/data/match-selections'
 
 interface EditFields {
   title: string
@@ -152,7 +149,12 @@ export function useMatchDetail(matchId: string) {
 
   const onEditSubmit = editForm.handleSubmit((fields) => update.mutate(fields))
 
+  // Destructive action guard for the cancel button.
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+
   return {
+    confirmingCancel,
+    setConfirmingCancel,
     match: match.data,
     odds: isOpen ? odds.data : (closingOdds ?? odds.data),
     marketClosed: !isOpen,

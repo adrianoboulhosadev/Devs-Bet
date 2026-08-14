@@ -3,22 +3,12 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { BetDTO, ComboBetDTO } from '@betting/adapters'
-import type { MatchDTO, MatchStatus } from '@match/adapters'
+import type { MatchDTO } from '@match/adapters'
 import type { WalletDTO } from '@wallet/adapters'
 import { api } from '@/lib/api'
 import { useAuth } from '@/contexts/auth-context'
 import { useCategories } from '@/hooks/use-categories'
-
-/** "Todas" plus the four match states, in the order they happen. */
-export type MatchFilter = 'all' | MatchStatus
-
-export const MATCH_FILTERS: Array<{ id: MatchFilter; label: string }> = [
-  { id: 'all', label: 'Todas' },
-  { id: 'open', label: 'Abertas' },
-  { id: 'locked', label: 'Travadas' },
-  { id: 'settled', label: 'Encerradas' },
-  { id: 'cancelled', label: 'Canceladas' },
-]
+import { MATCH_FILTERS, type MatchFilter } from '../data/match-filters'
 
 export function useDashboard() {
   const { user, isAdmin } = useAuth()

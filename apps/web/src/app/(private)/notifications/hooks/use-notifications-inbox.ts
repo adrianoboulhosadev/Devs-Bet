@@ -1,5 +1,7 @@
 'use client'
 
+import type { InboxFilter } from '../data/inbox-filters'
+
 import { useMemo, useState } from 'react'
 import { useNotifications } from '@/hooks/use-notifications'
 
@@ -7,7 +9,6 @@ import { useNotifications } from '@/hooks/use-notifications'
 // for more would be clamped anyway.
 const INBOX_SIZE = 100
 
-export type InboxFilter = 'all' | 'unread'
 
 /** State + data for the inbox page. The filter is client-side on purpose: the
  * whole page is already in memory, so a round trip to hide read lines would
