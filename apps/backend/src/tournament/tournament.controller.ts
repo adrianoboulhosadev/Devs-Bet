@@ -122,7 +122,9 @@ export class TournamentController {
         {
           title: `${playerA.displayName} vs ${playerB.displayName}`,
           categoryId: tournament.categoryId,
-          imageUrl: null,
+          // No banner of its own — inherit the tournament's, so the confrontation
+          // never shows up bare in the lobby/match page.
+          imageUrl: tournament.imageUrl,
           scheduledAt: scheduledAt.toISOString(),
           rakeBasisPoints: tournament.rakeBasisPoints,
           bestOf: tournament.bestOfFor(slot.round),
@@ -167,7 +169,9 @@ export class TournamentController {
         {
           title: `${playerA.displayName} vs ${playerB.displayName} (Grupo ${slot.groupIndex + 1})`,
           categoryId: tournament.categoryId,
-          imageUrl: null,
+          // No banner of its own — inherit the tournament's, same as a bracket
+          // confrontation.
+          imageUrl: tournament.imageUrl,
           // Group matches all open together and lock at the tournament's start,
           // same as a round-0 knockout confrontation.
           scheduledAt: tournament.scheduledAt.toISOString(),
@@ -192,6 +196,17 @@ export class TournamentController {
   @Get()
   list(): Promise<TournamentDTO[]> {
     return this.tournamentFacade().listTournaments()
+  }
+
+  // Reverse lookup so the match page knows whether to declare a result through
+  // this controller's route (which advances the bracket/group) or the plain
+  // match one — see the comment on RecordMatchUnitResult in the match page.
+  // MUST be declared before the ':id' route below, or Nest would match
+  // "by-match" itself as an :id.
+  @Get('by-match/:matchId')
+  async byMatch(@Param('matchId') matchId: string): Promise<{ tournamentId: string | null }> {
+    const tournamentId = await this.tournamentRepository.findTournamentIdByMatchId(matchId)
+    return { tournamentId }
   }
 
   @Get(':id')

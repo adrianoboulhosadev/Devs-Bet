@@ -118,6 +118,26 @@ export class PrismaTournamentRepository
     return row ? this.reconstitute(row) : null
   }
 
+  /**
+   * Which tournament (if any) a Match belongs to — a bracket confrontation or a
+   * group-stage matchup. Read-only reverse lookup so the MATCH page can find
+   * its own tournament's result route (see TournamentController.recordUnitResult)
+   * without match ever importing tournament (the query lives entirely here).
+   */
+  async findTournamentIdByMatchId(matchId: string): Promise<string | null> {
+    const slot = await this.prisma.tournamentSlot.findFirst({
+      where: { matchId },
+      select: { tournamentId: true },
+    })
+    if (slot) return slot.tournamentId
+
+    const groupMatch = await this.prisma.tournamentGroupMatch.findFirst({
+      where: { matchId },
+      select: { tournamentId: true },
+    })
+    return groupMatch?.tournamentId ?? null
+  }
+
   async create(tournament: Tournament): Promise<void> {
     await this.prisma.tournament.create({
       data: {

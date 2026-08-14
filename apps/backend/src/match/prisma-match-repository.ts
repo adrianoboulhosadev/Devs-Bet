@@ -24,7 +24,7 @@ type MatchRowWithParticipants = {
     nickname: string | null
     imageUrl: string | null
   }[]
-  units: { unitNumber: number; winnerParticipantId: string | null }[]
+  units: { unitNumber: number; winnerParticipantId: string | null; proofImageUrl: string | null }[]
 }
 
 const includeAggregate = {
@@ -63,6 +63,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         matchId: row.id,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
+        proofImageUrl: unit.proofImageUrl,
       })),
     })
   }
@@ -122,8 +123,9 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
             matchId: match.id.value,
             unitNumber: unit.unitNumber,
             winnerParticipantId: unit.winnerParticipantId,
+            proofImageUrl: unit.proofImageUrl,
           },
-          update: { winnerParticipantId: unit.winnerParticipantId },
+          update: { winnerParticipantId: unit.winnerParticipantId, proofImageUrl: unit.proofImageUrl },
         }),
       ),
     ])
@@ -165,6 +167,7 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
       units: row.units.map((unit) => ({
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
+        proofImageUrl: unit.proofImageUrl,
       })),
       createdAt: row.createdAt,
       lockedAt: row.lockedAt,

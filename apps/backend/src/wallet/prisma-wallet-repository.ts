@@ -44,6 +44,7 @@ export class PrismaWalletRepository
     status: string
     referenceCode: string
     receiptUrl: string | null
+    rejectionReason: string | null
     confirmedBy: string | null
     confirmedAt: Date | null
   }): Payment {
@@ -55,6 +56,7 @@ export class PrismaWalletRepository
       status: row.status as PaymentStatus,
       referenceCode: row.referenceCode,
       receiptUrl: row.receiptUrl,
+      rejectionReason: row.rejectionReason,
       confirmedBy: row.confirmedBy,
       confirmedAt: row.confirmedAt,
     })
@@ -90,6 +92,8 @@ export class PrismaWalletRepository
       where: { id: payment.id.value },
       data: {
         status: payment.status,
+        receiptUrl: payment.receiptUrl,
+        rejectionReason: payment.rejectionReason,
         confirmedBy: payment.confirmedBy,
         confirmedAt: payment.confirmedAt,
       },
@@ -352,6 +356,7 @@ export class PrismaWalletRepository
     status: string
     referenceCode: string
     receiptUrl: string | null
+    rejectionReason: string | null
     createdAt: Date
     confirmedAt: Date | null
   }): PaymentDTO {
@@ -363,6 +368,7 @@ export class PrismaWalletRepository
       status: row.status as PaymentStatus,
       referenceCode: row.referenceCode,
       receiptUrl: row.receiptUrl,
+      rejectionReason: row.rejectionReason,
       createdAt: row.createdAt,
       confirmedAt: row.confirmedAt,
     }

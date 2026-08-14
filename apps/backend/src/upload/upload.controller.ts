@@ -11,7 +11,7 @@ import { diskStorage } from 'multer'
 import { extname } from 'path'
 import { randomUUID } from 'crypto'
 import { AdminGuard } from '../shared/admin.guard'
-import { MATCHS_UPLOAD_DIR, PARTICIPANTS_UPLOAD_DIR } from './uploads.config'
+import { MATCHS_UPLOAD_DIR, PARTICIPANTS_UPLOAD_DIR, RESULTS_UPLOAD_DIR } from './uploads.config'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
@@ -63,5 +63,27 @@ export class UploadController {
   uploadParticipantImage(@UploadedFile() file?: Express.Multer.File): { url: string } {
     if (!file) throw new BadRequestException('No image uploaded')
     return { url: `/uploads/participants/${file.filename}` }
+  }
+
+  @Post('results')
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: RESULTS_UPLOAD_DIR,
+        filename: (_req, file, callback) =>
+          callback(null, `${randomUUID()}${extname(file.originalname).toLowerCase()}`),
+      }),
+      limits: { fileSize: MAX_IMAGE_BYTES },
+      fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return callback(new BadRequestException('Only image files are allowed'), false)
+        }
+        callback(null, true)
+      },
+    }),
+  )
+  uploadResultProof(@UploadedFile() file?: Express.Multer.File): { url: string } {
+    if (!file) throw new BadRequestException('No image uploaded')
+    return { url: `/uploads/results/${file.filename}` }
   }
 }

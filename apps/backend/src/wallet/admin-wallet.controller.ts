@@ -1,5 +1,5 @@
-import { Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
-import { PaymentDTO, WalletFacade } from '@wallet/adapters'
+import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common'
+import { ConfirmWithdrawalInput, PaymentDTO, RejectPaymentInput, WalletFacade } from '@wallet/adapters'
 import { UserDTO } from '@auth/adapters'
 import { AuthenticatedActor } from 'shared'
 import { PrismaWalletRepository } from './prisma-wallet-repository'
@@ -51,13 +51,21 @@ export class AdminWalletController {
 
   @Post('withdrawals/:id/confirm')
   @HttpCode(204)
-  async confirmWithdrawal(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
-    await this.facade().confirmWithdrawal(id, this.actor(user))
+  async confirmWithdrawal(
+    @Param('id') id: string,
+    @Body() input: ConfirmWithdrawalInput,
+    @authenticatedUser() user: UserDTO,
+  ) {
+    await this.facade().confirmWithdrawal(id, input, this.actor(user))
   }
 
   @Post('payments/:id/reject')
   @HttpCode(204)
-  async reject(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
-    await this.facade().rejectPayment(id, this.actor(user))
+  async reject(
+    @Param('id') id: string,
+    @Body() input: RejectPaymentInput,
+    @authenticatedUser() user: UserDTO,
+  ) {
+    await this.facade().rejectPayment(id, input, this.actor(user))
   }
 }

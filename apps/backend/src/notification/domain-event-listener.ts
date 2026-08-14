@@ -131,11 +131,24 @@ export class DomainEventListener implements EventPublisher {
 
     if (event instanceof PaymentRejected) {
       // One route rejects both directions; the event carries which one, so there
-      // is no need to re-read the payment just to pick the wording.
+      // is no need to re-read the payment just to pick the wording. A
+      // withdrawal always carries a reason (the domain requires it); a deposit
+      // never shows one to the bettor, same as before.
+      if (event.direction === 'withdrawal') {
+        return [
+          {
+            userId: event.userId,
+            type: 'withdrawal_rejected',
+            amount: event.amount,
+            referenceId: event.paymentId,
+            reason: event.reason ?? '',
+          },
+        ]
+      }
       return [
         {
           userId: event.userId,
-          type: event.direction === 'deposit' ? 'deposit_rejected' : 'withdrawal_rejected',
+          type: 'deposit_rejected',
           amount: event.amount,
           referenceId: event.paymentId,
         },
