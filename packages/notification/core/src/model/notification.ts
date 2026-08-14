@@ -154,7 +154,7 @@ export class Notification extends Entity<Notification, NotificationProps> {
       case 'withdrawal_rejected':
         return {
           title: 'Saque recusado',
-          body: `Seu saque de ${formatMoney(input.amount)} foi recusado e o valor segue disponível.`,
+          body: `Seu saque de ${formatMoney(input.amount)} foi recusado e o valor segue disponível. Motivo: ${input.reason}`,
           link: '/wallet',
         }
       case 'account_approved':

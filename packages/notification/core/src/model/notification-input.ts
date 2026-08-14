@@ -56,7 +56,7 @@ export type NotificationInput =
   | (Recipient & { type: 'deposit_confirmed'; amount: number })
   | (Recipient & { type: 'deposit_rejected'; amount: number })
   | (Recipient & { type: 'withdrawal_paid'; amount: number })
-  | (Recipient & { type: 'withdrawal_rejected'; amount: number })
+  | (Recipient & { type: 'withdrawal_rejected'; amount: number; reason: string })
   | (Recipient & { type: 'account_approved' })
   | (Recipient & { type: 'admin_signup_pending'; signupEmail: string })
   | (Recipient & { type: 'admin_deposit_pending'; bettorLabel: string; amount: number })
