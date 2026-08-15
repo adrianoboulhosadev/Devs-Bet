@@ -1,13 +1,15 @@
-import { Entity, EntityProps, ValidationError, Errors } from 'shared'
+import { Entity, EntityProps } from 'shared'
 
 export interface MatchUnitProps extends EntityProps {
   matchId?: string
   unitNumber?: number
   // null only for the single unit of a bestOf-1 match that allows a draw.
   winnerParticipantId?: string | null
-  // Photo the admin attaches as proof of the result — mandatory for a newly
-  // recorded unit (see the `!props.id` check below); reconstitution of a row
-  // never re-validates it, same pattern as Match.requireScheduledAt.
+  // Photo the admin attaches as proof of the result. REQUIRED when recording a
+  // new unit — but enforced by Match.recordUnitResult, not here: this
+  // constructor is also how every existing row is reconstituted from the
+  // database, and rows recorded before this field existed legitimately have
+  // none. Validating here would make simply READING an old match throw.
   proofImageUrl?: string | null
 }
 
@@ -29,11 +31,6 @@ export class MatchUnit extends Entity<MatchUnit, MatchUnitProps> {
     this.matchId = props.matchId ?? null
     this.unitNumber = props.unitNumber ?? 1
     this.winnerParticipantId = props.winnerParticipantId ?? null
-
-    const proofImageUrl = props.proofImageUrl?.trim() || null
-    if (!props.id && !proofImageUrl) {
-      ValidationError.throwError(Errors.RESULT_PROOF_REQUIRED, proofImageUrl)
-    }
-    this.proofImageUrl = proofImageUrl
+    this.proofImageUrl = props.proofImageUrl?.trim() || null
   }
 }

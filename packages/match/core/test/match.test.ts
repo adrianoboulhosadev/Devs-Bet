@@ -1,4 +1,4 @@
-import { Errors, ValidationError, ConflictError } from 'shared'
+import { Errors, Id, ValidationError, ConflictError } from 'shared'
 import { Match } from '../src'
 
 const inOneHour = () => new Date(Date.now() + 60 * 60 * 1000)
@@ -149,6 +149,32 @@ test('recording a unit result without a proof photo raises RESULT_PROOF_REQUIRED
   } catch (error) {
     expect((error as ValidationError).code).toBe(Errors.RESULT_PROOF_REQUIRED)
   }
+})
+
+// Regression: the proof requirement must never leak into RECONSTITUTION —
+// units recorded before the field existed have no photo, and merely reading
+// such a match used to throw RESULT_PROOF_REQUIRED, breaking every match
+// listing and detail screen.
+test('reconstituting a match whose units have no proof photo does not throw', () => {
+  const matchId = Id.create()
+  const participantAId = Id.create()
+  const match = new Match({
+    id: matchId,
+    creatorId: 'creator-1',
+    title: 'Fabio vs Bruno',
+    categoryId: 'cat-leaf',
+    status: 'settled',
+    scheduledAt: new Date('2020-01-01'),
+    participants: [
+      { id: participantAId, displayName: 'Fabio', participantId: 'p-Fabio' },
+      { id: Id.create(), displayName: 'Bruno', participantId: 'p-Bruno' },
+    ],
+    units: [
+      { id: Id.create(), unitNumber: 1, winnerParticipantId: participantAId, proofImageUrl: null },
+    ],
+  })
+  expect(match.units).toHaveLength(1)
+  expect(match.units[0].proofImageUrl).toBeNull()
 })
 
 test('cannot record a result before locking (INVALID_MATCH_STATUS)', () => {

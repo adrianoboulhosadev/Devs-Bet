@@ -209,7 +209,14 @@ export class Match extends Entity<Match, MatchProps> {
       ValidationError.throwError(Errors.NOT_A_PARTICIPANT, winnerParticipantId)
     }
 
-    // MatchUnit itself rejects a missing photo for a newly recorded unit.
+    // The proof photo is required to RECORD a result, and is checked here
+    // rather than in MatchUnit's constructor — that constructor also
+    // reconstitutes existing rows (which may predate this field), so
+    // validating there would make merely reading an old match throw.
+    if (!proofImageUrl?.trim()) {
+      ValidationError.throwError(Errors.RESULT_PROOF_REQUIRED, proofImageUrl)
+    }
+
     this.units.push(new MatchUnit({ matchId: this.id.value, unitNumber, winnerParticipantId, proofImageUrl }))
 
     if (winnerParticipantId === null) {

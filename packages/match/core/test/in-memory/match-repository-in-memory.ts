@@ -10,6 +10,7 @@ interface ParticipantRow {
 }
 
 interface UnitRow {
+  id: string
   matchId: string
   unitNumber: number
   winnerParticipantId: string | null
@@ -72,6 +73,8 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       .filter((unit) => unit.matchId === matchId)
       .sort((first, second) => first.unitNumber - second.unitNumber)
       .map((unit) => ({
+        // Reconstituted, not new — mirrors the Prisma adapter.
+        id: unit.id,
         matchId: unit.matchId,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
@@ -131,6 +134,7 @@ export default class MatchRepositoryInMemory implements MatchRepository, MatchQu
       this.units.length,
       ...remaining,
       ...match.units.map((unit) => ({
+        id: unit.id.value,
         matchId: match.id.value,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
