@@ -8,6 +8,7 @@ import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
 import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
+import { BettorDirectory } from './bettor-directory'
 
 @Module({
   imports: [DbModule, AuthModule],
@@ -21,6 +22,8 @@ import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
     PrismaMatchRepository,
     PrismaTournamentRepository,
     PrismaWalletRepository,
+    // Names the bettor on the book / leaderboard (nickname, else truncated id).
+    BettorDirectory,
   ],
 })
 export class BettingModule implements NestModule {

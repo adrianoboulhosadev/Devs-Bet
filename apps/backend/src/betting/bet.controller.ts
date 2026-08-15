@@ -21,6 +21,7 @@ import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
 import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
+import { BettorDirectory } from './bettor-directory'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
 import { requireFields } from '../shared/require-fields'
 
@@ -28,6 +29,17 @@ import { requireFields } from '../shared/require-fields'
 // is no pool to derive an indicative odd from) — a neutral "evens" starting
 // price, just so a freshly-created market isn't uncomboable.
 const DEFAULT_COMBO_ODD = 2
+
+/**
+ * A bet as the market's book shows it: the read DTO plus the bettor's display
+ * name. Cross-context (betting has no idea who a user is), so the shape is
+ * composed HERE and belongs to no `@ctx/adapters` — same call as the
+ * `/user/me/profile` route; the front mirrors the type by hand.
+ */
+type BookEntry = BetDTO & { bettorLabel: string }
+
+/** Same, for the leaderboard's ranked rows. */
+type LeaderboardRow = LeaderboardEntryDTO & { bettorLabel: string }
 
 // Protected by the AuthMiddleware (see betting.module). bettorId always comes from
 // the token. Placing a bet is cross-context: the owning market (a match or a
@@ -41,6 +53,7 @@ export class BetController {
     private readonly matchRepository: PrismaMatchRepository,
     private readonly tournamentRepository: PrismaTournamentRepository,
     private readonly walletRepository: PrismaWalletRepository,
+    private readonly bettorDirectory: BettorDirectory,
   ) {}
 
   private facade(): BettingFacade {
@@ -53,6 +66,14 @@ export class BetController {
       this.betQueryRepository,
       this.placementRepository,
     )
+  }
+
+  // A market's book with each bettor named. One directory lookup for the whole
+  // list, never one per bet.
+  private async bookOf(marketId: string): Promise<BookEntry[]> {
+    const bets = await this.facade().listBetsByMarket(marketId)
+    const labels = await this.bettorDirectory.labelsFor(bets.map((bet) => bet.bettorId))
+    return bets.map((bet) => ({ ...bet, bettorLabel: labels.get(bet.bettorId) ?? bet.bettorId.slice(0, 8) }))
   }
 
   // Responsible gambling: resolved from the wallet context (cross-context —
@@ -160,9 +181,16 @@ export class BetController {
   }
 
   @Get('leaderboard')
-  leaderboard(@Query('limit') limit?: string): Promise<LeaderboardEntryDTO[]> {
+  async leaderboard(@Query('limit') limit?: string): Promise<LeaderboardRow[]> {
     const parsed = Number(limit)
-    return this.facade().getLeaderboard(Number.isInteger(parsed) && parsed > 0 ? parsed : 10)
+    const entries = await this.facade().getLeaderboard(
+      Number.isInteger(parsed) && parsed > 0 ? parsed : 10,
+    )
+    const labels = await this.bettorDirectory.labelsFor(entries.map((entry) => entry.bettorId))
+    return entries.map((entry) => ({
+      ...entry,
+      bettorLabel: labels.get(entry.bettorId) ?? entry.bettorId.slice(0, 8),
+    }))
   }
 
   @Get('stake-limit')
@@ -177,8 +205,8 @@ export class BetController {
   }
 
   @Get('match/:id')
-  matchBook(@Param('id') id: string): Promise<BetDTO[]> {
-    return this.facade().listBetsByMarket(id)
+  matchBook(@Param('id') id: string): Promise<BookEntry[]> {
+    return this.bookOf(id)
   }
 
   @Get('match/:id/odds')
@@ -192,8 +220,8 @@ export class BetController {
   }
 
   @Get('tournament/:id')
-  tournamentBook(@Param('id') id: string): Promise<BetDTO[]> {
-    return this.facade().listBetsByMarket(id)
+  tournamentBook(@Param('id') id: string): Promise<BookEntry[]> {
+    return this.bookOf(id)
   }
 
   @Get('tournament/:id/odds')
