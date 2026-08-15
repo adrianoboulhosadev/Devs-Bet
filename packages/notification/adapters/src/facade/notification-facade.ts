@@ -9,6 +9,8 @@ import {
   ListMyNotificationsController,
   MarkNotificationAsReadController,
   MarkAllNotificationsAsReadController,
+  DeleteNotificationController,
+  DeleteAllNotificationsController,
 } from '../controllers'
 
 /**
@@ -42,5 +44,16 @@ export default class NotificationFacade {
 
   async markAllAsRead(userId: string): Promise<void> {
     await new MarkAllNotificationsAsReadController(this.notificationRepository!).execute(userId)
+  }
+
+  async deleteNotification(notificationId: string, userId: string): Promise<void> {
+    await new DeleteNotificationController(this.notificationRepository!).execute(
+      notificationId,
+      userId,
+    )
+  }
+
+  async deleteAllNotifications(userId: string): Promise<void> {
+    await new DeleteAllNotificationsController(this.notificationRepository!).execute(userId)
   }
 }
