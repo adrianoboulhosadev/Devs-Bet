@@ -57,7 +57,11 @@ export function ConfirmDialog({
 
         {children}
 
-        <div className="flex justify-end gap-2">
+        {/* flex-wrap is required, not decorative: the buttons are
+            `whitespace-nowrap`, so a long confirm label ("Confirmar pagamento")
+            makes the pair wider than the dialog's max-w-sm and the Cancel
+            button spills out of the box. Wrapping drops it to its own line. */}
+        <div className="flex flex-wrap justify-end gap-2">
           <Button variant="secondary" onClick={onCancel}>
             Cancelar
           </Button>

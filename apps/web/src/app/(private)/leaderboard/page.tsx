@@ -38,7 +38,7 @@ export default function LeaderboardPage() {
           {ranking.map((entry, index) => {
             const isMe = user?.id === entry.bettorId
             const isProfit = entry.netProfit >= 0
-            const initials = entry.bettorId.slice(0, 2).toUpperCase()
+            const initials = entry.bettorLabel.slice(0, 2).toUpperCase()
 
             return (
               <div
@@ -57,7 +57,7 @@ export default function LeaderboardPage() {
                   </span>
                   <span className="min-w-0">
                     <span className="block text-2xl leading-tight text-arcade-text">
-                      Apostador {entry.bettorId.slice(0, 8)}
+                      {entry.bettorLabel}
                       {isMe && <span className="ml-2 font-arcade text-base text-arcade-text-muted">(você)</span>}
                     </span>
                     <span className="block font-arcade text-lg text-arcade-text-muted">

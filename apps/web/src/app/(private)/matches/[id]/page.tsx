@@ -303,7 +303,7 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
                 return (
                   <div key={bet.id} className="flex items-center gap-3 border-b border-arcade-border-strong px-4 py-3">
                     <span className="min-w-0 flex-1 font-arcade text-lg text-arcade-text-soft">
-                      <span className="text-arcade-text-muted">{bet.bettorId.slice(0, 8)}</span> em{' '}
+                      <span className="text-arcade-text-muted">{bet.bettorLabel}</span> em{' '}
                       <span className="text-arcade-text">{on}</span>
                     </span>
                     <span className="flex items-center gap-3 whitespace-nowrap">

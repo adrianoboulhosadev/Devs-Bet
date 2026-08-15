@@ -1,14 +1,14 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import type { LeaderboardEntryDTO } from '@betting/adapters'
 import { api } from '@/lib/api'
+import type { LeaderboardRow } from '../types/leaderboard-row'
 
 export function useLeaderboard() {
   const query = useQuery({
     queryKey: ['leaderboard'],
-    queryFn: async (): Promise<LeaderboardEntryDTO[]> =>
-      (await api.get<LeaderboardEntryDTO[]>('/bet/leaderboard')).data,
+    queryFn: async (): Promise<LeaderboardRow[]> =>
+      (await api.get<LeaderboardRow[]>('/bet/leaderboard')).data,
   })
 
   return { ranking: query.data ?? [], loading: query.isLoading }

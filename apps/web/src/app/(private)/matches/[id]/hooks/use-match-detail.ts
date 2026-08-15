@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import type { MatchDTO } from '@match/adapters'
-import type { MarketOddsDTO, BetDTO, OddsSnapshotDTO } from '@betting/adapters'
+import type { MarketOddsDTO, OddsSnapshotDTO } from '@betting/adapters'
+import type { BookEntry } from '../types/book-entry'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/notify'
 import { toDateTimeLocalValue } from '@/lib/date'
@@ -45,7 +46,7 @@ export function useMatchDetail(matchId: string) {
 
   const book = useQuery({
     queryKey: bookKey,
-    queryFn: async (): Promise<BetDTO[]> => (await api.get<BetDTO[]>(`/bet/match/${matchId}`)).data,
+    queryFn: async (): Promise<BookEntry[]> => (await api.get<BookEntry[]>(`/bet/match/${matchId}`)).data,
   })
 
   const oddsHistoryKey = ['odds-history', matchId]
