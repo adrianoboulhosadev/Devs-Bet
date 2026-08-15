@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common'
+import { Controller, Delete, Get, HttpCode, Param, Post, Query } from '@nestjs/common'
 import { NotificationFacade, NotificationFeedDTO } from '@notification/adapters'
 import { UserDTO } from '@auth/adapters'
 import { PrismaNotificationRepository } from './prisma-notification-repository'
@@ -35,5 +35,18 @@ export class NotificationController {
   @HttpCode(204)
   async read(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
     await this.facade().markAsRead(id, user.id)
+  }
+
+  // Declared BEFORE ':id' so "all" is never captured as a notification id.
+  @Delete('all')
+  @HttpCode(204)
+  async removeAll(@authenticatedUser() user: UserDTO) {
+    await this.facade().deleteAllNotifications(user.id)
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
+    await this.facade().deleteNotification(id, user.id)
   }
 }

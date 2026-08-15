@@ -64,6 +64,14 @@ export class PrismaNotificationRepository
     })
   }
 
+  async deleteById(id: string): Promise<void> {
+    await this.prisma.notification.delete({ where: { id } })
+  }
+
+  async deleteAllByUser(userId: string): Promise<void> {
+    await this.prisma.notification.deleteMany({ where: { userId } })
+  }
+
   async listByUserQuery(userId: string, limit: number): Promise<NotificationDTO[]> {
     const rows = await this.prisma.notification.findMany({
       where: { userId },
