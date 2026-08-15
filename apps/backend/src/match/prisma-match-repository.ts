@@ -24,7 +24,12 @@ type MatchRowWithParticipants = {
     nickname: string | null
     imageUrl: string | null
   }[]
-  units: { unitNumber: number; winnerParticipantId: string | null; proofImageUrl: string | null }[]
+  units: {
+    id: string
+    unitNumber: number
+    winnerParticipantId: string | null
+    proofImageUrl: string | null
+  }[]
 }
 
 const includeAggregate = {
@@ -60,6 +65,9 @@ export class PrismaMatchRepository implements MatchRepository, MatchQueryReposit
         imageUrl: participant.imageUrl,
       })),
       units: row.units.map((unit) => ({
+        // The id marks the unit as reconstituted, not new — same as the
+        // participants above.
+        id: unit.id,
         matchId: row.id,
         unitNumber: unit.unitNumber,
         winnerParticipantId: unit.winnerParticipantId,
