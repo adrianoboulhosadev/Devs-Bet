@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { NotificationDTO } from '@notification/adapters'
 import { Button } from '@/components/button'
 import { Loading } from '@/components/loading'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { formatDateTime, formatRelativeTime } from '@/lib/date'
 import { accentFor } from '@/lib/notifications'
 import { useNotificationsInbox } from './hooks/use-notifications-inbox'
@@ -21,6 +22,11 @@ export default function NotificationsPage() {
     markAsRead,
     markAllAsRead,
     markingAll,
+    remove,
+    removeAll,
+    removingAll,
+    confirmingClear,
+    setConfirmingClear,
   } = useNotificationsInbox()
 
   if (loading) return <Loading />
@@ -64,6 +70,13 @@ export default function NotificationsPage() {
           >
             Marcar todas
           </Button>
+          <Button
+            variant="danger"
+            disabled={total === 0 || removingAll}
+            onClick={() => setConfirmingClear(true)}
+          >
+            Excluir todas
+          </Button>
         </div>
       </div>
 
@@ -75,47 +88,77 @@ export default function NotificationsPage() {
         </p>
       ) : (
         <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+          {/* The row is a flex container, NOT one big button: the delete action
+              is a button of its own, and nesting a button inside a button is
+              invalid HTML (the inner one stops being reachable). */}
           {visible.map((notification) => (
-            <button
+            <div
               key={notification.id}
-              type="button"
-              onClick={() => open(notification)}
-              className={`flex w-full items-start gap-4 border-b border-arcade-border-strong px-5 py-4 text-left transition-colors last:border-b-0 hover:bg-[#1d1233] ${
+              className={`flex items-stretch border-b border-arcade-border-strong transition-colors last:border-b-0 hover:bg-[#1d1233] ${
                 notification.read ? '' : 'bg-[#1a1030]'
               }`}
             >
-              <span
-                className="mt-2 h-3 w-3 flex-none"
-                style={{
-                  backgroundColor: accentFor(notification.type),
-                  opacity: notification.read ? 0.35 : 1,
-                }}
-              />
-              <span className="min-w-0 flex-1">
-                <span
-                  className={`block text-2xl leading-tight ${notification.read ? 'text-arcade-text-soft' : 'text-arcade-text'}`}
-                >
-                  {notification.title}
-                  {!notification.read && (
-                    <span className="ml-3 align-middle font-pixel text-[8px] tracking-widest text-arcade-magenta">
-                      NOVA
-                    </span>
-                  )}
-                </span>
-                <span className="mt-1 block font-arcade text-lg leading-snug text-arcade-text-muted">
-                  {notification.body}
-                </span>
-              </span>
-              <span
-                className="flex-none font-arcade text-base text-arcade-text-muted"
-                title={formatDateTime(notification.createdAt)}
+              <button
+                type="button"
+                onClick={() => open(notification)}
+                className="flex min-w-0 flex-1 items-start gap-4 px-5 py-4 text-left"
               >
-                {formatRelativeTime(notification.createdAt)}
-              </span>
-            </button>
+                <span
+                  className="mt-2 h-3 w-3 flex-none"
+                  style={{
+                    backgroundColor: accentFor(notification.type),
+                    opacity: notification.read ? 0.35 : 1,
+                  }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span
+                    className={`block text-2xl leading-tight ${notification.read ? 'text-arcade-text-soft' : 'text-arcade-text'}`}
+                  >
+                    {notification.title}
+                    {!notification.read && (
+                      <span className="ml-3 align-middle font-pixel text-[8px] tracking-widest text-arcade-magenta">
+                        NOVA
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1 block font-arcade text-lg leading-snug text-arcade-text-muted">
+                    {notification.body}
+                  </span>
+                </span>
+                <span
+                  className="flex-none font-arcade text-base text-arcade-text-muted"
+                  title={formatDateTime(notification.createdAt)}
+                >
+                  {formatRelativeTime(notification.createdAt)}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => remove(notification.id)}
+                aria-label={`Excluir notificação "${notification.title}"`}
+                title="Excluir"
+                className="flex-none px-4 font-pixel text-[11px] text-arcade-text-muted transition-colors hover:text-arcade-danger"
+              >
+                ✕
+              </button>
+            </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingClear}
+        title="Excluir todas as notificações?"
+        description="A caixa de entrada fica vazia. Isso não desfaz nada — apostas, depósitos e saques seguem no seu extrato e no histórico."
+        confirmLabel={removingAll ? 'Excluindo…' : 'Excluir todas'}
+        confirmDisabled={removingAll}
+        onConfirm={() => {
+          removeAll()
+          setConfirmingClear(false)
+        }}
+        onCancel={() => setConfirmingClear(false)}
+      />
     </div>
   )
 }

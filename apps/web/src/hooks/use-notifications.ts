@@ -42,6 +42,20 @@ export function useNotifications(limit?: number) {
     onSuccess: invalidate,
   })
 
+  const remove = useMutation({
+    mutationFn: async (notificationId: string) => {
+      await api.delete(`/notification/${notificationId}`)
+    },
+    onSuccess: invalidate,
+  })
+
+  const removeAll = useMutation({
+    mutationFn: async () => {
+      await api.delete('/notification/all')
+    },
+    onSuccess: invalidate,
+  })
+
   return {
     items: query.data?.items ?? [],
     unreadCount: query.data?.unreadCount ?? 0,
@@ -49,5 +63,8 @@ export function useNotifications(limit?: number) {
     markAsRead: markAsRead.mutate,
     markAllAsRead: markAllAsRead.mutate,
     markingAll: markAllAsRead.isPending,
+    remove: remove.mutate,
+    removeAll: removeAll.mutate,
+    removingAll: removeAll.isPending,
   }
 }

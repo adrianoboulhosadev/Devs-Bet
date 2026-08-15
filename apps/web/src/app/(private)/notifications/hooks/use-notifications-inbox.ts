@@ -15,8 +15,10 @@ const INBOX_SIZE = 100
  * only add latency. */
 export function useNotificationsInbox() {
   const [filter, setFilter] = useState<InboxFilter>('all')
-  const { items, unreadCount, loading, markAsRead, markAllAsRead, markingAll } =
+  const { items, unreadCount, loading, markAsRead, markAllAsRead, markingAll, remove, removeAll, removingAll } =
     useNotifications(INBOX_SIZE)
+  // Guard for the destructive "clear everything" action.
+  const [confirmingClear, setConfirmingClear] = useState(false)
 
   const visible = useMemo(
     () => (filter === 'unread' ? items.filter((notification) => !notification.read) : items),
@@ -33,5 +35,10 @@ export function useNotificationsInbox() {
     markAsRead,
     markAllAsRead,
     markingAll,
+    remove,
+    removeAll,
+    removingAll,
+    confirmingClear,
+    setConfirmingClear,
   }
 }
