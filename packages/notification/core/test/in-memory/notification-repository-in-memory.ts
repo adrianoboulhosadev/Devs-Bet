@@ -68,6 +68,16 @@ export default class NotificationRepositoryInMemory
     }
   }
 
+  async deleteById(id: string): Promise<void> {
+    const index = this.notifications.findIndex((row) => row.id === id)
+    if (index >= 0) this.notifications.splice(index, 1)
+  }
+
+  async deleteAllByUser(userId: string): Promise<void> {
+    const kept = this.notifications.filter((row) => row.userId !== userId)
+    this.notifications.splice(0, this.notifications.length, ...kept)
+  }
+
   async listByUserQuery(userId: string, limit: number): Promise<NotificationDTO[]> {
     return this.notifications
       .filter((row) => row.userId === userId)

@@ -5,6 +5,8 @@ import {
   ListMyNotificationsQuery,
   MarkNotificationAsRead,
   MarkAllNotificationsAsRead,
+  DeleteNotification,
+  DeleteAllNotifications,
 } from '../src'
 import { NotificationRepositoryInMemory } from './in-memory'
 
@@ -267,4 +269,60 @@ test('marking all as read only touches my own inbox', async () => {
 
   expect(await repository.countUnreadQuery(bettor)).toBe(0)
   expect(await repository.countUnreadQuery(other)).toBe(1)
+})
+
+test('deleting a notification removes it from the inbox', async () => {
+  const repository = new NotificationRepositoryInMemory()
+  await new SendNotifications(repository).execute({
+    items: [
+      { userId: bettor, type: 'deposit_confirmed', amount: 100, referenceId: 'pay-1' },
+      { userId: bettor, type: 'deposit_confirmed', amount: 200, referenceId: 'pay-2' },
+    ],
+  })
+  const [first] = repository.notifications
+
+  await new DeleteNotification(repository).execute({ notificationId: first.id, userId: bettor })
+
+  const feed = await new ListMyNotificationsQuery(repository).execute({ userId: bettor })
+  expect(feed.items).toHaveLength(1)
+  expect(feed.items.some((item) => item.id === first.id)).toBe(false)
+})
+
+test("deleting someone else's notification answers like a missing one (anti-IDOR)", async () => {
+  const repository = new NotificationRepositoryInMemory()
+  await new SendNotifications(repository).execute({
+    items: [{ userId: bettor, type: 'account_approved' }],
+  })
+  const id = repository.notifications[0].id
+
+  const steal = new DeleteNotification(repository).execute({ notificationId: id, userId: other })
+
+  await expect(steal).rejects.toBeInstanceOf(NotFoundError)
+  await expect(steal).rejects.toMatchObject({ code: Errors.NOTIFICATION_NOT_FOUND })
+  expect(repository.notifications).toHaveLength(1) // untouched
+})
+
+test('deleting a missing notification fails with NOTIFICATION_NOT_FOUND', async () => {
+  const repository = new NotificationRepositoryInMemory()
+  const remove = new DeleteNotification(repository).execute({
+    notificationId: 'ghost',
+    userId: bettor,
+  })
+  await expect(remove).rejects.toMatchObject({ code: Errors.NOTIFICATION_NOT_FOUND })
+})
+
+test('clearing the inbox only empties my own', async () => {
+  const repository = new NotificationRepositoryInMemory()
+  await new SendNotifications(repository).execute({
+    items: [
+      { userId: bettor, type: 'deposit_confirmed', amount: 100, referenceId: 'pay-1' },
+      { userId: bettor, type: 'deposit_confirmed', amount: 200, referenceId: 'pay-2' },
+      { userId: other, type: 'deposit_confirmed', amount: 300, referenceId: 'pay-3' },
+    ],
+  })
+
+  await new DeleteAllNotifications(repository).execute({ userId: bettor })
+
+  expect((await new ListMyNotificationsQuery(repository).execute({ userId: bettor })).items).toHaveLength(0)
+  expect((await new ListMyNotificationsQuery(repository).execute({ userId: other })).items).toHaveLength(1)
 })

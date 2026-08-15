@@ -14,4 +14,8 @@ export interface NotificationRepository {
   createMany(notifications: Notification[]): Promise<void>
   update(notification: Notification): Promise<void>
   markAllAsRead(userId: string): Promise<void>
+  /** Removes one notification. The use case checks ownership first. */
+  deleteById(id: string): Promise<void>
+  /** Empties one user's inbox in a single statement — same reasoning as markAllAsRead. */
+  deleteAllByUser(userId: string): Promise<void>
 }
