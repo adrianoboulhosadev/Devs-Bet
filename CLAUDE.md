@@ -235,9 +235,12 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   **rejeitar é também o "revogar acesso"** de quem já estava dentro. `ListUsersQuery` (admin) lista
   todo mundo pra tela `/admin`; é a **única** tela que mostra e-mail de terceiros, e é deliberado: sem
   o e-mail o admin não reconhece o amigo pra liberar. **Coluna `approval_status` tem default
-  `"approved"` no Prisma de propósito** — o projeto usa `db push` (sem migration), e um default
-  `pending` marcaria todas as contas já existentes como pendentes, trancando o dono pra fora; o default
+  `"approved"` no Prisma** — herança da era do `db push` (sem migration), em que um default `pending`
+  marcaria todas as contas já existentes como pendentes, trancando o dono pra fora; o default
   da *entidade* é que garante `pending` pra conta nova, e o repositório sempre grava o valor explícito.
+  Hoje o projeto usa migration (ver a seção Banco de dados), então um caso desses se resolve com
+  backfill explícito no SQL da migration — mas o default da coluna ficou como está, porque mudá-lo
+  agora não altera nada em runtime e só arriscaria contas existentes à toa.
   ⚠️ Num banco **zerado** o primeiro usuário nasce pendente sem ninguém pra aprovar — desbloquear por
   SQL, mesmo processo que já se usa pra promover alguém a admin.
 - **wallet** — `Wallet` (`balance`/`held`; `available = balance − held`) + `LedgerEntry` (append-only) +
@@ -624,7 +627,26 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`, `match_participants.participant_id`,
   `tournament_participants.participant_id`); a self-relation da `Category` é intra-contexto, então tem
   relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.
-- **Greenfield**: schema do zero; cada contexto adiciona seu(s) `model`. `npm run db:sync` = `prisma db push`.
+- **MIGRATIONS (TRAVADO) — nada de `db push`.** O schema evolui por migration versionada em
+  `packages/database/prisma/migrations/`, commitada junto com a mudança do `schema.prisma`. O projeto
+  nasceu com `db push` (greenfield, banco descartável), mas isso deixou de valer quando passou a haver
+  dado real — saldo, ledger append-only e comprovante de depósito são material de auditoria, e
+  `db push` conforma o banco ao schema sem registrar o caminho nem permitir voltar. O `prisma:push`
+  foi **removido** do `packages/database/package.json` de propósito: com histórico versionado, um push
+  aplicaria mudança sem registrar migration e faria o `migrate deploy` seguinte divergir.
+  - **Mudou o schema?** `npm run db:migrate -- --name <descricao>` (= `prisma migrate dev`): cria a
+    migration E aplica no banco de dev. Commite a pasta gerada.
+  - **Subir o que falta** (boot de dev, deploy): `npm run db:deploy` (= `prisma migrate deploy`) —
+    só replica migrations já commitadas, nunca cria nem edita uma. É o que o `npm run dev` roda e o
+    que o Dockerfile do backend executa antes de servir tráfego.
+  - **`0_init` é o BASELINE**: representa o schema que já existia no banco de produção quando as
+    migrations foram adotadas. Num banco que veio da era do `db push`, ela é marcada como aplicada
+    sem rodar (`npx prisma migrate resolve --applied 0_init`) — rodá-la tentaria recriar tabelas que
+    já existem. Num banco zerado o `migrate deploy` a aplica normalmente. Os dois caminhos foram
+    validados contra um Postgres 16 de verdade.
+  - ⚠️ O default `"approved"` de `approval_status` é herança dessa era (ver a seção auth) — com
+    migration, um caso desses passa a ser resolvido no SQL da própria migration (backfill explícito),
+    não distorcendo o default da coluna.
 
 ## Worker e fila (settlement assíncrono)
 
@@ -835,8 +857,8 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
 ## Dev e verificação
 
 - `npm run dev` = `db:up` (Postgres + Redis no docker, via `apps/database` = workspace `container-db`,
-  que só chama `docker compose -f docker-compose.yml up/stop db redis`) → `db:sync` (prisma db push) →
-  `turbo run dev`.
+  que só chama `docker compose -f docker-compose.yml up/stop db redis`) → `db:deploy`
+  (`prisma migrate deploy`, aplica as migrations pendentes) → `turbo run dev`.
 - **Stack inteiro containerizado** (`docker-compose.yml` na raiz + um `Dockerfile` por app em
   `apps/{backend,worker,web}`, build context = raiz do repo): `docker compose up --build` sobe
   Postgres, Redis, backend, worker e web juntos — útil pra simular produção ou rodar sem instalar
@@ -859,9 +881,13 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
     backend): o volume herda dono do que a imagem tem naquele caminho, e como o processo roda como
     `node`, um volume `root` derruba o backend no boot com `EACCES` em `mkdir`. Se mudar isso,
     **apagar o volume** pra ele reinicializar (`docker volume rm devs-bet_uploads_data`).
-  - **Não existe passo de schema no compose** (decisão do dono: nada de dev vaza pro ambiente de
-    produção). O projeto não tem migration — num banco novo é preciso rodar o `prisma db push`
-    **na mão** uma vez, senão a API sobe e responde erro em tudo.
+  - **O schema é aplicado no BOOT do backend**, pelo `CMD` do seu Dockerfile
+    (`prisma migrate deploy && npm start`) — não existe mais passo manual. A objeção antiga
+    ("nada de dev vaza pro ambiente de produção") era contra o `db push`, que é comando de
+    desenvolvimento; `migrate deploy` é o de produção: só replica migrations commitadas, nunca gera
+    nem edita nada. Se falhar, o container **não sobe** — melhor que servir com o schema errado.
+    ⚠️ Só o backend migra; o worker sobe sem migrar (o Prisma serializa por advisory lock, e na
+    prática o worker só age em job que o backend já enfileirou).
 - **Reverse proxy: `deploy/nginx.conf`** (Nginx nativo no host da VPS, fora do Docker; front e API no
   MESMO domínio, com `/api/*` indo pro backend). Três coisas ali **não são opcionais**, e as três
   foram validadas rodando um Nginx de verdade com essa config na frente do stack:

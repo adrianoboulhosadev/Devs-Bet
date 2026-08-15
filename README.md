@@ -57,8 +57,8 @@ npm install
 npm run dev
 ```
 
-`npm run dev` sobe o Postgres + Redis (docker) e espera ficar pronto, roda
-`prisma db push` (cria as tabelas) e inicia backend + worker + web em watch:
+`npm run dev` sobe o Postgres + Redis (docker) e espera ficar pronto, aplica as
+migrations pendentes (`prisma migrate deploy`) e inicia backend + worker + web em watch:
 
 - Web: http://localhost:3000
 - Backend: http://localhost:5000
