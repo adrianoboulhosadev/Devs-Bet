@@ -92,10 +92,16 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         {match.imageUrl && (
-          // Full width of the hero card, right above the participants — height
-          // is capped instead of derived from the aspect ratio, so the banner
-          // never narrows to fit a 16:9 box within the available height.
-          <div className="-mx-6 mb-6 h-56 border-y-3 border-arcade-border sm:h-72">
+          // 16:9 — exactly the cropper's banner preset — so NOTHING is cut off,
+          // at any width. A fixed height was what cropped it: on a wide screen
+          // the box became ~4.4:1 and object-cover ate the top and bottom of
+          // the frame the admin had chosen. Width is capped (and centred)
+          // instead of height, because full-width 16:9 on a desktop would be
+          // ~700px tall and push the participants off the screen.
+          // On a phone it runs to the card's edge (`-mx-6` cancels the p-6) to
+          // win back the width the padding would eat; from `sm` up it centres
+          // and caps instead.
+          <div className="-mx-6 mb-6 aspect-video border-y-3 border-arcade-border sm:mx-auto sm:w-full sm:max-w-3xl sm:border-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={mediaUrl(match.imageUrl)} alt={match.title} className="h-full w-full object-cover" />
           </div>

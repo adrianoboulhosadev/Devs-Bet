@@ -33,14 +33,14 @@ export function BracketSlotCard({ slot }: BracketSlotCardProps) {
 
   return (
     <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
-      {/* Three columns instead of justify-between: the VS stays pinned to the
-          middle and each name owns an equal half, so a long name wraps inside
-          its own column (right-aligned on the left, left-aligned on the right)
-          instead of shoving the VS off-centre and butting up against it. */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
-        <span className="min-w-0 break-words text-right text-arcade-text">{nameA}</span>
+      {/* Stacked, not side by side: this card is only ~224px wide, so two full
+          names in a row always wrapped into a ragged two-line block with the VS
+          floating in the middle of it. One name per line, VS between them,
+          everything centred — reads cleanly no matter how long the names are. */}
+      <div className="flex flex-col items-center gap-0.5 text-center">
+        <span className="break-words text-arcade-text">{nameA}</span>
         <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
-        <span className="min-w-0 break-words text-left text-arcade-text">{nameB}</span>
+        <span className="break-words text-arcade-text">{nameB}</span>
       </div>
 
       {slot.matchId ? (

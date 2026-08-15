@@ -54,9 +54,10 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
       </div>
 
       {tournament.imageUrl && (
-        // 3:2 — the tournament banner's crop preset — with a height cap, same
-        // reasoning as the match hero.
-        <div className="aspect-[3/2] max-h-[280px] w-full border-3 border-arcade-border">
+        // 3:2 — the tournament banner's crop preset — with the WIDTH capped
+        // instead of the height, so the framing the admin chose is shown whole
+        // at any screen size. See the note on the match hero.
+        <div className="mx-auto aspect-[3/2] w-full max-w-2xl border-3 border-arcade-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={mediaUrl(tournament.imageUrl)} alt={tournament.title} className="h-full w-full object-cover" />
         </div>
