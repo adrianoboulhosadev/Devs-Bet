@@ -20,4 +20,10 @@ WORKDIR /repo/apps/backend
 # stateless API process to run as root.
 USER node
 EXPOSE 5000
-CMD ["npm", "start"]
+# Applies any pending migration BEFORE the API accepts traffic, so a deploy can
+# never serve a schema the code does not match — the failure mode that used to
+# require remembering a manual `db push`. `migrate deploy` is the production
+# command: it only replays committed migrations, never generates or edits one,
+# and refuses to guess about drift. If it fails the container stops instead of
+# booting against a wrong schema, which is the outcome we want.
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=/repo/packages/database/prisma/schema.prisma && npm start"]
