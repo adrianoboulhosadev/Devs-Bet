@@ -30,10 +30,11 @@ export function GroupMatchCard({ match }: GroupMatchCardProps) {
 
   return (
     <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-arcade-text">{match.playerA.displayName}</span>
+      {/* Same three-column layout as BracketSlotCard — see the note there. */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5">
+        <span className="min-w-0 break-words text-right text-arcade-text">{match.playerA.displayName}</span>
         <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
-        <span className="text-arcade-text">{match.playerB.displayName}</span>
+        <span className="min-w-0 break-words text-left text-arcade-text">{match.playerB.displayName}</span>
       </div>
 
       {match.matchId ? (

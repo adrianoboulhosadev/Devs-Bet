@@ -54,9 +54,16 @@ export function SelfExclusion() {
 
       <div className="flex flex-wrap gap-2">
         {SELF_EXCLUSION_PERIODS.map((option) => (
+          // `relative` is load-bearing, not cosmetic: the radio inside is
+          // `sr-only` (position:absolute), so without a positioned ancestor it
+          // anchors to the INITIAL containing block — i.e. the document — and
+          // sits at its static offset from the top of the page. On a tall
+          // screen like this one that pushed <html> past the viewport and gave
+          // the app a SECOND scrollbar next to the layout's own scroll
+          // container. Anchoring it to the label keeps it inside the chip.
           <label
             key={option.period}
-            className={`cursor-pointer border-3 px-3.5 py-2 font-pixel text-[10px] tracking-wide ${
+            className={`relative cursor-pointer border-3 px-3.5 py-2 font-pixel text-[10px] tracking-wide ${
               period === option.period
                 ? 'border-arcade-danger bg-arcade-danger text-arcade-bg'
                 : 'border-arcade-border text-arcade-text-soft'
