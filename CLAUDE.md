@@ -850,6 +850,39 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   pra colar na palavra seguinte, senão o separador fica pendurado no fim da primeira linha. O `<h1>`
   DEVS·BET é **uma palavra só** (288px de min-content, nada pra quebrar), daí o
   `max-[360px]:text-3xl`: um degrau menor só onde ele não caberia.
+- **Input também estica a página** — é a mesma família do `min-w-0` acima, com uma causa a mais: um
+  `<input>` tem largura intrínseca PRÓPRIA (o atributo `size`, ~20 caracteres) e `min-width:auto`,
+  então ele se recusa a encolher e empurra o card inteiro pra fora da tela do celular (foi o que
+  quebrava o perfil ao editar o apelido, e as listas de categoria/participante ao renomear). Todo
+  input dentro de flex leva **`w-full min-w-0`**; quem quiser botão ao lado deixa o `flex-wrap`
+  jogar o botão pra linha de baixo.
+- **Lista de "rótulo + botões" empilha (`flex-col`), nunca `flex-wrap justify-between`** — com wrap,
+  o MESMO componente ganha dois layouts dependendo do tamanho do texto: rótulo curto (uma categoria
+  raiz, tipo "Luta") cabe na linha dos botões, rótulo longo quebra pra cima deles. Empilhado, o
+  rótulo fica sempre acima. Pelo mesmo motivo, dado secundário (o apelido do participante) fica em
+  **linha própria** abaixo do nome, e não colado nele — inline, ele fica pendurado no fim da quebra
+  do nome e parece parte dele.
+- **Painel ancorado no header no mobile, no botão no desktop** — o painel do sininho abre pra
+  ESQUERDA (`right-0`) porque no desktop o sino está na borda direita; no celular ele está na borda
+  ESQUERDA, então o mesmo `right-0` jogava 340px pra fora da tela (e o `overflow-x-hidden` do
+  `(private)/layout.tsx` cortava o resto). A correção não é reposicionar no eixo X e sim **trocar o
+  bloco de contenção**: o wrapper é `lg:relative` (estático abaixo disso), então o `absolute` do
+  painel resolve contra o **header**, que é `sticky` e portanto posicionado — e aí `inset-x-4
+  top-[calc(100%+10px)]` dá um painel da largura da tela, embaixo do header. `lg:inset-x-auto
+  lg:right-0 lg:w-[340px]` devolve o comportamento de desktop.
+- **Chave de torneio é um CHAVEAMENTO, não uma fileira de cards** (`tournaments/[id]/components/
+  bracket-tree`): cartão com foto + nome de cada jogador, pares ligados por linhas e troféu no fim —
+  igual chave de copa do mundo. O cartão antigo carregava badge escrito, placar e link, precisava de
+  ~224px por coluna e obrigava a rolar a chave pro lado no celular; hoje uma chave de até 8 cabe
+  inteira em 360px (16+ ainda rola, o `overflow-x-auto` fica de rede). O que o cartão perdeu está na
+  página da partida, e **apostar virou uma lista à parte** (`OpenConfrontations`, com os confrontos
+  abertos de chave E de grupo) — botão de apostar não cabe num cartão desse tamanho.
+  ⚠️ As linhas não medem nada em JS: toda coluna é uma flexbox de altura igual (`items-stretch`) e
+  cada confronto ocupa uma célula `flex-1`, então o centro de duas células vizinhas dista exatamente
+  UMA altura de célula e a barra que une o par é um `h-full` a partir do meio da célula de cima. Isso
+  só se sustenta enquanto **todo cartão tiver a mesma altura** — por isso o status é uma faixa de cor
+  de altura fixa (`data/confrontation-status.ts`), nunca conteúdo condicional. As matches são
+  buscadas de uma vez pela tela (`useTournamentMatches`), não card a card.
 - **Dado estático → `data/`; lógica (parse, cálculo, formatação) → `lib/`.** Paleta/constante que é a
   implementação privada de uma função pura continua junto dela no `lib/` (ex. o `PALETTE` de
   `participant-colors.ts`) — separar o dado da única função que o consome não ajuda ninguém.
