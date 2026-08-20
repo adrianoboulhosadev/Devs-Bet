@@ -97,3 +97,18 @@ export const LogoutIcon = () => (
     <rect x="11" y="10" width="2" height="2" />
   </Icon>
 )
+
+// Only the drawer uses it: on the desktop rail there is nothing to close.
+export const CloseIcon = () => (
+  <Icon>
+    <rect x="2" y="2" width="2" height="2" />
+    <rect x="4" y="4" width="2" height="2" />
+    <rect x="6" y="6" width="4" height="4" />
+    <rect x="10" y="10" width="2" height="2" />
+    <rect x="12" y="12" width="2" height="2" />
+    <rect x="12" y="2" width="2" height="2" />
+    <rect x="10" y="4" width="2" height="2" />
+    <rect x="4" y="10" width="2" height="2" />
+    <rect x="2" y="12" width="2" height="2" />
+  </Icon>
+)
