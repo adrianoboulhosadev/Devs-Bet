@@ -847,6 +847,18 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   `components/sidebar/` e `components/header/`, compostos direto no `(private)/layout.tsx` (que é
   também quem monta o `BetSlipProvider` e abre o SSE). Um componente que só embrulha outros dois não
   ganha nada por existir, e escondia o layout de quem procura por ele no `layout.tsx`.
+- **A navegação é COLUNA no desktop e GAVETA no mobile**: de `lg` pra cima o `Sidebar` é a coluna
+  fixa de sempre (74px fechada, 252px aberta ao clicar no logo); abaixo disso ele sai do fluxo
+  (`fixed inset-y-0 left-0`, `-translate-x-full` quando fechado) e abre **por cima** do conteúdo, com
+  um backdrop clicável entre o header (`z-50`) e a gaveta (`z-[70]`). Enquanto era coluna, mesmo os
+  74px da versão fechada comiam a largura da tela do celular e **espremiam toda página** ao lado —
+  era esse aperto que quebrava layout. Quem abre é o botão de menu no canto esquerdo do `Header`
+  (`lg:hidden`); a gaveta fecha no X, no backdrop, no Escape e ao clicar em qualquer link (navegar e
+  continuar coberto pela gaveta não faz sentido). Os rótulos **sempre aparecem na gaveta** (ela abre
+  na largura cheia) — o `expanded` só apaga rótulo de `lg` pra cima, daí os `lg:opacity-*`. O estado
+  "gaveta aberta" mora num contexto (`contexts/mobile-nav-context.tsx`) porque o botão que abre está
+  no `Header` e a gaveta é o `Sidebar` — dois irmãos que o `(private)/layout.tsx` monta lado a lado, sem
+  nenhum componente dono dos dois.
 - **Route groups por acesso**: `app/(public)/` (login/register) e `app/(private)/` (dashboard, match, wallet,
   bet, tournament). Guard no `layout.tsx` do grupo, nunca por página.
 - **Reusar os tipos dos `@ctx/adapters`** via `import type` (request e resposta). Não redeclarar contratos.
