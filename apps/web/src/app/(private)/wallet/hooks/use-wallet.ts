@@ -40,9 +40,11 @@ export function useWallet() {
   const payments = useQuery({
     queryKey: PAYMENTS_KEY,
     queryFn: async (): Promise<PaymentDTO[]> => (await api.get<PaymentDTO[]>('/wallet/payments')).data,
-    // Poll so an admin-confirmed deposit shows up as credited without a manual refresh.
-    refetchInterval: (query) =>
-      query.state.data?.some((payment) => payment.status === 'pending') ? 5000 : false,
+    // No polling here (it used to poll every 5s while something was pending):
+    // the admin confirming a deposit raises a domain event, which becomes a
+    // notification, which pushes a ping over SSE — and useNotificationStream
+    // invalidates this query and the wallet on it. Push instead of a timer,
+    // same as the inbox.
   })
 
   const instructions = useQuery({
