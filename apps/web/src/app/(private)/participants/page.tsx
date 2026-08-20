@@ -68,16 +68,20 @@ export default function ParticipantsPage() {
         ) : (
           <ul className="space-y-2.5">
             {participants.map((participant) => (
+              // `flex-col` pelo mesmo motivo da lista de categorias: com
+              // `flex-wrap justify-between` o card mudava de layout conforme o
+              // tamanho do nome. Empilhado, a ficha fica sempre acima dos botões.
               <li
                 key={participant.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-3 border-arcade-border bg-arcade-surface p-3.5 shadow-pixel-sm"
+                className="flex flex-col items-start gap-3 border-3 border-arcade-border bg-arcade-surface p-3.5 shadow-pixel-sm"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex w-full min-w-0 items-center gap-3">
                   {participant.imageUrl ? (
                     <button
                       type="button"
                       onClick={() => setExpandedImage({ url: mediaUrl(participant.imageUrl!), alt: participant.name })}
                       aria-label={`Ampliar foto de ${participant.name}`}
+                      className="shrink-0"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={mediaUrl(participant.imageUrl)} alt={participant.name} className="h-10 w-10 object-cover" />
@@ -87,33 +91,36 @@ export default function ParticipantsPage() {
                   )}
 
                   {editingId === participant.id ? (
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <input
                         autoFocus
                         value={editName}
                         onChange={(event) => setEditName(event.target.value)}
                         placeholder="Nome"
-                        className="border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
+                        className="w-full min-w-0 border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                       />
                       <input
                         value={editNickname}
                         onChange={(event) => setEditNickname(event.target.value)}
                         placeholder="Apelido"
-                        className="border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
+                        className="w-full min-w-0 border-2 border-arcade-border bg-[#0b0714] px-2.5 py-1 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                       />
                     </div>
                   ) : (
-                    <span className="font-arcade text-lg">
-                      <span className="text-arcade-text">{participant.name}</span>
+                    // Apelido numa LINHA PRÓPRIA, abaixo do nome: inline, um nome
+                    // comprido quebrava no meio e o apelido ficava pendurado no
+                    // fim da quebra, parecendo parte do nome.
+                    <span className="flex min-w-0 flex-col font-arcade text-lg">
+                      <span className="break-words text-arcade-text">{participant.name}</span>
                       {participant.nickname && (
-                        <span className="ml-2 text-base text-arcade-text-muted">"{participant.nickname}"</span>
+                        <span className="break-words text-base text-arcade-text-muted">"{participant.nickname}"</span>
                       )}
                     </span>
                   )}
                 </div>
 
                 {isAdmin && (
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     {editingId === participant.id ? (
                       <>
                         <Button variant="warning" onClick={saveEdit}>

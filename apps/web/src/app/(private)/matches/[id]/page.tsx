@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Button } from '@/components/button'
 import { Field } from '@/components/field'
 import { StatusBadge } from '@/components/status-badge'
@@ -79,7 +79,6 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
   const unitWinsOf = (participantId: string) =>
     match.units.filter((unit) => unit.winnerParticipantId === participantId).length
   const nextUnitNumber = match.units.length + 1
-  const [p1, p2] = match.participants
 
   return (
     <div className="animate-scrIn space-y-6">
@@ -107,46 +106,43 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-5">
-          <div className="min-w-0 flex-1 basis-40 text-right">
-            <p className="text-3xl leading-tight text-arcade-text">{p1?.displayName}</p>
-            <p className="font-arcade text-lg text-arcade-text-muted">
-              {unitWinsOf(p1?.id ?? '')} unidade{unitWinsOf(p1?.id ?? '') === 1 ? '' : 's'} vencida
-              {unitWinsOf(p1?.id ?? '') === 1 ? '' : 's'}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {p1 ? (
-              <ParticipantAvatar
-                id={p1.participantId}
-                name={p1.displayName}
-                imageUrl={p1.imageUrl}
-                className="h-[86px] w-[86px] shadow-pixel"
-                textClassName="text-lg"
-              />
-            ) : (
-              <span className="h-[86px] w-[86px] flex-none bg-[#8b7bb8] shadow-pixel" />
-            )}
-            <span className="font-pixel text-xl text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.7)]">VS</span>
-            {p2 ? (
-              <ParticipantAvatar
-                id={p2.participantId}
-                name={p2.displayName}
-                imageUrl={p2.imageUrl}
-                className="h-[86px] w-[86px] shadow-pixel"
-                textClassName="text-lg"
-              />
-            ) : (
-              <span className="h-[86px] w-[86px] flex-none bg-[#8b7bb8] shadow-pixel" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1 basis-40">
-            <p className="text-3xl leading-tight text-arcade-text">{p2?.displayName}</p>
-            <p className="font-arcade text-lg text-arcade-text-muted">
-              {unitWinsOf(p2?.id ?? '')} unidade{unitWinsOf(p2?.id ?? '') === 1 ? '' : 's'} vencida
-              {unitWinsOf(p2?.id ?? '') === 1 ? '' : 's'}
-            </p>
-          </div>
+        {/* Cada participante é uma COLUNA — foto em cima, nome logo abaixo — e o
+            VS fica entre elas. Antes a foto ficava no meio e os nomes nas
+            laterais: no celular o `flex-wrap` empilhava os três blocos, então o
+            nome do participante da ESQUERDA aparecia alinhado à direita, acima
+            da foto do da DIREITA, e quem ia apostar lia o nome errado embaixo
+            da foto errada. Empilhado por participante, nome e foto nunca se
+            desgrudam, em nenhuma largura. Mapeado (em vez de p1/p2 fixos)
+            porque uma partida pode ter mais de dois participantes. */}
+        <div className="flex items-start justify-center gap-3 sm:gap-6">
+          {match.participants.map((participant, index) => (
+            <Fragment key={participant.id}>
+              {index > 0 && (
+                // `mt` alinha o VS com o meio das fotos: a linha é `items-start`
+                // (senão colunas de nomes com alturas diferentes desalinhariam
+                // as fotos), então o VS precisa descer sozinho.
+                <span className="mt-[30px] flex-none font-pixel text-xl text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.7)]">
+                  VS
+                </span>
+              )}
+              <div className="flex min-w-0 max-w-[240px] flex-1 basis-0 flex-col items-center gap-2 text-center">
+                <ParticipantAvatar
+                  id={participant.participantId}
+                  name={participant.displayName}
+                  imageUrl={participant.imageUrl}
+                  className="h-[86px] w-[86px] shadow-pixel"
+                  textClassName="text-lg"
+                />
+                <p className="break-words text-2xl leading-tight text-arcade-text sm:text-3xl">
+                  {participant.displayName}
+                </p>
+                <p className="font-arcade text-base text-arcade-text-muted sm:text-lg">
+                  {unitWinsOf(participant.id)} unidade{unitWinsOf(participant.id) === 1 ? '' : 's'} vencida
+                  {unitWinsOf(participant.id) === 1 ? '' : 's'}
+                </p>
+              </div>
+            </Fragment>
+          ))}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-5 text-center">

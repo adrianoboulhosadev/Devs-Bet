@@ -43,10 +43,13 @@ export function useTournamentDetail(tournamentId: string) {
   const roundCount = roundCountOf(size)
   const roundLabel = (round: number): string => roundLabelOf(round, roundCount)
 
-  const championName =
+  // A entidade inteira (não só o nome): o troféu no fim da chave mostra a foto
+  // do campeão do mesmo jeito que os confrontos mostram a dos jogadores.
+  const champion =
     tournament.data?.participants.find(
       (participant) => participant.id === tournament.data?.championParticipantId,
-    )?.displayName ?? null
+    ) ?? null
+  const championName = champion?.displayName ?? null
 
   // Destructive action guard for the cancel button.
   const [confirmingCancel, setConfirmingCancel] = useState(false)
@@ -60,6 +63,7 @@ export function useTournamentDetail(tournamentId: string) {
     pathOf,
     roundCount,
     roundLabel,
+    champion,
     championName,
     cancel: () => {
       cancel.mutate()

@@ -70,19 +70,24 @@ export default function CategoriesPage() {
         ) : (
           <ul className="space-y-2.5">
             {ordered.map((category) => (
+              // `flex-col`, nunca `flex-wrap justify-between`: com o wrap, um
+              // caminho curto (uma categoria raiz, tipo "Luta") cabia na mesma
+              // linha dos botões enquanto um caminho longo quebrava pra cima
+              // deles — a mesma lista com dois layouts, dependendo do tamanho
+              // do nome. Empilhado, o caminho fica SEMPRE acima dos botões.
               <li
                 key={category.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-3 border-arcade-border bg-arcade-surface p-3.5 shadow-pixel-sm"
+                className="flex flex-col items-start gap-3 border-3 border-arcade-border bg-arcade-surface p-3.5 shadow-pixel-sm"
               >
                 {editingId === category.id ? (
                   <input
                     autoFocus
                     value={editName}
                     onChange={(event) => setEditName(event.target.value)}
-                    className="border-3 border-arcade-border bg-[#0b0714] px-2.5 py-1.5 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
+                    className="w-full min-w-0 border-3 border-arcade-border bg-[#0b0714] px-2.5 py-1.5 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                   />
                 ) : (
-                  <span className="font-arcade text-lg">
+                  <span className="w-full break-words font-arcade text-lg">
                     <span className="text-arcade-text-muted">{pathOf(category.parentId)}</span>
                     {category.parentId && <span className="text-arcade-text-muted"> / </span>}
                     <span className="text-arcade-text">{category.name}</span>
@@ -90,7 +95,7 @@ export default function CategoriesPage() {
                   </span>
                 )}
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {editingId === category.id ? (
                     <>
                       <Button variant="warning" onClick={saveRename}>

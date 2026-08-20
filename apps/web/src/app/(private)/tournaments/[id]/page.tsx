@@ -6,8 +6,10 @@ import { Button } from '@/components/button'
 import { mediaUrl } from '@/lib/media'
 import { formatDateTime } from '@/lib/date'
 import { useTournamentDetail } from './hooks/use-tournament-detail'
-import { BracketSlotCard } from './components/bracket-slot-card'
+import { useTournamentMatches } from './hooks/use-tournament-matches'
+import { BracketTree } from './components/bracket-tree'
 import { GroupStage } from './components/group-stage'
+import { OpenConfrontations } from './components/open-confrontations'
 import { OutrightCard } from './components/outright-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
@@ -20,19 +22,17 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
     pathOf,
     roundCount,
     roundLabel,
+    champion,
     championName,
     cancel,
     confirmingCancel,
     setConfirmingCancel,
   } = useTournamentDetail(tournamentId)
+  // Uma busca só pras matches do torneio inteiro: a chave desenha o status de
+  // cada confronto e a lista de baixo carrega os botões de apostar.
+  const { matchOf, openConfrontations } = useTournamentMatches(tournament, roundLabel)
 
   if (loading || !tournament) return <Loading />
-
-  const rounds = Array.from({ length: roundCount }, (_, round) => round)
-  const slotsOfRound = (round: number) =>
-    tournament.bracket
-      .filter((slot) => slot.round === round)
-      .sort((first, second) => first.position - second.position)
 
   const canCancel = isAdmin && tournament.status === 'in_progress'
   // Outright market is open only before the tournament starts (backend enforces it).
@@ -77,29 +77,27 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
         championParticipantId={tournament.championParticipantId}
       />
 
-      <GroupStage groups={tournament.groups} phase={tournament.phase} />
+      <GroupStage groups={tournament.groups} phase={tournament.phase} matchOf={matchOf} />
 
       {tournament.phase === 'group' ? (
         <p className="border-3 border-arcade-border bg-arcade-surface px-4 py-3 font-arcade text-lg text-arcade-text-muted">
           O mata-mata começa assim que a fase de grupos terminar.
         </p>
       ) : (
-        <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-4">
-            {rounds.map((round) => (
-              <div key={round} className="flex w-56 shrink-0 flex-col gap-3">
-                <h2 className="font-pixel text-[10px] tracking-widest text-arcade-text-muted">
-                  {roundLabel(round).toUpperCase()}
-                  {tournament.bestOfByRound[round] > 1 && ` · MD${tournament.bestOfByRound[round]}`}
-                </h2>
-                {slotsOfRound(round).map((slot) => (
-                  <BracketSlotCard key={slot.id} slot={slot} />
-                ))}
-              </div>
-            ))}
-          </div>
+        <div className="space-y-3">
+          <h2 className="font-pixel text-[13px] tracking-wide text-arcade-text">CHAVE</h2>
+          <BracketTree
+            slots={tournament.bracket}
+            roundCount={roundCount}
+            roundLabel={roundLabel}
+            bestOfByRound={tournament.bestOfByRound}
+            matchOf={matchOf}
+            champion={champion}
+          />
         </div>
       )}
+
+      <OpenConfrontations confrontations={openConfrontations} />
 
       {canCancel && (
         <div className="border-3 border-arcade-amber bg-arcade-surface p-5 shadow-pixel">

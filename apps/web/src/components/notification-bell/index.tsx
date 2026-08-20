@@ -23,7 +23,13 @@ export function NotificationBell() {
   const { containerRef, open, toggle, close, items, unreadCount, openNotification } = useNotificationBell()
 
   return (
-    <div ref={containerRef} className="relative">
+    // `relative` só a partir de `lg`. Abaixo disso o wrapper é estático de
+    // propósito: assim o painel se posiciona contra o HEADER (que é `sticky`, e
+    // portanto o bloco de contenção mais próximo) e consegue ocupar a largura da
+    // tela. Preso ao sininho, o `right-0` do desktop jogava um painel de 340px
+    // pra ESQUERDA do botão — e no celular o sininho fica na borda esquerda, então
+    // o painel saía da tela e era cortado pelo `overflow-x-hidden` do layout.
+    <div ref={containerRef} className="lg:relative">
       <button
         type="button"
         onClick={toggle}
@@ -44,7 +50,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[min(340px,calc(100vw-2rem))] border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+        <div className="absolute inset-x-4 top-[calc(100%+10px)] z-[70] border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg lg:inset-x-auto lg:right-0 lg:w-[340px]">
           <div className="flex items-center justify-between border-b-3 border-arcade-border-strong px-4 py-3">
             <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">
               NOTIFICAÇÕES

@@ -70,11 +70,17 @@ export default function ProfilePage() {
         <div className="min-w-0 flex-1">
           {editingNickname ? (
             <form onSubmit={onSubmitNickname} className="flex flex-wrap items-center gap-2.5">
+              {/* `w-full min-w-0`: um input tem largura intrínseca própria (o
+                  atributo `size`, ~20 caracteres) e `min-width:auto`, então ele
+                  se recusava a encolher e empurrava o card inteiro pra fora da
+                  tela do celular — o card deixava de caber e, transbordando,
+                  deixava de ser centralizado. Ocupando a linha toda, os botões
+                  quebram pra linha de baixo em vez de esticar a página. */}
               <input
                 autoFocus
                 {...form.register('nickname')}
                 placeholder="seu apelido"
-                className="border-3 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-2xl text-arcade-lime outline-none focus:border-arcade-cyan"
+                className="w-full min-w-0 border-3 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-2xl text-arcade-lime outline-none focus:border-arcade-cyan"
               />
               <Button type="submit" variant="success" disabled={savingNickname}>
                 Salvar

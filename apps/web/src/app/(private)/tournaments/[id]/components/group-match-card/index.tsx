@@ -1,36 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
 import type { GroupMatchDTO } from '@tournament/adapters'
 import type { MatchDTO } from '@match/adapters'
-import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/status-badge'
 
 interface GroupMatchCardProps {
   match: GroupMatchDTO
+  /** A Match do confronto, buscada de uma vez pela tela (useTournamentMatches). */
+  liveMatch: MatchDTO | undefined
 }
 
 /**
- * One round-robin matchup within a group. Mirrors BracketSlotCard: a link
- * into the match page, no declare-result button here any more — that only
- * happens on the match's own "Sala de Controle" now.
+ * One round-robin matchup within a group. A link into the match page, no
+ * declare-result button here — that only happens on the match's own
+ * "Sala de Controle".
  */
-export function GroupMatchCard({ match }: GroupMatchCardProps) {
-  const liveMatch = useQuery({
-    queryKey: ['match', match.matchId],
-    queryFn: async (): Promise<MatchDTO> => (await api.get<MatchDTO>(`/match/${match.matchId}`)).data,
-    enabled: Boolean(match.matchId),
-  })
-
-  const status = liveMatch.data?.status
-  const winnerName = liveMatch.data?.participants.find(
-    (participant) => participant.id === liveMatch.data?.winnerParticipantId,
+export function GroupMatchCard({ match, liveMatch }: GroupMatchCardProps) {
+  const status = liveMatch?.status
+  const winnerName = liveMatch?.participants.find(
+    (participant) => participant.id === liveMatch?.winnerParticipantId,
   )?.displayName
 
   return (
     <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
-      {/* Same stacked layout as BracketSlotCard — see the note there. */}
+      {/* Stacked, not side by side: two full names in a row always wrapped into
+          a ragged two-line block with the VS floating in the middle of it. */}
       <div className="flex flex-col items-center gap-0.5 text-center">
         <span className="break-words text-arcade-text">{match.playerA.displayName}</span>
         <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
@@ -39,7 +34,7 @@ export function GroupMatchCard({ match }: GroupMatchCardProps) {
 
       {match.matchId ? (
         <div className="mt-2 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             {status ? <StatusBadge status={status} /> : <span className="text-arcade-text-muted">…</span>}
             <Link href={`/matches/${match.matchId}`} className="text-base text-arcade-cyan hover:underline">
               Ver / Apostar →
@@ -48,14 +43,13 @@ export function GroupMatchCard({ match }: GroupMatchCardProps) {
 
           {status === 'settled' && <p className="text-base text-arcade-lime">Vencedor: {winnerName ?? '—'}</p>}
 
-          {liveMatch.data && liveMatch.data.bestOf > 1 && (
+          {liveMatch && liveMatch.bestOf > 1 && (
             <p className="text-base text-arcade-text-muted">
-              Melhor de {liveMatch.data.bestOf} · placar:{' '}
-              {liveMatch.data.participants
+              Melhor de {liveMatch.bestOf} · placar:{' '}
+              {liveMatch.participants
                 .map(
                   (participant) =>
-                    liveMatch.data!.units.filter((unit) => unit.winnerParticipantId === participant.id)
-                      .length,
+                    liveMatch.units.filter((unit) => unit.winnerParticipantId === participant.id).length,
                 )
                 .join('-')}
             </p>
