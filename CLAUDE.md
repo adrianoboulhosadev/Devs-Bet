@@ -692,8 +692,16 @@ reage:
   baseado em header) — daí ser um controller separado do `NotificationController`.
 - **Não vaza conexão**: cada stream abre a sua conexão Redis e o teardown do `Observable` a fecha
   quando o cliente desconecta (medido: 8 → 11 → 8 clientes com 3 streams).
-- Front: `useNotificationStream` montado **uma vez** no `(private)/layout.tsx`, invalidando a query
-  `['notifications']` a cada ping. O token vive numa variável de módulo
+- Front: `useNotificationStream` montado **uma vez** no `(private)/layout.tsx`, invalidando a cada
+  ping as queries `['notifications']`, **`['wallet']` e `['payments']`**. O ping quer dizer "aconteceu
+  algo seu", e quase toda notificação de apostador **É** movimento de saldo (depósito confirmado ou
+  recusado pelo admin, saque pago, aposta/múltipla liquidada) — sem invalidar a carteira o admin
+  aprovava o crédito, a notificação chegava no sininho e **o saldo do header continuava o antigo até
+  o F5**. As duas notificações que não mexem em dinheiro (conta aprovada, pendência na fila do admin)
+  custam uma releitura barata de `/wallet/me` — troca melhor que ensinar o payload a carregar um
+  assunto só pra economizar isso (o payload segue **sem significado**). Foi isso que também permitiu
+  **tirar o `refetchInterval` de 5s** da lista de pagamentos da tela de carteira, que existia só como
+  contorno desse atraso (era o último polling do front). O token vive numa variável de módulo
   (`lib/api/interceptors.ts`), que um hook não consegue observar — então `setAccessToken` (porta
   única por onde login/refresh/logout passam) **avisa** os interessados via `onAccessTokenChange`, e
   o stream se reabre sozinho quando o token gira. **Nada de retry manual** no cliente: fechar o
