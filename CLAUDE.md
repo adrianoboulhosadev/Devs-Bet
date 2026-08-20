@@ -836,6 +836,20 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   `Loading fullScreen` fica **fora** desse wrapper — ela reivindica a viewport inteira e o `max-w-md`
   do card a espremeria. O `<h1>` do DEVS·BET **não** subiu: parece igual, mas o `pending` usa
   `mb-1.5` (tem um kicker acima) contra `mb-8` dos outros — a regra é sobre JSX **idêntico**.
+- **Caixa centralizada precisa de `min-w-0`; rótulo de botão quebra abaixo de `sm`** — as duas metades
+  do mesmo bug. A largura mínima automática de um item de grid/flex é o **min-content** dele, então um
+  filho que não quebra estica a caixa **além da viewport**; e item que transborda **deixa de ser
+  centralizado** (`place-items-center` passa a alinhar no início), então no celular ele aparece
+  **colado numa borda** — foi exatamente o que acontecia com o card do `(public)`, esticado a 359px
+  numa tela de 342px úteis pelo `whitespace-nowrap` do rótulo `▸ Inserir ficha · Entrar` (297px de
+  min-content). Por isso: (1) o card do `(public)/layout.tsx` leva `min-w-0` (o `<main>` do
+  `(private)` já levava), e (2) o `BUTTON_BASE_CLASS` é `whitespace-nowrap max-sm:whitespace-normal` —
+  no desktop o botão segue numa linha só, abaixo de `sm` o rótulo quebra em vez de empurrar a página.
+  A variante ganha do utilitário simples porque o Tailwind emite media query **depois** das classes
+  sem variante (mesma mecânica dos `lg:opacity-*` da gaveta). O `▸` e o `·` recebem **nbsp** (`\u00a0`)
+  pra colar na palavra seguinte, senão o separador fica pendurado no fim da primeira linha. O `<h1>`
+  DEVS·BET é **uma palavra só** (288px de min-content, nada pra quebrar), daí o
+  `max-[360px]:text-3xl`: um degrau menor só onde ele não caberia.
 - **Dado estático → `data/`; lógica (parse, cálculo, formatação) → `lib/`.** Paleta/constante que é a
   implementação privada de uma função pura continua junto dela no `lib/` (ex. o `PALETTE` de
   `participant-colors.ts`) — separar o dado da única função que o consome não ajuda ninguém.
