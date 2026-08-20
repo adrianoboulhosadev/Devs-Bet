@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1 className="mb-8 font-pixel text-4xl leading-tight text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.55),5px_5px_0_#34215c]">
+      <h1 className="mb-8 font-pixel text-4xl leading-tight max-[360px]:text-3xl text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.55),5px_5px_0_#34215c]">
         DEVS<span className="text-arcade-lime">·</span>BET
       </h1>
 
@@ -24,8 +24,11 @@ export default function LoginPage() {
         <Field label="E-MAIL" type="email" required {...register('email')} />
         <Field label="SENHA" type="password" required {...register('password')} />
 
+        {/* Os nbsp colam o ▸ e o · na palavra seguinte: abaixo de `sm` o rótulo
+            quebra em duas linhas (ver BUTTON_BASE_CLASS) e o separador não pode
+            ficar pendurado no fim da primeira. */}
         <Button type="submit" disabled={submitting} className="w-full animate-pulseGlow">
-          {submitting ? 'Entrando…' : '▸ Inserir ficha · Entrar'}
+          {submitting ? 'Entrando…' : '▸\u00a0Inserir ficha ·\u00a0Entrar'}
         </Button>
 
         {GOOGLE_LOGIN_ENABLED && (

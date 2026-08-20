@@ -14,7 +14,7 @@ export default function PendingPage() {
       <p className="mb-5 animate-blink font-pixel text-[11px] tracking-[.3em] text-arcade-amber">
         ◄ AGUARDE SUA VEZ ►
       </p>
-      <h1 className="mb-1.5 font-pixel text-4xl leading-tight text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.55),5px_5px_0_#34215c]">
+      <h1 className="mb-1.5 font-pixel text-4xl leading-tight max-[360px]:text-3xl text-arcade-magenta [text-shadow:0_0_18px_rgba(255,61,129,.55),5px_5px_0_#34215c]">
         DEVS<span className="text-arcade-lime">·</span>BET
       </h1>
 
@@ -32,7 +32,7 @@ export default function PendingPage() {
 
         <Link href="/login" className="block">
           <Button variant="warning" className="w-full">
-            ▸ Voltar pro login
+            {'▸\u00a0Voltar pro login'}
           </Button>
         </Link>
       </div>
