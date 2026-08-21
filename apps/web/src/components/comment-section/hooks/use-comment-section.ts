@@ -45,11 +45,25 @@ export function useCommentSection(subjectType: CommentSubjectType, subjectId: st
     onError: (failure) => notify.failure(failure, 'Não foi possível salvar o comentário.'),
   })
 
-  const remove = useMutation({
+  // The AUTHOR taking their own comment back: a soft delete, so the replies
+  // under it stay in the thread (and the admin can still read what was said).
+  const removeMine = useMutation({
     mutationFn: (commentId: string) => api.delete(`/comment/${commentId}`),
     onSuccess: () => {
       invalidate()
       notify.success('Comentário excluído.')
+    },
+    onError: (failure) => notify.failure(failure, 'Não foi possível excluir o comentário.'),
+  })
+
+  // The ADMIN's bin: erases the row for good, and a root takes its replies with
+  // it. A different route from the one above precisely so the two cannot be
+  // confused (see the backend controller).
+  const removePermanently = useMutation({
+    mutationFn: (commentId: string) => api.delete(`/comment/${commentId}/permanent`),
+    onSuccess: () => {
+      invalidate()
+      notify.success('Comentário excluído de vez.')
     },
     onError: (failure) => notify.failure(failure, 'Não foi possível excluir o comentário.'),
   })
@@ -68,6 +82,7 @@ export function useCommentSection(subjectType: CommentSubjectType, subjectId: st
     posting: post.isPending,
     edit: (commentId: string, body: string) => edit.mutate({ commentId, body }),
     saving: edit.isPending,
-    remove: (commentId: string) => remove.mutate(commentId),
+    removeMine: (commentId: string) => removeMine.mutate(commentId),
+    removePermanently: (commentId: string) => removePermanently.mutate(commentId),
   }
 }

@@ -27,7 +27,10 @@ interface CommentItemProps {
   currentUserId: string | null
   onReply: (body: string, parentId: string) => void
   onEdit: (commentId: string, body: string) => void
-  onDelete: (commentId: string) => void
+  /** The AUTHOR taking their own comment back (soft delete). */
+  onDeleteMine: (commentId: string) => void
+  /** The ADMIN erasing it for good — a root takes its replies with it. */
+  onDeletePermanently: (commentId: string) => void
   posting: boolean
   saving: boolean
   /**
@@ -53,7 +56,8 @@ export function CommentItem({
   currentUserId,
   onReply,
   onEdit,
-  onDelete,
+  onDeleteMine,
+  onDeletePermanently,
   posting,
   saving,
   onRequestReply,
@@ -65,15 +69,18 @@ export function CommentItem({
     replying,
     startReplying,
     stopReplying,
-    confirmingDelete,
-    setConfirmingDelete,
+    confirming,
+    confirmDelete,
+    cancelConfirm,
     historyOpen,
     toggleHistory,
     revisions,
+    currentBody,
     loadingHistory,
-  } = useCommentItem(comment.id, comment.editedAt !== null)
+  } = useCommentItem(comment.id, comment.editedAt !== null || comment.deletedAt !== null)
 
   const isRoot = comment.id === rootId
+  const isDeleted = comment.deletedAt !== null
   const isMine = currentUserId !== null && currentUserId === comment.authorId
   const actionClass =
     'font-pixel text-[9px] tracking-wide text-arcade-text-muted transition-colors hover:text-arcade-cyan'
@@ -103,7 +110,10 @@ export function CommentItem({
             >
               {formatRelativeTime(comment.createdAt)}
             </span>
-            {comment.editedAt && (
+            {/* An edit badge on a tombstone tells the reader nothing — the text
+                it refers to is not on screen any more. The admin still sees
+                both the withdrawal and the revisions in the panel below. */}
+            {comment.editedAt && !isDeleted && (
               // Everyone sees that a comment was rewritten, and when. Only the
               // admin gets to read what it said before (see below).
               <span
@@ -115,10 +125,19 @@ export function CommentItem({
             )}
           </header>
 
-          {editing ? (
+          {isDeleted ? (
+            // The text is not here to hide — the backend never sent it (see
+            // ListCommentsQuery). The line stays so the replies under it keep
+            // making sense.
+            <p className="mt-1.5 font-arcade text-lg italic leading-snug text-arcade-text-muted">
+              Comentário excluído pelo autor
+            </p>
+          ) : editing ? (
             <div className="mt-2.5">
               <CommentComposer
-                initialValue={comment.body}
+                // Never null in this branch (a withdrawn comment renders the
+                // tombstone above and offers no edit), but the type says so.
+                initialValue={comment.body ?? ''}
                 submitLabel="Salvar"
                 busy={saving}
                 autoFocus
@@ -139,33 +158,42 @@ export function CommentItem({
         </div>
 
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
-          <button
-            type="button"
-            className={actionClass}
-            onClick={() => (onRequestReply ? onRequestReply() : startReplying())}
-          >
-            RESPONDER
-          </button>
-          {isMine && !editing && (
+          {/* Nothing to answer, edit or withdraw on a comment its author already
+              took back — only the admin's tools stay. */}
+          {!isDeleted && (
+            <button
+              type="button"
+              className={actionClass}
+              onClick={() => (onRequestReply ? onRequestReply() : startReplying())}
+            >
+              RESPONDER
+            </button>
+          )}
+          {isMine && !isDeleted && !editing && (
             <button type="button" className={actionClass} onClick={startEditing}>
               EDITAR
             </button>
           )}
-          {isAdmin && comment.editedAt && (
+          {isMine && !isDeleted && (
+            <button type="button" className={actionClass} onClick={() => confirmDelete('mine')}>
+              EXCLUIR
+            </button>
+          )}
+          {isAdmin && (comment.editedAt || isDeleted) && (
             <button type="button" className={actionClass} onClick={toggleHistory}>
-              {historyOpen ? 'OCULTAR ORIGINAL' : 'VER ORIGINAL'}
+              {historyOpen ? 'OCULTAR TEXTO' : isDeleted ? 'VER EXCLUÍDO' : 'VER ORIGINAL'}
             </button>
           )}
           {isAdmin && (
             <button
               type="button"
-              onClick={() => setConfirmingDelete(true)}
-              aria-label={`Excluir o comentário de ${comment.author.label}`}
-              title="Excluir comentário"
+              onClick={() => confirmDelete('permanent')}
+              aria-label={`Excluir de vez o comentário de ${comment.author.label}`}
+              title="Excluir de vez (apaga a linha e as respostas)"
               className="ml-auto flex items-center gap-1.5 font-pixel text-[9px] tracking-wide text-arcade-danger transition-opacity hover:opacity-70"
             >
               <TrashIcon />
-              <span className="sr-only sm:not-sr-only">EXCLUIR</span>
+              <span className="sr-only sm:not-sr-only">EXCLUIR DE VEZ</span>
             </button>
           )}
         </div>
@@ -173,11 +201,27 @@ export function CommentItem({
         {isAdmin && historyOpen && (
           <div className="mt-2 border-3 border-arcade-amber bg-arcade-surface p-3">
             <p className="font-pixel text-[9px] tracking-widest text-arcade-amber">
-              ANTES DA EDIÇÃO
+              {isDeleted ? 'TEXTO EXCLUÍDO PELO AUTOR' : 'ANTES DA EDIÇÃO'}
             </p>
             {loadingHistory ? (
               <p className="mt-2 font-arcade text-base text-arcade-text-muted">Carregando…</p>
-            ) : revisions.length === 0 ? (
+            ) : (
+              <>
+                {isDeleted && currentBody && (
+                  // The soft delete's other half: the row kept its text, and
+                  // this is the only place it is ever served.
+                  <p className="mt-2 whitespace-pre-wrap break-words font-arcade text-lg text-arcade-text-soft">
+                    {currentBody}
+                  </p>
+                )}
+                {revisions.length > 0 && (
+                  <p className="mt-3 font-pixel text-[9px] tracking-widest text-arcade-amber">
+                    ANTES DA EDIÇÃO
+                  </p>
+                )}
+              </>
+            )}
+            {!loadingHistory && revisions.length === 0 && !isDeleted ? (
               <p className="mt-2 font-arcade text-base text-arcade-text-muted">
                 Nenhuma versão anterior registrada.
               </p>
@@ -211,7 +255,8 @@ export function CommentItem({
                 currentUserId={currentUserId}
                 onReply={onReply}
                 onEdit={onEdit}
-                onDelete={onDelete}
+                onDeleteMine={onDeleteMine}
+                onDeletePermanently={onDeletePermanently}
                 posting={posting}
                 saving={saving}
                 // Answering a reply hangs off the ROOT, so it opens this
@@ -236,20 +281,38 @@ export function CommentItem({
           </div>
         ) : null}
 
+        {/* The author's own delete: says out loud what stays behind, because
+            "excluir" that keeps the text somewhere has to be honest about it. */}
         <ConfirmDialog
-          open={confirmingDelete}
-          title="Excluir este comentário?"
+          open={confirming === 'mine'}
+          title="Excluir seu comentário?"
           description={
             replies?.length
-              ? 'As respostas deste comentário também são excluídas. Não dá pra desfazer.'
-              : 'O comentário some da partida para todo mundo. Não dá pra desfazer.'
+              ? 'O texto sai da conversa para todo mundo. As respostas continuam onde estão, e o admin ainda consegue ver o que você tinha escrito.'
+              : 'O texto sai da conversa para todo mundo. O admin ainda consegue ver o que você tinha escrito.'
           }
           confirmLabel="Excluir comentário"
           onConfirm={() => {
-            onDelete(comment.id)
-            setConfirmingDelete(false)
+            onDeleteMine(comment.id)
+            cancelConfirm()
           }}
-          onCancel={() => setConfirmingDelete(false)}
+          onCancel={cancelConfirm}
+        />
+
+        <ConfirmDialog
+          open={confirming === 'permanent'}
+          title="Excluir de vez este comentário?"
+          description={
+            replies?.length
+              ? 'Apaga a linha do banco, junto com todas as respostas dela. Não dá pra desfazer nem consultar depois.'
+              : 'Apaga a linha do banco. Não dá pra desfazer nem consultar depois.'
+          }
+          confirmLabel="Excluir de vez"
+          onConfirm={() => {
+            onDeletePermanently(comment.id)
+            cancelConfirm()
+          }}
+          onCancel={cancelConfirm}
         />
       </div>
     </article>

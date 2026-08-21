@@ -17,8 +17,19 @@ interface CommentSectionProps {
  * differs by which subject it hangs off.
  */
 export function CommentSection({ subjectType, subjectId }: CommentSectionProps) {
-  const { comments, total, loading, isAdmin, currentUserId, post, posting, edit, saving, remove } =
-    useCommentSection(subjectType, subjectId)
+  const {
+    comments,
+    total,
+    loading,
+    isAdmin,
+    currentUserId,
+    post,
+    posting,
+    edit,
+    saving,
+    removeMine,
+    removePermanently,
+  } = useCommentSection(subjectType, subjectId)
 
   return (
     <section className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
@@ -53,7 +64,8 @@ export function CommentSection({ subjectType, subjectId }: CommentSectionProps) 
                 currentUserId={currentUserId}
                 onReply={(body, parentId) => post(body, parentId)}
                 onEdit={edit}
-                onDelete={remove}
+                onDeleteMine={removeMine}
+                onDeletePermanently={removePermanently}
                 posting={posting}
                 saving={saving}
               />

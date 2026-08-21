@@ -76,5 +76,6 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.COMMENT_TOO_LONG]: 'Comentário muito longo. Escreva algo mais curto.',
   [Errors.COMMENT_SUBJECT_NOT_FOUND]: 'A partida ou torneio deste comentário não existe mais.',
   [Errors.INVALID_COMMENT_PARENT]: 'Não foi possível responder a este comentário.',
-  [Errors.NOT_COMMENT_AUTHOR]: 'Só dá pra editar os seus próprios comentários.',
+  [Errors.NOT_COMMENT_AUTHOR]: 'Só dá pra editar ou excluir os seus próprios comentários.',
+  [Errors.COMMENT_DELETED]: 'Este comentário foi excluído pelo autor.',
 }
