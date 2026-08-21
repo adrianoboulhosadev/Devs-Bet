@@ -4,9 +4,13 @@ import { BetWon, BetLost, BetRefunded } from './events'
 // open: still live. won/lost/refunded: terminal after settlement.
 export type BetStatus = 'open' | 'won' | 'lost' | 'refunded'
 
-// What the bet is on: a single match (pick the winner of a confrontation) or a
-// tournament's champion (outright / futures — much harder, pays more).
-export type BetMarketType = 'match' | 'tournament_outright'
+// What the bet is on: a single match (pick the winner of a confrontation), a
+// tournament's champion (outright / futures — much harder, pays more), or a
+// poll (an open question with N answers — "quando o fulano vai ser demitido?").
+// The betting math never branches on this: every market is a pool split by
+// selection, and this union exists only so the app can route back to the right
+// context.
+export type BetMarketType = 'match' | 'tournament_outright' | 'poll'
 
 export interface BetProps extends EntityProps {
   // Defaults to 'match' (the original, most common market).
