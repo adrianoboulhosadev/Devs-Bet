@@ -31,9 +31,12 @@ interface CommentView {
   parentId: string | null
   authorId: string
   author: CommentAuthorView
-  body: string
+  /** Null when the author withdrew it — the text never leaves the server for a
+   * regular reader (see ListCommentsQuery). The screen shows a tombstone. */
+  body: string | null
   createdAt: Date
   editedAt: Date | null
+  deletedAt: Date | null
 }
 
 interface CommentThreadView extends CommentView {
@@ -89,8 +92,18 @@ export class CommentController {
     await this.facade().editComment(id, input, user.id)
   }
 
-  // Moderation: the red bin on every comment, for the owner of the room.
+  // The author taking their own comment back: a SOFT delete, so the replies
+  // under it survive and the admin can still read what was said.
   @Delete(':id')
+  @HttpCode(204)
+  async removeMine(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
+    await this.facade().deleteMyComment(id, user.id)
+  }
+
+  // Moderation: the red bin on every comment, for the owner of the room. This
+  // one really erases the row (and a root's replies with it) — declared on its
+  // own path so the two deletes can never be confused for each other.
+  @Delete(':id/permanent')
   @HttpCode(204)
   @UseGuards(AdminGuard)
   async remove(@Param('id') id: string, @authenticatedUser() user: UserDTO) {
@@ -131,6 +144,7 @@ export class CommentController {
       body: comment.body,
       createdAt: comment.createdAt,
       editedAt: comment.editedAt,
+      deletedAt: comment.deletedAt,
     }
   }
 

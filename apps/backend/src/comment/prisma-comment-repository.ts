@@ -20,6 +20,7 @@ interface CommentRow {
   body: string
   createdAt: Date
   editedAt: Date | null
+  deletedAt: Date | null
 }
 
 @Injectable()
@@ -38,6 +39,7 @@ export class PrismaCommentRepository implements CommentRepository, CommentQueryR
           body: row.body,
           createdAt: row.createdAt,
           editedAt: row.editedAt,
+          deletedAt: row.deletedAt,
         })
       : null
   }
@@ -53,6 +55,7 @@ export class PrismaCommentRepository implements CommentRepository, CommentQueryR
         body: comment.body.value,
         createdAt: comment.createdAt,
         editedAt: comment.editedAt,
+        deletedAt: comment.deletedAt,
       },
     })
   }
@@ -76,7 +79,18 @@ export class PrismaCommentRepository implements CommentRepository, CommentQueryR
     ])
   }
 
-  /** Replies are deleted EXPLICITLY rather than left to the schema's cascade:
+  /** The author's withdrawal: one column, and deliberately NOT a delete — the
+   * row keeps its text (the admin still reads it) and its replies keep their
+   * parent. */
+  async softDelete(comment: Comment): Promise<void> {
+    await this.prisma.comment.update({
+      where: { id: comment.id.value },
+      data: { deletedAt: comment.deletedAt },
+    })
+  }
+
+  /** The ADMIN's permanent removal. Replies are deleted EXPLICITLY rather than
+   * left to the schema's cascade:
    * the port promises the thread goes with its root, so the behaviour should be
    * readable here and not depend on a constraint two files away (the cascade
    * stays as the integrity backstop). */
@@ -126,6 +140,7 @@ export class PrismaCommentRepository implements CommentRepository, CommentQueryR
       currentBody: row.body,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
       revisions: row.revisions.map((revision) => ({
         id: revision.id,
         body: revision.body,
@@ -144,6 +159,7 @@ export class PrismaCommentRepository implements CommentRepository, CommentQueryR
       body: row.body,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
     }
   }
 }
