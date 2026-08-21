@@ -9,6 +9,7 @@ import { BettingModule } from './betting/betting.module'
 import { CategoryModule } from './category/category.module'
 import { ParticipantModule } from './participant/participant.module'
 import { TournamentModule } from './tournament/tournament.module'
+import { PollModule } from './poll/poll.module'
 import { UploadModule } from './upload/upload.module'
 import { NotificationModule } from './notification/notification.module'
 import { CommentModule } from './comment/comment.module'
@@ -25,6 +26,7 @@ import { CommentModule } from './comment/comment.module'
     CategoryModule,
     ParticipantModule,
     TournamentModule,
+    PollModule,
     UploadModule,
     NotificationModule,
     CommentModule,

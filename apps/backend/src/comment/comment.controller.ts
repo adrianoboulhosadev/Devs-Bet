@@ -74,6 +74,11 @@ export class CommentController {
     return this.thread('tournament', id)
   }
 
+  @Get('poll/:id')
+  pollThread(@Param('id') id: string): Promise<CommentThreadView[]> {
+    return this.thread('poll', id)
+  }
+
   // The author ALWAYS comes from the token (anti-IDOR), never from the body.
   @Post()
   @HttpCode(201)
@@ -149,9 +154,10 @@ export class CommentController {
   }
 
   /**
-   * Cross-context: does the match/tournament being commented on exist? Resolved
-   * here and handed to the use case as plain data — comment never imports
-   * either context, the same pattern as `categoryIsLeaf` in CreateMatch.
+   * Cross-context: does the match/tournament/poll being commented on exist?
+   * Resolved here and handed to the use case as plain data — comment never
+   * imports any of those contexts, the same pattern as `categoryIsLeaf` in
+   * CreateMatch.
    */
   private async subjectExists(subjectType: CommentSubjectType, subjectId: string): Promise<boolean> {
     if (subjectType === 'match') {
@@ -159,6 +165,9 @@ export class CommentController {
     }
     if (subjectType === 'tournament') {
       return (await this.prisma.tournament.count({ where: { id: subjectId } })) > 0
+    }
+    if (subjectType === 'poll') {
+      return (await this.prisma.poll.count({ where: { id: subjectId } })) > 0
     }
     // An unknown subjectType never names anything that exists — the use case
     // turns that into COMMENT_SUBJECT_NOT_FOUND, and the entity would reject it

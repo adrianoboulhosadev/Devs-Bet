@@ -20,6 +20,7 @@ import { PrismaBettingPlacementRepository } from './prisma-betting-placement-rep
 import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
+import { PrismaPollRepository } from '../poll/prisma-poll-repository'
 import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
 import { BettorDirectory } from './bettor-directory'
 import { authenticatedUser } from '../shared/authenticated-user.decorator'
@@ -42,9 +43,10 @@ type BookEntry = BetDTO & { bettorLabel: string }
 type LeaderboardRow = LeaderboardEntryDTO & { bettorLabel: string }
 
 // Protected by the AuthMiddleware (see betting.module). bettorId always comes from
-// the token. Placing a bet is cross-context: the owning market (a match or a
-// tournament's champion) is resolved here — openness + valid selections — and
-// passed to the betting facade as plain data (betting imports neither context).
+// the token. Placing a bet is cross-context: the owning market (a match, a
+// tournament's champion or a poll) is resolved here — openness + valid
+// selections — and passed to the betting facade as plain data (betting imports
+// none of those contexts).
 @Controller('bet')
 export class BetController {
   constructor(
@@ -52,6 +54,7 @@ export class BetController {
     private readonly betQueryRepository: PrismaBetQueryRepository,
     private readonly matchRepository: PrismaMatchRepository,
     private readonly tournamentRepository: PrismaTournamentRepository,
+    private readonly pollRepository: PrismaPollRepository,
     private readonly walletRepository: PrismaWalletRepository,
     private readonly bettorDirectory: BettorDirectory,
   ) {}
@@ -95,6 +98,16 @@ export class BetController {
         tournament.status === 'in_progress' &&
         new Date(tournament.scheduledAt).getTime() > Date.now()
       return { marketOpen: open, selectionIds: tournament.participants.map((p) => p.id) }
+    }
+
+    if (input.marketType === 'poll') {
+      const poll = await this.pollRepository.findByIdQuery(input.marketId)
+      if (!poll) NotFoundError.throwError(Errors.POLL_NOT_FOUND, input.marketId)
+      // A poll takes bets only while `open`; each of its options is a selection.
+      return {
+        marketOpen: poll.status === 'open',
+        selectionIds: poll.options.map((option) => option.id),
+      }
     }
 
     const match = await this.matchRepository.findByIdQuery(input.marketId)
@@ -231,6 +244,23 @@ export class BetController {
 
   @Get('tournament/:id/odds/history')
   tournamentOddsHistory(@Param('id') id: string): Promise<OddsSnapshotDTO[]> {
+    return this.facade().getOddsHistory(id)
+  }
+
+  // A poll is just another market id to everything below this line — the book,
+  // the live odds and the odds history are the very same reads.
+  @Get('poll/:id')
+  pollBook(@Param('id') id: string): Promise<BookEntry[]> {
+    return this.bookOf(id)
+  }
+
+  @Get('poll/:id/odds')
+  pollOdds(@Param('id') id: string): Promise<MarketOddsDTO> {
+    return this.facade().getMarketOdds(id)
+  }
+
+  @Get('poll/:id/odds/history')
+  pollOddsHistory(@Param('id') id: string): Promise<OddsSnapshotDTO[]> {
     return this.facade().getOddsHistory(id)
   }
 }

@@ -4,7 +4,7 @@ import { join } from 'path'
 export const UPLOADS_DIR = join(process.cwd(), 'uploads')
 
 // Per-theme subfolders. Each upload endpoint writes into its own theme folder.
-export const UPLOADS_SUBDIRS = ['matchs', 'receipts', 'participants', 'avatars', 'results'] as const
+export const UPLOADS_SUBDIRS = ['matchs', 'receipts', 'participants', 'avatars', 'results', 'polls'] as const
 
 export const MATCHS_UPLOAD_DIR = join(UPLOADS_DIR, 'matchs')
 // Deposit proof of payment (Pix receipt), uploaded by the depositing user.
@@ -16,3 +16,5 @@ export const AVATARS_UPLOAD_DIR = join(UPLOADS_DIR, 'avatars')
 // Proof photo attached to a match unit's result, uploaded by the admin
 // declaring it (see MatchUnit.proofImageUrl).
 export const RESULTS_UPLOAD_DIR = join(UPLOADS_DIR, 'results')
+// Illustration of a poll, uploaded by the admin opening it (see packages/poll).
+export const POLLS_UPLOAD_DIR = join(UPLOADS_DIR, 'polls')

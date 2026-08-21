@@ -7,13 +7,14 @@ import { PrismaBettingPlacementRepository } from './prisma-betting-placement-rep
 import { PrismaBetQueryRepository } from './prisma-bet-query-repository'
 import { PrismaMatchRepository } from '../match/prisma-match-repository'
 import { PrismaTournamentRepository } from '../tournament/prisma-tournament-repository'
+import { PrismaPollRepository } from '../poll/prisma-poll-repository'
 import { PrismaWalletRepository } from '../wallet/prisma-wallet-repository'
 import { BettorDirectory } from './bettor-directory'
 
 @Module({
   imports: [DbModule, AuthModule],
   controllers: [BetController],
-  // The match/tournament/wallet repositories only need PrismaService, so
+  // The match/tournament/poll/wallet repositories only need PrismaService, so
   // betting registers them directly — to resolve a bet's market (status +
   // selections) and the bettor's self-exclusion — without importing those modules.
   providers: [
@@ -21,6 +22,7 @@ import { BettorDirectory } from './bettor-directory'
     PrismaBetQueryRepository,
     PrismaMatchRepository,
     PrismaTournamentRepository,
+    PrismaPollRepository,
     PrismaWalletRepository,
     // Names the bettor on the book / leaderboard (nickname, else truncated id).
     BettorDirectory,
