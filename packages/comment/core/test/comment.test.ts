@@ -13,6 +13,7 @@ import {
   CommentReplied,
   PostComment,
   EditComment,
+  DeleteMyComment,
   DeleteComment,
   ListCommentsQuery,
   GetCommentHistoryQuery,
@@ -201,6 +202,74 @@ test('a non-admin cannot read the edit history (NOT_ADMIN)', async () => {
   const peeking = new GetCommentHistoryQuery(repository).execute({ commentId }, bettor)
   await expect(peeking).rejects.toBeInstanceOf(AccessDeniedError)
   await expect(peeking).rejects.toMatchObject({ code: Errors.NOT_ADMIN })
+})
+
+test('the author withdraws their own comment: the row, the replies and the text stay put', async () => {
+  const repository = new CommentRepositoryInMemory()
+  await post(repository, { body: 'me arrependi disso' })
+  const root = repository.comments[0].id
+  await post(repository, { authorId: 'user-2', parentId: root, body: 'resposta de outra pessoa' })
+
+  await new DeleteMyComment(repository).execute({ commentId: root, authorId: bettor.id })
+
+  // nothing was erased — that is the difference from the admin's bin
+  expect(repository.comments).toHaveLength(2)
+  expect(repository.comments[0].deletedAt).not.toBeNull()
+  expect(repository.comments[0].body).toBe('me arrependi disso')
+})
+
+test('a withdrawn comment comes back to readers WITHOUT its text', async () => {
+  const repository = new CommentRepositoryInMemory()
+  await post(repository, { body: 'texto que sai de cena' })
+  const root = repository.comments[0].id
+  await post(repository, { authorId: 'user-2', parentId: root, body: 'resposta que fica' })
+  await new DeleteMyComment(repository).execute({ commentId: root, authorId: bettor.id })
+
+  const thread = await new ListCommentsQuery(repository).execute({ subjectType: 'match', subjectId: MATCH })
+  expect(thread[0].body).toBeNull()
+  expect(thread[0].deletedAt).not.toBeNull()
+  // the reply chain survives, which is the whole reason the delete is soft
+  expect(thread[0].replies.map((reply) => reply.body)).toEqual(['resposta que fica'])
+})
+
+test('the admin still reads what was withdrawn', async () => {
+  const repository = new CommentRepositoryInMemory()
+  await post(repository, { body: 'o que eu tinha escrito' })
+  const commentId = repository.comments[0].id
+  await new DeleteMyComment(repository).execute({ commentId, authorId: bettor.id })
+
+  const history = await new GetCommentHistoryQuery(repository).execute({ commentId }, admin)
+  expect(history.currentBody).toBe('o que eu tinha escrito')
+  expect(history.deletedAt).not.toBeNull()
+})
+
+test('withdrawing is idempotent and only the author can do it', async () => {
+  const repository = new CommentRepositoryInMemory()
+  await post(repository, { body: 'meu comentário' })
+  const commentId = repository.comments[0].id
+
+  const stranger = new DeleteMyComment(repository).execute({ commentId, authorId: 'user-2' })
+  await expect(stranger).rejects.toBeInstanceOf(AccessDeniedError)
+  await expect(stranger).rejects.toMatchObject({ code: Errors.NOT_COMMENT_AUTHOR })
+
+  await new DeleteMyComment(repository).execute({ commentId, authorId: bettor.id })
+  const firstDeletedAt = repository.comments[0].deletedAt
+  await new DeleteMyComment(repository).execute({ commentId, authorId: bettor.id })
+  expect(repository.comments[0].deletedAt).toBe(firstDeletedAt)
+})
+
+test('a withdrawn comment can no longer be edited nor answered', async () => {
+  const repository = new CommentRepositoryInMemory()
+  await post(repository, { body: 'some daqui' })
+  const root = repository.comments[0].id
+  await new DeleteMyComment(repository).execute({ commentId: root, authorId: bettor.id })
+
+  const editing = new EditComment(repository).execute({ commentId: root, authorId: bettor.id, body: 'voltei' })
+  await expect(editing).rejects.toBeInstanceOf(ValidationError)
+  await expect(editing).rejects.toMatchObject({ code: Errors.COMMENT_DELETED })
+
+  const replying = post(repository, { authorId: 'user-2', parentId: root, body: 'respondendo um túmulo' })
+  await expect(replying).rejects.toMatchObject({ code: Errors.COMMENT_DELETED })
 })
 
 test('the admin deletes a root and its replies go with it', async () => {

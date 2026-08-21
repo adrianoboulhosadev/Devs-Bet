@@ -1,5 +1,6 @@
 export { default as PostComment } from './post-comment'
 export { default as EditComment } from './edit-comment'
+export { default as DeleteMyComment } from './delete-my-comment'
 export { default as DeleteComment } from './delete-comment'
 export { default as ListCommentsQuery } from './list-comments-query'
 export { default as GetCommentHistoryQuery } from './get-comment-history-query'

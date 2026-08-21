@@ -18,6 +18,7 @@ interface CommentRow {
   body: string
   createdAt: Date
   editedAt: Date | null
+  deletedAt: Date | null
 }
 
 interface RevisionRow {
@@ -53,6 +54,12 @@ export default class CommentRepositoryInMemory
       body: revision.body,
       recordedAt: revision.recordedAt,
     })
+  }
+
+  async softDelete(comment: Comment): Promise<void> {
+    const row = this.comments.find((current) => current.id === comment.id.value)
+    if (!row) return
+    row.deletedAt = comment.deletedAt
   }
 
   async deleteWithReplies(id: string): Promise<void> {
@@ -106,6 +113,7 @@ export default class CommentRepositoryInMemory
       currentBody: row.body,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
       revisions: this.revisions
         .filter((revision) => revision.commentId === commentId)
         .sort((one, other) => one.recordedAt.getTime() - other.recordedAt.getTime())
@@ -123,6 +131,7 @@ export default class CommentRepositoryInMemory
       body: comment.body.value,
       createdAt: comment.createdAt,
       editedAt: comment.editedAt,
+      deletedAt: comment.deletedAt,
     }
   }
 
@@ -136,6 +145,7 @@ export default class CommentRepositoryInMemory
       body: row.body,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
     })
   }
 
@@ -149,6 +159,7 @@ export default class CommentRepositoryInMemory
       body: row.body,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
     }
   }
 }

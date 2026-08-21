@@ -39,6 +39,12 @@ export default class PostComment implements UseCase<Input, void> {
     }
 
     const parent = input.parentId ? await this.load(input.parentId) : null
+    if (parent?.isDeleted) {
+      // The author took it back, so there is nothing left to answer. What was
+      // already said under it stays on screen — that is the whole point of the
+      // soft delete.
+      ValidationError.throwError(Errors.COMMENT_DELETED, input.parentId)
+    }
     if (parent && !parent.canBeRepliedFrom(input.subjectType, input.subjectId)) {
       // Either a reply to a reply (the thread is two levels deep) or a parent
       // from another match/tournament — a hand-crafted request, not a form.

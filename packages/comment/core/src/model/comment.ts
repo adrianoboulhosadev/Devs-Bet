@@ -19,6 +19,9 @@ export interface CommentProps extends EntityProps {
   body?: string
   createdAt?: Date
   editedAt?: Date | null
+  /** Non-null = the AUTHOR withdrew it (soft delete). The row and the text stay
+   * exactly where they are — see `softDelete`. */
+  deletedAt?: Date | null
 }
 
 /**
@@ -32,6 +35,13 @@ export interface CommentProps extends EntityProps {
  * Editing keeps the history: `edit` produces the CommentRevision of the text as
  * it was, and stamps `editedAt` so every reader sees the comment was rewritten
  * and when — the admin is the only one who gets to read the previous version.
+ *
+ * The author's own delete is SOFT (`softDelete`), and for two reasons: a hard
+ * delete would take the whole reply chain with it (the replies only exist
+ * because of what was said here), and what someone wrote and then withdrew is
+ * exactly the thing a moderator may need to look at later. The text is redacted
+ * on the way OUT (see ListCommentsQuery) instead of being erased, so it stays
+ * readable to the admin alone — the same split the edit history already makes.
  */
 export class Comment extends Entity<Comment, CommentProps> {
   readonly subjectType: CommentSubjectType
@@ -41,6 +51,7 @@ export class Comment extends Entity<Comment, CommentProps> {
   readonly createdAt: Date
   body: CommentBody
   editedAt: Date | null
+  deletedAt: Date | null
 
   constructor(props: CommentProps) {
     super(props)
@@ -61,6 +72,7 @@ export class Comment extends Entity<Comment, CommentProps> {
     this.body = new CommentBody(props.body)
     this.createdAt = props.createdAt ?? new Date()
     this.editedAt = props.editedAt ?? null
+    this.deletedAt = props.deletedAt ?? null
   }
 
   get isReply(): boolean {
@@ -69,6 +81,10 @@ export class Comment extends Entity<Comment, CommentProps> {
 
   get wasEdited(): boolean {
     return this.editedAt !== null
+  }
+
+  get isDeleted(): boolean {
+    return this.deletedAt !== null
   }
 
   /** True when `other` can be answered by a reply to THIS subject: it has to be
@@ -87,6 +103,10 @@ export class Comment extends Entity<Comment, CommentProps> {
    * model guarantees is that an edit can never happen silently.
    */
   edit(newBody: string): CommentRevision | null {
+    // Rewriting something already withdrawn makes no sense, and it would also
+    // move the text the admin still has to be able to read.
+    if (this.isDeleted) ValidationError.throwError(Errors.COMMENT_DELETED, this.id.value)
+
     const next = new CommentBody(newBody)
     if (next.equals(this.body)) return null
 
@@ -94,5 +114,18 @@ export class Comment extends Entity<Comment, CommentProps> {
     this.body = next
     this.editedAt = new Date()
     return previous
+  }
+
+  /**
+   * The author withdraws their comment. Nothing is erased: the row keeps its
+   * text, its place in the thread and its replies — only `deletedAt` is
+   * stamped, and the read side stops handing the body to anyone but the admin.
+   *
+   * Idempotent (a double click keeps the first timestamp), same as
+   * `Notification.markAsRead`.
+   */
+  softDelete(): void {
+    if (this.isDeleted) return
+    this.deletedAt = new Date()
   }
 }
