@@ -1,5 +1,10 @@
 import { Entity, EntityProps, Money, ValidationError, Errors } from 'shared'
-import { NotificationInput, NotificationType, NOTIFICATION_TYPES } from './notification-input'
+import {
+  NotificationInput,
+  NotificationType,
+  NotificationMarketKind,
+  NOTIFICATION_TYPES,
+} from './notification-input'
 
 export interface NotificationProps extends EntityProps {
   userId?: string
@@ -196,7 +201,15 @@ export class Notification extends Entity<Notification, NotificationProps> {
     }
   }
 
-  private static marketLink(kind: 'match' | 'tournament', marketId: string): string {
-    return kind === 'match' ? `/matches/${marketId}` : `/tournaments/${marketId}`
+  // The front's route for each kind of market/thread. A map rather than a
+  // ternary chain, so adding a market means adding a line here and nothing else.
+  private static readonly MARKET_ROUTES: Record<NotificationMarketKind, string> = {
+    match: 'matches',
+    tournament: 'tournaments',
+    poll: 'polls',
+  }
+
+  private static marketLink(kind: NotificationMarketKind, marketId: string): string {
+    return `/${Notification.MARKET_ROUTES[kind]}/${marketId}`
   }
 }

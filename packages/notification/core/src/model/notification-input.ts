@@ -14,7 +14,7 @@ export const NOTIFICATION_TYPES = [
   'withdrawal_rejected',
   // bettor — the front door
   'account_approved',
-  // bettor — somebody answered a comment of theirs on a match/tournament
+  // bettor — somebody answered a comment of theirs on a match/tournament/poll
   'comment_reply',
   // admin — something is waiting in the control room
   'admin_signup_pending',
@@ -24,9 +24,10 @@ export const NOTIFICATION_TYPES = [
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
 
-/** Which market a bet belonged to. Kept as its own tiny union instead of
- * importing betting's BetMarketType — notification touches no other context. */
-export type NotificationMarketKind = 'match' | 'tournament'
+/** Which market a bet belonged to — also which page a comment thread lives on.
+ * Kept as its own tiny union instead of importing betting's BetMarketType —
+ * notification touches no other context. */
+export type NotificationMarketKind = 'match' | 'tournament' | 'poll'
 
 interface Recipient {
   /** Who receives it. A logical FK to users — notification owns no identity. */
