@@ -1,5 +1,6 @@
 export { default as PostCommentController } from './post-comment-controller'
 export { default as EditCommentController } from './edit-comment-controller'
+export { default as DeleteMyCommentController } from './delete-my-comment-controller'
 export { default as DeleteCommentController } from './delete-comment-controller'
 export { default as ListCommentsController } from './list-comments-controller'
 export { default as GetCommentHistoryController } from './get-comment-history-controller'

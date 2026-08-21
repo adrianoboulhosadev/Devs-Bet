@@ -9,6 +9,7 @@ import { AuthenticatedActor, EventPublisher } from 'shared'
 import {
   PostCommentController,
   EditCommentController,
+  DeleteMyCommentController,
   DeleteCommentController,
   ListCommentsController,
   GetCommentHistoryController,
@@ -41,6 +42,12 @@ export default class CommentFacade {
 
   async editComment(commentId: string, input: EditCommentInput, authorId: string): Promise<void> {
     await new EditCommentController(this.commentRepository!).execute(commentId, input, authorId)
+  }
+
+  /** The AUTHOR withdrawing their own comment (soft delete) — not the same
+   * operation as `deleteComment`, which is the admin's permanent removal. */
+  async deleteMyComment(commentId: string, authorId: string): Promise<void> {
+    await new DeleteMyCommentController(this.commentRepository!).execute(commentId, authorId)
   }
 
   async deleteComment(commentId: string, actor: AuthenticatedActor): Promise<void> {
