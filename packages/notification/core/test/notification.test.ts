@@ -80,6 +80,23 @@ test('an outright bet links to the tournament, not the match', () => {
   expect(notification.body).toContain('R$ 5,00')
 })
 
+test('a reply quotes who answered and links to the thread', () => {
+  const notification = Notification.for({
+    userId: bettor,
+    type: 'comment_reply',
+    authorLabel: 'zeca',
+    subjectKind: 'tournament',
+    subjectId: 'cup-1',
+    excerpt: 'discordo total',
+    referenceId: 'comment-1',
+  })
+
+  expect(notification.title).toBe('Responderam seu comentário')
+  expect(notification.body).toContain('zeca')
+  expect(notification.body).toContain('discordo total')
+  expect(notification.link).toBe('/tournaments/cup-1')
+})
+
 test('a combo says how many legs it had and links to the tickets page', () => {
   const notification = Notification.for({
     userId: bettor,

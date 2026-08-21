@@ -157,6 +157,15 @@ export class Notification extends Entity<Notification, NotificationProps> {
           body: `Seu saque de ${formatMoney(input.amount)} foi recusado e o valor segue disponível. Motivo: ${input.reason}`,
           link: '/wallet',
         }
+      // The one notification that comes from another PERSON rather than from
+      // money or the gate: it quotes the reply and links to the thread it
+      // happened in, so the answer is one tap away.
+      case 'comment_reply':
+        return {
+          title: 'Responderam seu comentário',
+          body: `${input.authorLabel} respondeu: "${input.excerpt}"`,
+          link: Notification.marketLink(input.subjectKind, input.subjectId),
+        }
       case 'account_approved':
         return {
           title: 'Conta liberada',

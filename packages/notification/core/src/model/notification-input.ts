@@ -14,6 +14,8 @@ export const NOTIFICATION_TYPES = [
   'withdrawal_rejected',
   // bettor — the front door
   'account_approved',
+  // bettor — somebody answered a comment of theirs on a match/tournament
+  'comment_reply',
   // admin — something is waiting in the control room
   'admin_signup_pending',
   'admin_deposit_pending',
@@ -58,6 +60,18 @@ export type NotificationInput =
   | (Recipient & { type: 'withdrawal_paid'; amount: number })
   | (Recipient & { type: 'withdrawal_rejected'; amount: number; reason: string })
   | (Recipient & { type: 'account_approved' })
+  | (Recipient & {
+      type: 'comment_reply'
+      /** Who replied — a nickname or a truncated id, resolved by the app layer
+       * (same labelling the pending-payment alerts use; never an e-mail). */
+      authorLabel: string
+      /** Where the conversation is, so the inbox line can link straight to it. */
+      subjectKind: NotificationMarketKind
+      subjectId: string
+      /** A single-line excerpt of the reply — the inbox quotes, it does not
+       * reproduce (see CommentBody.preview). */
+      excerpt: string
+    })
   | (Recipient & { type: 'admin_signup_pending'; signupEmail: string })
   | (Recipient & { type: 'admin_deposit_pending'; bettorLabel: string; amount: number })
   | (Recipient & { type: 'admin_withdrawal_pending'; bettorLabel: string; amount: number })
