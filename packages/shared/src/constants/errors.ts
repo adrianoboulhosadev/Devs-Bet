@@ -87,6 +87,19 @@ export const Errors = {
   // BET_NOT_FOUND in CancelBet.
   NOTIFICATION_NOT_FOUND: 'NOTIFICATION_NOT_FOUND',
 
+  // comment
+  COMMENT_NOT_FOUND: 'COMMENT_NOT_FOUND',
+  COMMENT_TOO_LONG: 'COMMENT_TOO_LONG',
+  // The match/tournament being commented on does not exist (the backend resolves
+  // it cross-context and hands the use case a boolean — same shape as categoryIsLeaf).
+  COMMENT_SUBJECT_NOT_FOUND: 'COMMENT_SUBJECT_NOT_FOUND',
+  // A reply always hangs off a ROOT comment: the thread is two levels deep, like
+  // Facebook's. Also answered when the parent belongs to another match/tournament.
+  INVALID_COMMENT_PARENT: 'INVALID_COMMENT_PARENT',
+  // Only the author edits their own text. Deleting is the admin's job, and the
+  // ORIGINAL text stays readable to the admin (see CommentRevision).
+  NOT_COMMENT_AUTHOR: 'NOT_COMMENT_AUTHOR',
+
   // tournament
   TOURNAMENT_NOT_FOUND: 'TOURNAMENT_NOT_FOUND',
   INVALID_TOURNAMENT_SIZE: 'INVALID_TOURNAMENT_SIZE',
