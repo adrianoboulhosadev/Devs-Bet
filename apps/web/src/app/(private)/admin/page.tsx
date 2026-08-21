@@ -112,17 +112,27 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
                     <StatusBadge status={entry.approvalStatus} />
                     {/* Never on your own row: revoking yourself would leave nobody
                         able to release anyone (the backend refuses it too). */}
                     {!isMe && entry.approvalStatus !== 'approved' && (
-                      <Button variant="success" disabled={savingApproval} onClick={() => approveUser(entry.id)}>
+                      <Button
+                        variant="success"
+                        className="max-sm:w-full"
+                        disabled={savingApproval}
+                        onClick={() => approveUser(entry.id)}
+                      >
                         Aprovar
                       </Button>
                     )}
                     {!isMe && entry.approvalStatus !== 'rejected' && (
-                      <Button variant="danger" disabled={savingApproval} onClick={() => rejectUser(entry.id)}>
+                      <Button
+                        variant="danger"
+                        className="max-sm:w-full"
+                        disabled={savingApproval}
+                        onClick={() => rejectUser(entry.id)}
+                      >
                         {entry.approvalStatus === 'approved' ? 'Revogar' : 'Rejeitar'}
                       </Button>
                     )}
@@ -166,19 +176,24 @@ export default function AdminPage() {
                     </a>
                   )}
                 </div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
                   <StatusBadge status={payment.status} />
                   {payment.direction === 'deposit' ? (
-                    <Button variant="success" onClick={() => confirmDeposit(payment.id)}>
+                    <Button variant="success" className="max-sm:w-full" onClick={() => confirmDeposit(payment.id)}>
                       Confirmar depósito
                     </Button>
                   ) : (
-                    <Button variant="success" onClick={() => setPendingPayout({ id: payment.id, file: null })}>
+                    <Button
+                      variant="success"
+                      className="max-sm:w-full"
+                      onClick={() => setPendingPayout({ id: payment.id, file: null })}
+                    >
                       Marcar pago
                     </Button>
                   )}
                   <Button
                     variant="danger"
+                    className="max-sm:w-full"
                     onClick={() => setPendingReject({ id: payment.id, direction: payment.direction, reason: '' })}
                   >
                     Rejeitar

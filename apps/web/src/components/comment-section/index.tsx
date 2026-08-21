@@ -33,13 +33,10 @@ export function CommentSection({ subjectType, subjectId }: CommentSectionProps) 
 
   return (
     <section className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b-3 border-arcade-border-strong px-4 py-3.5">
+      <div className="border-b-3 border-arcade-border-strong px-4 py-3.5">
         <h2 className="font-pixel text-[10px] tracking-widest text-arcade-purple">
           COMENTÁRIOS ({total})
         </h2>
-        <p className="font-arcade text-lg text-arcade-text-muted">
-          {subjectType === 'match' ? 'comenta aí sobre a partida' : 'comenta aí sobre o torneio'}
-        </p>
       </div>
 
       <div className="border-b border-arcade-border-strong p-4">

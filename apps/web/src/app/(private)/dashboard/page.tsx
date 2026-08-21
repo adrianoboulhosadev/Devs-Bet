@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import { Loading } from '@/components/loading'
 import { MatchCard } from '@/components/match-card'
@@ -86,8 +87,22 @@ export default function DashboardPage() {
           <span className="animate-blink whitespace-nowrap font-pixel text-[10px] tracking-widest text-arcade-magenta">
             PRÓXIMA PARTIDA
           </span>
-          <span className="min-w-[200px] flex-1 truncate font-arcade text-xl text-arcade-text">
-            {nextMatch.title} — {nextMatch.participants.map((participant) => participant.displayName).join(' × ')}
+          {/* Era uma linha só com `truncate`, então no celular o confronto
+              sumia num "…" bem no meio dos nomes. Empilhado (nome / VS / nome)
+              ninguém é cortado; de `sm` pra cima os três voltam pra mesma
+              linha, onde há largura de sobra. */}
+          <span className="min-w-[200px] flex-1 font-arcade text-xl text-arcade-text">
+            <span className="block break-words text-arcade-text-soft">{nextMatch.title}</span>
+            <span className="mt-1 flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
+              {nextMatch.participants.map((participant, index) => (
+                <Fragment key={participant.id}>
+                  {index > 0 && (
+                    <span className="font-pixel text-[9px] text-arcade-magenta">VS</span>
+                  )}
+                  <span className="break-words">{participant.displayName}</span>
+                </Fragment>
+              ))}
+            </span>
           </span>
           <span className="whitespace-nowrap font-pixel text-sm text-arcade-amber [text-shadow:0_0_14px_rgba(255,176,32,.5)]">
             {formatDateTime(nextMatch.scheduledAt)}

@@ -138,7 +138,6 @@ export function useWallet() {
   return {
     wallet: wallet.data,
     payments: payments.data ?? [],
-    instructions: instructions.data,
     loading: wallet.isLoading,
     depositStep,
     depositAmountCents,

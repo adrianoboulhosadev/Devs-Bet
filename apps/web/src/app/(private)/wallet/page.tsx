@@ -16,7 +16,6 @@ export default function WalletPage() {
   const {
     wallet,
     payments,
-    instructions,
     loading,
     depositStep,
     depositAmountCents,
@@ -54,7 +53,12 @@ export default function WalletPage() {
         </div>
       </div>
 
-      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
+      {/* Sem `items-start`: os dois cards são itens da MESMA linha do grid e o
+          stretch padrão iguala a altura deles (era o `items-start` que deixava o
+          card de depósito mais baixo que o de saque). O extrato saiu daqui pra
+          ocupar a largura inteira logo abaixo, em vez de ficar espremido numa
+          coluna com um vazio do lado. */}
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
         <div className="space-y-4 border-3 border-arcade-lime bg-arcade-surface p-6 shadow-pixel-lg">
           <div className="flex items-center gap-3.5">
             <span className="grid h-[34px] w-[34px] flex-none animate-coinSpin place-items-center bg-arcade-amber font-pixel text-sm text-arcade-bg">
@@ -91,15 +95,6 @@ export default function WalletPage() {
                 </div>
               )}
 
-              {instructions && (
-                <div className="border-2 border-arcade-border bg-[#0b0714] p-3 font-arcade text-lg text-arcade-text-soft">
-                  <p className="text-arcade-lime">chave pix da resenha</p>
-                  <p>
-                    {instructions.beneficiaryName} — {instructions.pixKeyType}: {instructions.pixKey}
-                  </p>
-                </div>
-              )}
-
               <Field
                 label="COMPROVANTE DE PAGAMENTO (IMAGEM OU PDF)"
                 type="file"
@@ -119,53 +114,51 @@ export default function WalletPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-5">
-          <form onSubmit={onWithdraw} className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-6 shadow-pixel-lg">
-            <h2 className="font-pixel text-xs tracking-wide text-arcade-cyan">SACAR FICHAS</h2>
-            <Field label="VALOR (R$)" money placeholder="0,00" required {...withdrawForm.register('amount')} />
-            <Button type="submit" variant="secondary" disabled={withdrawing} className="w-full">
-              {withdrawing ? 'Solicitando…' : 'Solicitar saque'}
-            </Button>
-            <p className="font-arcade text-base text-arcade-text-muted">
-              O valor fica reservado até o administrador efetuar o pagamento.
-            </p>
-          </form>
+        <form onSubmit={onWithdraw} className="space-y-3.5 border-3 border-arcade-border bg-arcade-surface p-6 shadow-pixel-lg">
+          <h2 className="font-pixel text-xs tracking-wide text-arcade-cyan">SACAR FICHAS</h2>
+          <Field label="VALOR (R$)" money placeholder="0,00" required {...withdrawForm.register('amount')} />
+          <Button type="submit" variant="secondary" disabled={withdrawing} className="w-full">
+            {withdrawing ? 'Solicitando…' : 'Solicitar saque'}
+          </Button>
+          <p className="font-arcade text-base text-arcade-text-muted">
+            O valor fica reservado até o administrador efetuar o pagamento.
+          </p>
+        </form>
+      </div>
 
-          <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
-            <h2 className="border-b-3 border-arcade-border-strong px-5 py-3 font-pixel text-[10px] tracking-widest text-arcade-text-muted">
-              EXTRATO
-            </h2>
-            {payments.length === 0 ? (
-              <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum pagamento ainda.</p>
-            ) : (
-              payments.map((payment) => (
-                <div key={payment.id} className="space-y-1.5 border-b border-arcade-border-strong px-5 py-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xl text-arcade-text">{formatBRL(payment.amount)}</span>
-                    <StatusBadge status={payment.status} />
-                  </div>
-                  <p className="font-arcade text-lg text-arcade-text-soft">
-                    {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
-                    <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
-                  </p>
-                  {payment.receiptUrl && (
-                    <a
-                      href={mediaUrl(payment.receiptUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block font-arcade text-base text-arcade-cyan underline"
-                    >
-                      Ver comprovante
-                    </a>
-                  )}
-                  {payment.status === 'rejected' && payment.rejectionReason && (
-                    <p className="font-arcade text-base text-arcade-danger">Motivo: {payment.rejectionReason}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+        <h2 className="border-b-3 border-arcade-border-strong px-5 py-3 font-pixel text-[10px] tracking-widest text-arcade-text-muted">
+          EXTRATO
+        </h2>
+        {payments.length === 0 ? (
+          <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum pagamento ainda.</p>
+        ) : (
+          payments.map((payment) => (
+            <div key={payment.id} className="space-y-1.5 border-b border-arcade-border-strong px-5 py-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xl text-arcade-text">{formatBRL(payment.amount)}</span>
+                <StatusBadge status={payment.status} />
+              </div>
+              <p className="font-arcade text-lg text-arcade-text-soft">
+                {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
+                <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
+              </p>
+              {payment.receiptUrl && (
+                <a
+                  href={mediaUrl(payment.receiptUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block font-arcade text-base text-arcade-cyan underline"
+                >
+                  Ver comprovante
+                </a>
+              )}
+              {payment.status === 'rejected' && payment.rejectionReason && (
+                <p className="font-arcade text-base text-arcade-danger">Motivo: {payment.rejectionReason}</p>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       <DepositLimits />

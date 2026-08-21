@@ -27,49 +27,50 @@ export function GroupStage({ groups, phase }: GroupStageProps) {
         )}
       </div>
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex min-w-max gap-4">
-          {groups.map((group) => (
-            <div key={group.groupIndex} className="w-72 shrink-0 space-y-3">
-              <h3 className="font-pixel text-[10px] tracking-widest text-arcade-text-muted">
-                GRUPO {group.groupIndex + 1}
-              </h3>
+      {/* Grade, não uma fileira com `min-w-max`: no celular a fileira só se lia
+          arrastando pro lado, o que é exatamente a reclamação que tirou a
+          rolagem lateral da chave (ver BracketTree). */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {groups.map((group) => (
+          <div key={group.groupIndex} className="min-w-0 space-y-3">
+            <h3 className="font-pixel text-[10px] tracking-widest text-arcade-text-muted">
+              GRUPO {group.groupIndex + 1}
+            </h3>
 
-              <div className="overflow-hidden border-3 border-arcade-border bg-arcade-surface">
-                <table className="w-full font-arcade text-lg">
-                  <thead className="bg-arcade-header text-base text-arcade-text-muted">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Jogador</th>
-                      <th className="px-3 py-2 text-right">V</th>
-                      <th className="px-3 py-2 text-right">Saldo</th>
+            <div className="overflow-hidden border-3 border-arcade-border bg-arcade-surface">
+              <table className="w-full font-arcade text-lg">
+                <thead className="bg-arcade-header text-base text-arcade-text-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Jogador</th>
+                    <th className="px-3 py-2 text-right">V</th>
+                    <th className="px-3 py-2 text-right">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-arcade-border-strong">
+                  {group.standings.map((standing) => (
+                    <tr key={standing.participant.id} className={standing.rank <= 2 ? 'bg-[#1d1233]' : undefined}>
+                      <td className="px-3 py-2 text-arcade-text">
+                        {standing.participant.displayName}
+                        {standing.rank <= 2 && <span className="ml-1 text-arcade-lime">✓</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right text-arcade-text">{standing.wins}</td>
+                      <td className="px-3 py-2 text-right text-arcade-text">
+                        {standing.unitsWon - standing.unitsLost >= 0 ? '+' : ''}
+                        {standing.unitsWon - standing.unitsLost}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-arcade-border-strong">
-                    {group.standings.map((standing) => (
-                      <tr key={standing.participant.id} className={standing.rank <= 2 ? 'bg-[#1d1233]' : undefined}>
-                        <td className="px-3 py-2 text-arcade-text">
-                          {standing.participant.displayName}
-                          {standing.rank <= 2 && <span className="ml-1 text-arcade-lime">✓</span>}
-                        </td>
-                        <td className="px-3 py-2 text-right text-arcade-text">{standing.wins}</td>
-                        <td className="px-3 py-2 text-right text-arcade-text">
-                          {standing.unitsWon - standing.unitsLost >= 0 ? '+' : ''}
-                          {standing.unitsWon - standing.unitsLost}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-2">
-                {group.matches.map((match) => (
-                  <GroupMatchCard key={match.id} match={match} />
-                ))}
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+
+            <div className="space-y-2">
+              {group.matches.map((match) => (
+                <GroupMatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -82,7 +82,10 @@ export default function CategoriesPage() {
                     className="border-3 border-arcade-border bg-[#0b0714] px-2.5 py-1.5 font-arcade text-lg text-arcade-text outline-none focus:border-arcade-cyan"
                   />
                 ) : (
-                  <span className="font-arcade text-lg">
+                  // `w-full` no celular: sem isso um nome curto ("Games") cabia
+                  // na mesma linha dos botões e a lista ficava desalinhada com as
+                  // categorias de caminho longo, que já quebravam pra cima deles.
+                  <span className="w-full font-arcade text-lg sm:w-auto">
                     <span className="text-arcade-text-muted">{pathOf(category.parentId)}</span>
                     {category.parentId && <span className="text-arcade-text-muted"> / </span>}
                     <span className="text-arcade-text">{category.name}</span>

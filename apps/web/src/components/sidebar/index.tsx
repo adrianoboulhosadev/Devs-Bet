@@ -50,7 +50,9 @@ export function Sidebar() {
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
         } ${expanded ? 'lg:w-[252px]' : 'lg:w-[74px]'}`}
       >
-        <div className="flex flex-none items-center border-b-3 border-arcade-border-strong">
+        {/* A altura combinada com o Header (ver o comentário lá): as duas bordas
+            de baixo formam uma linha só. */}
+        <div className="flex flex-none items-center border-b-3 border-arcade-border-strong lg:h-[81px]">
           <button
             type="button"
             onClick={toggle}

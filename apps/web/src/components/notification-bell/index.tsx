@@ -23,7 +23,12 @@ export function NotificationBell() {
   const { containerRef, open, toggle, close, items, unreadCount, openNotification } = useNotificationBell()
 
   return (
-    <div ref={containerRef} className="relative">
+    // `lg:relative` e não `relative`: abaixo de `lg` o header quebra em linhas
+    // e o sino cai no canto ESQUERDO, então um painel ancorado nele (`right-0`)
+    // abria pra fora da tela. Sem container posicionado, o painel se ancora no
+    // próprio <header> (que é `sticky`, logo é bloco de contenção) e passa a se
+    // medir pela largura da tela — de `lg` pra cima o container volta a mandar.
+    <div ref={containerRef} className="lg:relative">
       <button
         type="button"
         onClick={toggle}
@@ -44,7 +49,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[min(340px,calc(100vw-2rem))] border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+        <div className="absolute inset-x-4 top-[calc(100%+10px)] z-[70] ml-auto max-w-[380px] border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg sm:inset-x-6 lg:left-auto lg:right-0 lg:w-[340px] lg:max-w-none">
           <div className="flex items-center justify-between border-b-3 border-arcade-border-strong px-4 py-3">
             <span className="font-pixel text-[9px] tracking-widest text-arcade-text-muted">
               NOTIFICAÇÕES

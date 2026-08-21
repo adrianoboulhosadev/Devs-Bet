@@ -6,6 +6,7 @@ import type { GroupMatchDTO } from '@tournament/adapters'
 import type { MatchDTO } from '@match/adapters'
 import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/status-badge'
+import { ParticipantAvatar } from '@/components/participant-avatar'
 
 interface GroupMatchCardProps {
   match: GroupMatchDTO
@@ -30,11 +31,22 @@ export function GroupMatchCard({ match }: GroupMatchCardProps) {
 
   return (
     <div className="border-3 border-arcade-border bg-arcade-surface p-3 font-arcade text-lg shadow-pixel-sm">
-      {/* Same stacked layout as BracketSlotCard — see the note there. */}
-      <div className="flex flex-col items-center gap-0.5 text-center">
-        <span className="break-words text-arcade-text">{match.playerA.displayName}</span>
-        <span className="font-pixel text-[8px] text-arcade-text-muted">VS</span>
-        <span className="break-words text-arcade-text">{match.playerB.displayName}</span>
+      {/* Foto + nome, mesma leitura do card da chave (ver BracketSlotCard). */}
+      <div className="space-y-1.5">
+        {[match.playerA, match.playerB].map((player) => (
+          <div key={player.id} className="flex items-center gap-2.5">
+            <ParticipantAvatar
+              id={player.participantId}
+              name={player.displayName}
+              imageUrl={player.imageUrl}
+              className="h-8 w-8"
+              textClassName="text-[8px]"
+            />
+            <span title={player.displayName} className="min-w-0 flex-1 truncate text-arcade-text">
+              {player.displayName}
+            </span>
+          </div>
+        ))}
       </div>
 
       {match.matchId ? (

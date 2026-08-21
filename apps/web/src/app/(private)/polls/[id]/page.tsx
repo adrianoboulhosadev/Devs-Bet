@@ -93,115 +93,114 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
         </p>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="flex flex-col gap-5">
-          <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
-            <div className="flex items-center justify-between border-b-3 border-arcade-border-strong px-4 py-3.5">
-              <span className="font-pixel text-[10px] tracking-widest text-arcade-lime">
-                {marketClosed ? 'ODDS FINAIS' : 'ODDS AO VIVO'}
-              </span>
-              <span className="font-arcade text-lg text-arcade-text-muted">pool total {formatBRL(totalPool)}</span>
-            </div>
-            {poll.options.map((option) => {
-              const line = poolOf(option.id)
-              const pct = totalPool > 0 ? Math.round(((line?.pool ?? 0) / totalPool) * 100) : 0
-              const picked = has(poll.id, option.id)
-              const clickable = isOpen && !isSelfExcluded
-              const color = colorForId(option.id)
-              const isAnswer = poll.winningOptionId === option.id
+      {/* Mesma montagem da tela de partida: odds e histórico dividem a linha (o
+          grid iguala a altura dos dois) e o livro de apostas ocupa a largura
+          inteira embaixo, sem sobrar vazio ao lado. */}
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
+        <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel-lg">
+          <div className="flex items-center justify-between border-b-3 border-arcade-border-strong px-4 py-3.5">
+            <span className="font-pixel text-[10px] tracking-widest text-arcade-lime">
+              {marketClosed ? 'ODDS FINAIS' : 'ODDS AO VIVO'}
+            </span>
+            <span className="font-arcade text-lg text-arcade-text-muted">pool total {formatBRL(totalPool)}</span>
+          </div>
+          {poll.options.map((option) => {
+            const line = poolOf(option.id)
+            const pct = totalPool > 0 ? Math.round(((line?.pool ?? 0) / totalPool) * 100) : 0
+            const picked = has(poll.id, option.id)
+            const clickable = isOpen && !isSelfExcluded
+            const color = colorForId(option.id)
+            const isAnswer = poll.winningOptionId === option.id
 
-              const content = (
-                <span className="flex flex-wrap items-center gap-3.5">
-                  <span className="min-w-[120px] flex-1">
-                    <span className="block text-2xl leading-tight text-arcade-text">
-                      {option.label}
-                      {isAnswer && <span className="ml-2 font-arcade text-lg text-arcade-lime">✓</span>}
-                    </span>
-                    <span className="mt-1.5 block h-2 bg-[#0b0714]">
-                      <span className="block h-full transition-all" style={{ backgroundColor: color, width: `${pct}%` }} />
-                    </span>
+            const content = (
+              <span className="flex flex-wrap items-center gap-3.5">
+                <span className="min-w-[120px] flex-1">
+                  <span className="block text-2xl leading-tight text-arcade-text">
+                    {option.label}
+                    {isAnswer && <span className="ml-2 font-arcade text-lg text-arcade-lime">✓</span>}
                   </span>
-                  <span className="text-right">
-                    <span className="block text-3xl leading-none text-arcade-text">
-                      {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
-                    </span>
-                    <span className="block font-arcade text-lg text-arcade-text-muted">{formatBRL(line?.pool ?? 0)}</span>
+                  <span className="mt-1.5 block h-2 bg-[#0b0714]">
+                    <span className="block h-full transition-all" style={{ backgroundColor: color, width: `${pct}%` }} />
                   </span>
                 </span>
-              )
+                <span className="text-right">
+                  <span className="block text-3xl leading-none text-arcade-text">
+                    {line?.impliedOdd ? `${line.impliedOdd}x` : '—'}
+                  </span>
+                  <span className="block font-arcade text-lg text-arcade-text-muted">{formatBRL(line?.pool ?? 0)}</span>
+                </span>
+              </span>
+            )
 
-              return clickable ? (
-                <button
-                  key={option.id}
-                  type="button"
-                  aria-pressed={picked}
-                  onClick={() =>
-                    toggle({
-                      marketType: 'poll',
-                      marketId: poll.id,
-                      selectionId: option.id,
-                      marketLabel: poll.question,
-                      selectionLabel: option.label,
-                    })
-                  }
-                  className={`block w-full border-b border-arcade-border-strong px-4 py-4 text-left transition-colors hover:bg-[#1d1233] ${
-                    picked ? 'bg-[#2a1150]' : ''
-                  }`}
-                >
-                  {content}
-                </button>
-              ) : (
-                <div key={option.id} className="border-b border-arcade-border-strong px-4 py-4">
-                  {content}
-                </div>
-              )
-            })}
-            <p className="px-4 py-3.5 font-arcade text-lg text-arcade-text-muted">
-              {isSelfExcluded
-                ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
-                : isOpen
-                  ? 'clica numa opção pra montar sua aposta · odd parimutuel, muda conforme a galera aposta'
-                  : poll.status === 'closed'
-                    ? 'apostas fechadas — esperando a resposta aparecer'
-                    : 'mercado fechado — mostrando o pool final'}
-            </p>
-          </div>
+            return clickable ? (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={picked}
+                onClick={() =>
+                  toggle({
+                    marketType: 'poll',
+                    marketId: poll.id,
+                    selectionId: option.id,
+                    marketLabel: poll.question,
+                    selectionLabel: option.label,
+                  })
+                }
+                className={`block w-full border-b border-arcade-border-strong px-4 py-4 text-left transition-colors hover:bg-[#1d1233] ${
+                  picked ? 'bg-[#2a1150]' : ''
+                }`}
+              >
+                {content}
+              </button>
+            ) : (
+              <div key={option.id} className="border-b border-arcade-border-strong px-4 py-4">
+                {content}
+              </div>
+            )
+          })}
+          <p className="px-4 py-3.5 font-arcade text-lg text-arcade-text-muted">
+            {isSelfExcluded
+              ? 'Apostas estão bloqueadas enquanto sua autoexclusão estiver ativa.'
+              : isOpen
+                ? 'clica numa opção pra montar sua aposta · odd parimutuel, muda conforme a galera aposta'
+                : poll.status === 'closed'
+                  ? 'apostas fechadas — esperando a resposta aparecer'
+                  : 'mercado fechado — mostrando o pool final'}
+          </p>
         </div>
 
-        <div className="flex flex-col gap-5">
-          <div className="border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel-lg">
-            <h2 className="mb-4 font-pixel text-[10px] tracking-widest text-arcade-cyan">HISTÓRICO DAS ODDS</h2>
-            <OddsHistoryChart snapshots={oddsHistory} selectionLabel={optionLabel} />
-          </div>
+        <div className="border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel-lg">
+          <h2 className="mb-4 font-pixel text-[10px] tracking-widest text-arcade-cyan">HISTÓRICO DAS ODDS</h2>
+          <OddsHistoryChart snapshots={oddsHistory} selectionLabel={optionLabel} />
+        </div>
 
-          <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel">
-            <h2 className="border-b-3 border-arcade-border-strong px-4 py-3 font-pixel text-[10px] tracking-widest text-arcade-amber">
-              QUEM JÁ ENTROU ({book.length})
-            </h2>
-            {book.length === 0 ? (
-              <p className="px-4 py-4 font-arcade text-lg text-arcade-text-muted">Nenhuma aposta ainda.</p>
-            ) : (
-              book.map((bet) => (
-                <div key={bet.id} className="flex items-center gap-3 border-b border-arcade-border-strong px-4 py-3">
-                  <span className="min-w-0 flex-1 font-arcade text-lg text-arcade-text-soft">
-                    <span className="text-arcade-text-muted">{bet.bettorLabel}</span> em{' '}
-                    <span className="text-arcade-text">{optionLabel(bet.selectionId)}</span>
-                  </span>
-                  <span className="flex items-center gap-3 whitespace-nowrap">
-                    <span className="text-xl text-arcade-lime">{formatBRL(bet.stake)}</span>
-                    <StatusBadge status={bet.status} />
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+        <div className="border-3 border-arcade-border bg-arcade-surface shadow-pixel lg:col-span-2">
+          <h2 className="border-b-3 border-arcade-border-strong px-4 py-3 font-pixel text-[10px] tracking-widest text-arcade-amber">
+            QUEM JÁ ENTROU ({book.length})
+          </h2>
+          {book.length === 0 ? (
+            <p className="px-4 py-4 font-arcade text-lg text-arcade-text-muted">Nenhuma aposta ainda.</p>
+          ) : (
+            book.map((bet) => (
+              <div key={bet.id} className="flex items-center gap-3 border-b border-arcade-border-strong px-4 py-3">
+                <span className="min-w-0 flex-1 font-arcade text-lg text-arcade-text-soft">
+                  <span className="text-arcade-text-muted">{bet.bettorLabel}</span> em{' '}
+                  <span className="text-arcade-text">{optionLabel(bet.selectionId)}</span>
+                </span>
+                <span className="flex items-center gap-3 whitespace-nowrap">
+                  <span className="text-xl text-arcade-lime">{formatBRL(bet.stake)}</span>
+                  <StatusBadge status={bet.status} />
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
       {isAdmin && poll.status !== 'settled' && poll.status !== 'cancelled' && (
         <div className="space-y-4 border-3 border-arcade-amber bg-arcade-surface p-5 shadow-pixel-lg">
           <h2 className="font-pixel text-xs tracking-widest text-arcade-amber">SALA DE CONTROLE</h2>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
             {poll.status === 'open' && (
               <Button variant="warning" onClick={close}>
                 Fechar apostas
@@ -235,7 +234,7 @@ export default function PollDetailPage({ params }: { params: { id: string } }) {
               <p className="font-arcade text-base leading-snug text-arcade-text-muted">
                 A pergunta, o critério e as opções não mudam — é o combinado de quem já apostou.
               </p>
-              <div className="flex gap-2.5">
+              <div className="flex flex-col gap-2.5 sm:flex-row">
                 <Button type="submit" variant="warning" disabled={saving}>
                   {saving ? 'Salvando…' : 'Salvar'}
                 </Button>

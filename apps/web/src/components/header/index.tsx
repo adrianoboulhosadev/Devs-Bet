@@ -19,8 +19,13 @@ const MenuIcon = () => (
 export function Header() {
   const { kicker, title, available, openNav } = useHeader()
 
+  // `lg:h-[81px]` casa com a altura do bloco do logo na Sidebar: as duas bordas
+  // de baixo são a MESMA linha horizontal atravessando a tela, e sem uma altura
+  // combinada elas ficavam ~6px desencontradas (o conteúdo de cada lado é que
+  // mandava). Só de `lg` pra cima — abaixo disso o header quebra em várias
+  // linhas e uma altura fixa cortaria conteúdo.
   return (
-    <header className="sticky top-0 z-50 flex flex-none flex-wrap items-center gap-4 gap-y-3 border-b-3 border-arcade-border-strong bg-arcade-header px-4 py-4 sm:px-6">
+    <header className="sticky top-0 z-50 flex flex-none flex-wrap items-center gap-4 gap-y-3 border-b-3 border-arcade-border-strong bg-arcade-header px-4 py-4 sm:px-6 lg:h-[81px]">
       {/* The only way to the navigation below `lg`, where the rail is a drawer. */}
       <button
         type="button"
