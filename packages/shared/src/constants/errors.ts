@@ -103,6 +103,24 @@ export const Errors = {
   // and no new reply hangs off it — what is already there stays visible.
   COMMENT_DELETED: 'COMMENT_DELETED',
 
+  // poll (open questions: "quando fulano vai ser demitido?")
+  POLL_NOT_FOUND: 'POLL_NOT_FOUND',
+  POLL_NOT_OPEN: 'POLL_NOT_OPEN',
+  POLL_ALREADY_SETTLED: 'POLL_ALREADY_SETTLED',
+  // The result was declared while betting was still open (or on a poll already
+  // called off) — a poll is only resolved from `closed`.
+  INVALID_POLL_STATUS: 'INVALID_POLL_STATUS',
+  NOT_ENOUGH_POLL_OPTIONS: 'NOT_ENOUGH_POLL_OPTIONS',
+  TOO_MANY_POLL_OPTIONS: 'TOO_MANY_POLL_OPTIONS',
+  // Two options that read the same to a human ("Sim" and "sim ").
+  DUPLICATE_POLL_OPTION: 'DUPLICATE_POLL_OPTION',
+  // The declared winner is not one of this poll's own options.
+  INVALID_POLL_OPTION: 'INVALID_POLL_OPTION',
+  POLL_QUESTION_TOO_LONG: 'POLL_QUESTION_TOO_LONG',
+  POLL_OPTION_TOO_LONG: 'POLL_OPTION_TOO_LONG',
+  // A poll without a written criterion is unjudgeable — see ResolutionCriteria.
+  RESOLUTION_CRITERIA_TOO_LONG: 'RESOLUTION_CRITERIA_TOO_LONG',
+
   // tournament
   TOURNAMENT_NOT_FOUND: 'TOURNAMENT_NOT_FOUND',
   INVALID_TOURNAMENT_SIZE: 'INVALID_TOURNAMENT_SIZE',
