@@ -4,6 +4,8 @@
 export const STATUS_STYLES: Record<string, string> = {
   open: 'bg-arcade-lime',
   locked: 'bg-arcade-amber',
+  // A poll's equivalent of `locked`: betting shut, answer still pending.
+  closed: 'bg-arcade-amber',
   settled: 'bg-arcade-text-muted',
   cancelled: 'bg-arcade-danger',
   in_progress: 'bg-arcade-magenta',
@@ -22,6 +24,7 @@ export const STATUS_STYLES: Record<string, string> = {
 export const STATUS_LABELS: Record<string, string> = {
   open: 'Aberta',
   locked: 'Travada',
+  closed: 'Fechada',
   settled: 'Encerrada',
   cancelled: 'Cancelada',
   in_progress: 'Em andamento',

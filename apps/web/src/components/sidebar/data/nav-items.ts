@@ -7,6 +7,7 @@ import {
   LeaderboardIcon,
   MatchesIcon,
   ParticipantsIcon,
+  PollsIcon,
   TournamentsIcon,
   WalletIcon,
 } from './icons'
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Início', icon: DashboardIcon },
   { href: '/matches', label: 'Partidas', icon: MatchesIcon },
   { href: '/tournaments', label: 'Torneios', icon: TournamentsIcon },
+  { href: '/polls', label: 'Enquetes', icon: PollsIcon },
   { href: '/bets', label: 'Minhas apostas', icon: BetsIcon },
   { href: '/leaderboard', label: 'Placar geral', icon: LeaderboardIcon },
   { href: '/wallet', label: 'Créditos', icon: WalletIcon },

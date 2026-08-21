@@ -7,6 +7,8 @@ import type { MatchDTO } from '@match/adapters'
 import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/notify'
+import { usePolls } from '@/hooks/use-polls'
+import { MARKET_ROUTES } from '@/data/market-routes'
 
 export function useBets() {
   const queryClient = useQueryClient()
@@ -31,6 +33,9 @@ export function useBets() {
   // Same key /bet/combo/mine already uses (see use-my-combos.ts) — cache-shared,
   // no extra request, just enough to roll up simple bets + combo tickets into
   // one summary for the stat tiles.
+  // Cache-shared with the /polls lobby and the combo builder (same key).
+  const { pollOf, optionLabelOf } = usePolls()
+
   const combos = useQuery({
     queryKey: ['combo-mine'],
     queryFn: async (): Promise<ComboBetDTO[]> => (await api.get<ComboBetDTO[]>('/bet/combo/mine')).data,
@@ -57,10 +62,19 @@ export function useBets() {
 
   /**
    * What to show on a bet's card: who is playing (or, for an outright, who was
-   * picked to be champion) and the market's title — so the user can tell bets
-   * apart at a glance without opening each match/tournament.
+   * picked to be champion; for a poll, which answer was backed) and the
+   * market's title — so the user can tell bets apart at a glance without
+   * opening each market.
    */
   const marketInfoOf = (bet: BetDTO): { participants: string; title: string } => {
+    if (bet.marketType === 'poll') {
+      const poll = pollOf(bet.marketId)
+      const answer = optionLabelOf(bet.marketId, bet.selectionId)
+      return {
+        participants: answer ? `Palpite: ${answer}` : '—',
+        title: poll?.question ?? '—',
+      }
+    }
     if (bet.marketType === 'tournament_outright') {
       const tournament = tournaments.data?.find((entry) => entry.id === bet.marketId)
       const champion = tournament?.participants.find((participant) => participant.id === bet.selectionId)
@@ -84,6 +98,7 @@ export function useBets() {
    */
   const canCancel = (bet: BetDTO): boolean => {
     if (bet.status !== 'open') return false
+    if (bet.marketType === 'poll') return pollOf(bet.marketId)?.status === 'open'
     if (bet.marketType === 'tournament_outright') {
       const tournament = tournaments.data?.find((entry) => entry.id === bet.marketId)
       return (
@@ -100,12 +115,15 @@ export function useBets() {
     onSuccess: (_result, betId) => {
       queryClient.invalidateQueries({ queryKey: ['my-bets'] })
       queryClient.invalidateQueries({ queryKey: ['wallet'] })
-      // The bet left the pool, so the market's odds moved.
+      // The bet left the pool, so the market's odds moved. Which cache keys hold
+      // them depends on the market (see MARKET_ROUTES) — previously this guessed
+      // by invalidating a match's AND an outright's, which quietly stopped
+      // covering everything the moment a third market existed.
       const bet = query.data?.find((entry) => entry.id === betId)
       if (bet) {
-        queryClient.invalidateQueries({ queryKey: ['odds', bet.marketId] })
-        queryClient.invalidateQueries({ queryKey: ['outright-odds', bet.marketId] })
-        queryClient.invalidateQueries({ queryKey: ['odds-history', bet.marketId] })
+        const routes = MARKET_ROUTES[bet.marketType]
+        queryClient.invalidateQueries({ queryKey: [routes.oddsKey, bet.marketId] })
+        queryClient.invalidateQueries({ queryKey: [routes.oddsHistoryKey, bet.marketId] })
         queryClient.invalidateQueries({ queryKey: ['book', bet.marketId] })
       }
       notify.success('Aposta cancelada — o valor voltou para a carteira.')

@@ -7,6 +7,7 @@ import { Loading } from '@/components/loading'
 import { Button } from '@/components/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { formatBRL } from '@/lib/money'
+import { marketHref, MARKET_ROUTES } from '@/data/market-routes'
 import { useBets } from './hooks/use-bets'
 import { MyCombos } from './components/my-combos'
 
@@ -43,7 +44,7 @@ export default function BetsPage() {
         <ul className="space-y-2.5">
           {bets.map((bet) => {
             const info = marketInfoOf(bet)
-            const marketHref = bet.marketType === 'tournament_outright' ? `/tournaments/${bet.marketId}` : `/matches/${bet.marketId}`
+            const href = marketHref(bet.marketType, bet.marketId)
             return (
               <li key={bet.id} className="space-y-3 border-3 border-arcade-border bg-arcade-surface p-4 shadow-pixel">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -64,8 +65,8 @@ export default function BetsPage() {
                         Cancelar
                       </Button>
                     )}
-                    <Link href={marketHref}>
-                      <Button variant="secondary">Ver partida</Button>
+                    <Link href={href}>
+                      <Button variant="secondary">Ver {MARKET_ROUTES[bet.marketType].noun}</Button>
                     </Link>
                   </div>
                 </div>

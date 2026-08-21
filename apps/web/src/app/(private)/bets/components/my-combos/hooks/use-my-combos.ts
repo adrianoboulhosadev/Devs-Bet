@@ -7,6 +7,7 @@ import type { TournamentDTO } from '@tournament/adapters'
 import { api } from '@/lib/api'
 import { notify } from '@/lib/notify'
 import { MATCH_DRAW_SELECTION_ID } from '@/data/match-selections'
+import { usePolls } from '@/hooks/use-polls'
 
 /**
  * The user's combo tickets, plus the lookups needed to name each leg: the DTO
@@ -31,7 +32,11 @@ export function useMyCombos() {
     queryFn: async (): Promise<TournamentDTO[]> => (await api.get<TournamentDTO[]>('/tournament')).data,
   })
 
+  // Cache-shared with the /polls lobby (same key).
+  const { pollOf, optionLabelOf } = usePolls()
+
   const marketLabel = (marketType: BetMarketType, marketId: string): string => {
+    if (marketType === 'poll') return pollOf(marketId)?.question ?? '—'
     if (marketType === 'tournament_outright') {
       const tournament = tournaments.data?.find((entry) => entry.id === marketId)
       return tournament ? `${tournament.title} (campeão)` : '—'
@@ -41,6 +46,7 @@ export function useMyCombos() {
 
   const selectionLabel = (marketType: BetMarketType, marketId: string, selectionId: string): string => {
     if (selectionId === MATCH_DRAW_SELECTION_ID) return 'Empate'
+    if (marketType === 'poll') return optionLabelOf(marketId, selectionId) ?? '—'
     if (marketType === 'tournament_outright') {
       return (
         tournaments.data
@@ -63,6 +69,7 @@ export function useMyCombos() {
   const canCancel = (combo: ComboBetDTO): boolean => {
     if (combo.status !== 'open') return false
     return combo.legs.every((leg) => {
+      if (leg.marketType === 'poll') return pollOf(leg.marketId)?.status === 'open'
       if (leg.marketType === 'tournament_outright') {
         const tournament = tournaments.data?.find((entry) => entry.id === leg.marketId)
         return (

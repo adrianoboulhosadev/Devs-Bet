@@ -39,6 +39,17 @@ export const TournamentsIcon = () => (
   </Icon>
 )
 
+// A speech bubble with a question mark: a poll is a QUESTION somebody asked.
+export const PollsIcon = () => (
+  <Icon>
+    <rect x="1" y="2" width="14" height="9" />
+    <rect x="3" y="11" width="3" height="3" />
+    <rect x="6" y="4" width="4" height="2" fill="#0d0818" />
+    <rect x="9" y="6" width="2" height="2" fill="#0d0818" />
+    <rect x="7" y="8" width="2" height="1" fill="#0d0818" />
+  </Icon>
+)
+
 export const BetsIcon = () => (
   <Icon>
     <rect x="1" y="3" width="14" height="10" />

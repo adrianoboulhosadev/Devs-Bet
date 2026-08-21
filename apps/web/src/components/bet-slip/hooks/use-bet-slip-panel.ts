@@ -10,6 +10,7 @@ import { notify } from '@/lib/notify'
 import { toCents } from '@/lib/money'
 import { useBetSlip, type SlipSelection } from '@/contexts/bet-slip-context'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
+import { MARKET_ROUTES } from '@/data/market-routes'
 
 // Same neutral "evens" the backend falls back to when nobody has backed a
 // selection yet, so the preview matches what the ticket will actually lock in
@@ -21,17 +22,16 @@ const DEFAULT_ODD = 2
 // (INVALID_COMBO_ODD), so the panel has to rule it out up front.
 const MIN_COMBO_ODD = 1.01
 
-const isOutright = (selection: SlipSelection) => selection.marketType === 'tournament_outright'
-
 const oddsUrl = (selection: SlipSelection) =>
-  isOutright(selection)
-    ? `/bet/tournament/${selection.marketId}/odds`
-    : `/bet/match/${selection.marketId}/odds`
+  `/bet/${MARKET_ROUTES[selection.marketType].api}/${selection.marketId}/odds`
 
-// Same cache keys the match page and the outright card already use, so the slip
-// shares their data instead of opening a second query for the same odds.
-const oddsKey = (selection: SlipSelection) =>
-  isOutright(selection) ? ['outright-odds', selection.marketId] : ['odds', selection.marketId]
+// Same cache keys the match page, the outright card and the poll page already
+// use, so the slip shares their data instead of opening a second query for the
+// same odds.
+const oddsKey = (selection: SlipSelection) => [
+  MARKET_ROUTES[selection.marketType].oddsKey,
+  selection.marketId,
+]
 
 /**
  * Drives the bet slip panel. Holds the stakes and which mode is active, prices
@@ -91,9 +91,7 @@ export function useBetSlipPanel() {
     selections.forEach((selection) => {
       queryClient.invalidateQueries({ queryKey: oddsKey(selection) })
       queryClient.invalidateQueries({
-        queryKey: isOutright(selection)
-          ? ['outright-odds-history', selection.marketId]
-          : ['odds-history', selection.marketId],
+        queryKey: [MARKET_ROUTES[selection.marketType].oddsHistoryKey, selection.marketId],
       })
       queryClient.invalidateQueries({ queryKey: ['book', selection.marketId] })
       queryClient.invalidateQueries({ queryKey: ['match', selection.marketId] })
