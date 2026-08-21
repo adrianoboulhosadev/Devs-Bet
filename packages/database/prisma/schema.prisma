@@ -487,6 +487,11 @@ model TournamentGroupMatch {
 // (PostComment rejects a reply to a reply). `editedAt` is what every reader
 // sees as "editado"; the previous texts live in comment_revisions, readable by
 // the admin alone.
+//
+// `deletedAt` is the AUTHOR's own delete, and it is SOFT: the row and its
+// `body` stay exactly where they are (erasing them would take the replies with
+// them), and the read side stops serving the text to anyone but the admin. The
+// admin's bin is still a real DELETE — see CommentRepository.
 model Comment {
   id          String            @id @default(uuid())
   subjectType String            @map("subject_type")
@@ -498,6 +503,7 @@ model Comment {
   body        String
   createdAt   DateTime          @default(now()) @map("created_at")
   editedAt    DateTime?         @map("edited_at")
+  deletedAt   DateTime?         @map("deleted_at")
   revisions   CommentRevision[]
 
   @@index([subjectType, subjectId, createdAt])
