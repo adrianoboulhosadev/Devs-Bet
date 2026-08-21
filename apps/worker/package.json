@@ -12,6 +12,7 @@
   "dependencies": {
     "@betting/adapters": "*",
     "@match/adapters": "*",
+    "@poll/adapters": "*",
     "@wallet/adapters": "*",
     "shared": "*",
     "database": "*",

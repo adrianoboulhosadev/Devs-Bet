@@ -1,5 +1,5 @@
 import { DomainEvent } from 'shared'
-import { Notification, NotificationInput } from '@notification/adapters'
+import { Notification, NotificationInput, NotificationMarketKind } from '@notification/adapters'
 import {
   BetMarketType,
   BetWon,
@@ -54,8 +54,10 @@ export async function writeNotifications(
 
 /** Betting names the outright market `tournament_outright`; the notification
  * only cares which page to link to. */
-function marketKind(marketType: BetMarketType): 'match' | 'tournament' {
-  return marketType === 'match' ? 'match' : 'tournament'
+function marketKind(marketType: BetMarketType): NotificationMarketKind {
+  if (marketType === 'match') return 'match'
+  if (marketType === 'poll') return 'poll'
+  return 'tournament'
 }
 
 /**
@@ -72,6 +74,12 @@ export async function resolveMarketTitle(
   if (marketType === 'match') {
     const match = await tx.match.findUnique({ where: { id: marketId }, select: { title: true } })
     return match?.title ?? 'a partida'
+  }
+  if (marketType === 'poll') {
+    // A poll has no title — the QUESTION is what names it ("Quando o fulano vai
+    // ser demitido?"), which is exactly what the inbox line should read.
+    const poll = await tx.poll.findUnique({ where: { id: marketId }, select: { question: true } })
+    return poll?.question ?? 'a enquete'
   }
   const tournament = await tx.tournament.findUnique({
     where: { id: marketId },
