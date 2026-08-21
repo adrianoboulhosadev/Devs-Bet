@@ -96,9 +96,12 @@ export const Errors = {
   // A reply always hangs off a ROOT comment: the thread is two levels deep, like
   // Facebook's. Also answered when the parent belongs to another match/tournament.
   INVALID_COMMENT_PARENT: 'INVALID_COMMENT_PARENT',
-  // Only the author edits their own text. Deleting is the admin's job, and the
-  // ORIGINAL text stays readable to the admin (see CommentRevision).
+  // Only the author edits (and withdraws) their own text; the admin is the one
+  // who can delete anybody's for good.
   NOT_COMMENT_AUTHOR: 'NOT_COMMENT_AUTHOR',
+  // The comment was withdrawn by its author (soft delete): it cannot be edited
+  // and no new reply hangs off it — what is already there stays visible.
+  COMMENT_DELETED: 'COMMENT_DELETED',
 
   // tournament
   TOURNAMENT_NOT_FOUND: 'TOURNAMENT_NOT_FOUND',
