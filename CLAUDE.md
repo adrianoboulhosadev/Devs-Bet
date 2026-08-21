@@ -28,7 +28,7 @@ por bounded context**, com **modelagem RICA** (entidades com comportamento e inv
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
 Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `participant`, `tournament`,
-`notification`, `comment`. O `auth` é a **referência canônica**
+`poll`, `notification`, `comment`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -53,7 +53,7 @@ apps/
 ```
 
 Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@participant/*`,
-`@tournament/*`, `@notification/*`, `@comment/*`. `core` e
+`@tournament/*`, `@poll/*`, `@notification/*`, `@comment/*`. `core` e
 `adapters` são **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
@@ -145,6 +145,7 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
   `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats;
   `category`=árvore de categorias das partidas; `tournament`=chaveamento eliminatório que orquestra matches;
+  `poll`=pergunta aberta com N respostas apostáveis (não conhece o betting — é só mais um mercado);
   `notification`=caixa de entrada do usuário (não conhece nenhum outro contexto — quem dispara é a camada de app);
   `comment`=conversa dos apostadores embaixo de uma partida/torneio (não conhece nem o assunto nem quem é o autor).
 - **Categoria da partida (cross-context)**: o `match` guarda `categoryId` (folha da árvore) como
@@ -205,7 +206,10 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `CATEGORY_HAS_CHILDREN`, `CATEGORY_ALREADY_EXISTS`, `TOURNAMENT_NOT_FOUND`, `INVALID_TOURNAMENT_SIZE`,
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
-`INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
+`INVALID_COMBO_ODD`, `POLL_NOT_FOUND`, `POLL_NOT_OPEN`, `POLL_ALREADY_SETTLED`, `INVALID_POLL_STATUS`,
+`NOT_ENOUGH_POLL_OPTIONS`, `TOO_MANY_POLL_OPTIONS`, `DUPLICATE_POLL_OPTION`, `INVALID_POLL_OPTION`,
+`POLL_QUESTION_TOO_LONG`, `POLL_OPTION_TOO_LONG`, `RESOLUTION_CRITERIA_TOO_LONG`,
+`DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
 `STAKE_LIMIT_EXCEEDED`, `NOTIFICATION_NOT_FOUND`, `COMMENT_NOT_FOUND`, `COMMENT_TOO_LONG`,
 `COMMENT_SUBJECT_NOT_FOUND`, `INVALID_COMMENT_PARENT`, `NOT_COMMENT_AUTHOR`, `COMMENT_DELETED`.
 
@@ -318,8 +322,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   enfileirada quando a match realmente chega em `settled` — enquanto o bestOf está em andamento
   (`locked`, aguardando a próxima unidade), nada é enfileirado.
 - **betting** — aposta num **mercado**: `Bet` (`open/won/lost/refunded`) tem `marketType`
-  (`match` | `tournament_outright`) + `marketId` (id da match ou do torneio) + `selectionId` (participante
-  da match ou do torneio). `PayoutCalculator`/`OddsCalculator` (parimutuel) agrupam por `selectionId` — mesma
+  (`match` | `tournament_outright` | `poll`) + `marketId` (id da match, do torneio ou da enquete) +
+  `selectionId` (participante da match/torneio, ou opção da enquete). `PayoutCalculator`/`OddsCalculator` (parimutuel) agrupam por `selectionId` — mesma
   lógica pros dois mercados. `SettleMarket`/`RefundMarket` (enfileirados → worker via fila `settlement`), stats.
   **Outright (campeão do torneio)**: aberto **só até o torneio começar** (trava no `scheduledAt`); liquida
   quando o campeão é decidido (paga bem mais — azarão), estorna se o torneio é cancelado. Quem resolve se o
@@ -426,9 +430,51 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `participant` (que nunca importa `match`/`tournament`). Upload de foto: `/upload/participants`
   (admin-only, mesmo padrão de `/upload/matchs`). Rotas: `GET`/`POST /participant`, `PATCH`/`DELETE
   /participant/:id`.
+- **poll** — **enquete**: uma pergunta aberta sobre o mundo ("quando o fulano vai ser demitido?")
+  com N respostas apostáveis. `Poll` (agregado rico: VOs `PollQuestion`, `ResolutionCriteria` e
+  `PollOptionLabel`; status `open → closed → settled` / `cancelled`) + `PollOption` (parte do
+  agregado — **o id da opção É o `selectionId` da aposta**, exatamente como o id de um
+  `MatchParticipant`). **Não é uma `Match` com campos opcionais**: não tem participante, unidade,
+  `bestOf` nem empate, e o resultado é declarado por alguém lendo o mundo, não observado num placar.
+  O que ela compartilha com uma partida é só o que o `betting` já sabe consumir: um `marketId` e um
+  conjunto de `selectionIds` — por isso o único arquivo do `betting` que mudou pra isso existir foi
+  a união `BetMarketType` (`'match' | 'tournament_outright' | 'poll'`). Pool parimutuel, odds ao
+  vivo + histórico, perna de múltipla, leaderboard, XP, limite de aposta, autoexclusão e
+  cancelamento/estorno vieram **de graça**, sem uma linha de código nova.
+  **Sim/Não NÃO é um tipo separado** — é a enquete de 2 opções; o front tem um atalho que
+  pré-preenche as duas (`OPTION_PRESETS`) e o domínio nunca ramifica. Mínimo 2 e máximo 10 opções
+  (`NOT_ENOUGH_POLL_OPTIONS`/`TOO_MANY_POLL_OPTIONS`), sem duas que se leiam igual pra um humano
+  (`DUPLICATE_POLL_OPTION` — `PollOptionLabel.comparisonKey` normaliza caixa e espaço). As opções
+  são **texto livre**, não catálogo: "Sim", "Até dezembro/2026" são respostas, não competidores que
+  valha reusar entre enquetes (é a diferença deliberada pro `participant`).
+  **`resolutionCriteria` é obrigatório e é o ponto central do desenho.** O resultado de uma partida
+  é observável; o de uma enquete é discutível — se pedido de demissão conta, se acordo conta — e é
+  exatamente isso que vira briga DEPOIS que o dinheiro está na mesa. Escrever como vai ser julgado
+  (e por qual fonte) antes da primeira aposta, e nunca deixar mudar, é o que faz a liquidação ser
+  discutível **contra alguma coisa** em vez de contra a memória do admin. Aparece sempre na tela,
+  nunca atrás de um toggle. **Pergunta, critério e opções são congelados na criação** — são o
+  contrato que o apostador aceitou; errou, **cancela (estorna todo mundo) e abre outra**. O único
+  detalhe editável é o **prazo** (`ReschedulePoll` → `Poll.reschedule`, só enquanto `open`,
+  reagendando o fechamento) — e o repositório Prisma nem tem caminho que reescreva os outros campos.
+  **`closed` é o `locked` da enquete, e pode durar semanas**: as apostas fecham no `closesAt` (job
+  BullMQ atrasado na fila `poll-close`, porta `PollCloseQueue`, worker roda `AutoClosePoll` —
+  molde idêntico ao `match-lock`/`AutoLockMatch`, com fila e porta próprias justamente pra não
+  acoplar dois contextos que nunca se falam), mas a RESPOSTA pode só aparecer bem depois — é o caso
+  de "quando". O admin também fecha na mão (`ClosePoll`) quando a resposta chega antes do prazo.
+  `ResolvePoll` só aceita de `closed` (`INVALID_POLL_STATUS`) e só uma opção da própria enquete
+  (`INVALID_POLL_OPTION`); a rota enfileira o settlement com `winningSelectionId` = id da opção.
+  Se o mundo nunca responder, `CancelPoll` → estorno (é a saída, e é por isso que a pergunta nunca
+  precisa ser editável). Criar/fechar/resolver/cancelar/reagendar são **admin-only** (`AdminUseCase`);
+  listar/ver é aberto. Categoria: aponta pra uma **folha**, com `categoryIsLeaf` resolvido pelo
+  backend (mesmo padrão do match). Imagem opcional via `POST /upload/polls` (admin, preset `banner`).
+  Front: `app/(private)/polls` (lobby + formulário de abertura) e `polls/[id]` (odds ao vivo,
+  gráfico, book, sala de controle e **seção de comentários**, sempre a última seção).
 - **notification** — caixa de entrada do usuário (sininho no header + tela `/notifications`). Resolve o
   problema de o usuário só descobrir o que aconteceu **indo procurar** (abrir `/bets` pra ver se
   liquidou, `/wallet` pra ver se o Pix entrou) e de o admin só ver a fila entrando na sala de controle.
+  `NotificationMarketKind` (`match`/`tournament`/`poll`) é a uniãozinha própria do contexto (ele não
+  importa `betting`) que decide pra qual página a linha aponta — um **mapa** `MARKET_ROUTES` na
+  entidade, não uma cadeia de ternário, então mercado novo é uma linha e nada mais.
   `Notification` (entidade rica: `userId` destinatário — FK lógica —, `type`, `title`, `body`, `link`,
   `referenceId`, `readAt`; `markAsRead()` idempotente, mantendo o timestamp original). **A cópia mora
   no domínio**: `Notification.for(input)` é um factory com `switch` sobre uma **união discriminada**
@@ -520,9 +566,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   **vazio** (`phase: 'group'`; vira `'knockout'` quando o bracket é montado) — sem linhas de bracket
   persistidas ainda, por isso o `update()` do repositório Prisma faz **upsert** nos slots (podem nascer só
   depois da criação do torneio, ao contrário do grupo, sempre criado por inteiro já na criação).
-- **comment** — conversa dos apostadores embaixo de uma partida/torneio (estilo Facebook), **sempre a
-  ÚLTIMA seção** das telas `matches/[id]` e `tournaments/[id]`. `Comment` (entidade rica: `subjectType`
-  `match`/`tournament` + `subjectId` — FK lógica —, `authorId` — FK lógica —, `parentId`, VO
+- **comment** — conversa dos apostadores embaixo de uma partida/torneio/enquete (estilo Facebook),
+  **sempre a ÚLTIMA seção** das telas `matches/[id]`, `tournaments/[id]` e `polls/[id]`. `Comment`
+  (entidade rica: `subjectType` `match`/`tournament`/`poll` + `subjectId` — FK lógica —, `authorId` — FK lógica —, `parentId`, VO
   `CommentBody`, `createdAt`, `editedAt`) e `CommentRevision` (**append-only**, mesmo espírito do ledger:
   guarda o texto ANTERIOR a cada edição). O contexto **não conhece nem o assunto nem quem é o autor** —
   quem resolve as duas coisas é a camada de app (ver abaixo).
@@ -589,12 +635,16 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   qualquer autenticado]; `POST /combo` e `/combo/mine` [bilhete múltiplo, odds fixas];
   `/stake-limit` [GET/POST, limite de aposta diário — jogo responsável]; `/match/:id` e
   `/match/:id/odds` e `/match/:id/odds/history`; `/tournament/:id`, `/tournament/:id/odds` e
-  `/tournament/:id/odds/history` [outright]),
+  `/tournament/:id/odds/history` [outright]; `/poll/:id`, `/poll/:id/odds` e
+  `/poll/:id/odds/history` [enquete — as mesmas leituras, só outro `marketId`]),
   `category` (`/` [GET aberto; POST admin], `/:id` [PATCH e DELETE admin]),
   `participant` (`/` [GET aberto — alimenta o picker; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
-  `comment` (`GET /match/:id` e `GET /tournament/:id` [thread pronta: raízes + respostas],
+  `poll` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id` [PATCH admin — só o prazo],
+  `/:id/close` [admin — fecha as apostas antes do prazo], `/:id/resolve` [admin — declara a resposta
+  certa e enfileira o pagamento], `/:id/cancel` [admin — estorna todo mundo]),
+  `comment` (`GET /match/:id`, `GET /tournament/:id` e `GET /poll/:id` [thread pronta: raízes + respostas],
   `POST /` [comenta ou responde], `PATCH /:id` [só o autor],
   `DELETE /:id` [só o autor — **soft delete**, vira lápide e preserva as respostas],
   `DELETE /:id/permanent` [admin — apaga a linha e as respostas de vez],
@@ -606,7 +656,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `admin/users` (GET lista todas as contas — portaria) e `admin/users/:id/{approve,reject}`
   (libera / barra; `reject` também revoga acesso e derruba as sessões),
   `upload/{matchs [admin], receipts [usuário autenticado], participants [admin], avatars [usuário
-  autenticado]}`.
+  autenticado], polls [admin]}`.
 - **Anti-IDOR na borda**: o `AuthMiddleware` (aplicado **por classe** de controller via
   `forRoutes(XController)`) valida o token e resolve o id autenticado; controllers usam **sempre** esse
   id (via `@authenticatedUser`), nunca id vindo do corpo/rota. Rotas admin passam por um guard de role.
@@ -683,6 +733,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `TournamentParticipant`(tournament_participants), `TournamentSlot`(tournament_slots; `match_id`/`player_a_id`/
   `player_b_id` são FKs lógicas), `TournamentGroupMatch`(tournament_group_matches; fase de grupos —
   `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas),
+  `Poll`(polls) e `PollOption`(poll_options; relation Prisma intra-contexto pro `Poll`, mesmo padrão de
+  `MatchUnit`/`ComboLeg` — o id da opção é o `selectionId` da aposta, então precisa sobreviver à
+  reconstituição),
   `Notification`(notifications; `@@unique([userId, type, referenceId])` — é o que dá idempotência de
   entrega; `user_id` FK lógica), `Comment`(comments; `subject_id`/`author_id` FKs lógicas, self-relation
   `parent_id` intra-contexto com cascade; `deleted_at` = soft delete do autor — a linha e o `body` ficam,
@@ -718,8 +771,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   ou pelo cancelamento) **enfileira** via porta `SettlementQueue` (produtor BullMQ no backend), com um job
   genérico `{ marketId, winningSelectionId, rakeBasisPoints, cancelled? }`. O **worker** consome a fila
   `settlement` e roda `SettleMarket`/`RefundMarket` através da facade do `betting`, aplicando o
-  `PayoutCalculator` e persistindo tudo numa transação. Serve qualquer mercado (match ou outright do torneio),
-  sem ramificar por tipo (a liquidação acha as apostas abertas por `marketId`).
+  `PayoutCalculator` e persistindo tudo numa transação. Serve qualquer mercado (match, outright do torneio
+  ou enquete), sem ramificar por tipo (a liquidação acha as apostas abertas por `marketId`).
 - Os literais da fila precisam bater entre backend (produtor) e worker (consumidor). O worker **não** usa
   Groq/Playwright.
 - A mesma transação do settlement grava as **notificações** de aposta/bilhete encerrado
@@ -727,7 +780,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   registrou (`notificationsFor(bet.pullDomainEvents(), marketTitle)`) — ver a seção do contexto
   `notification` pra por que ali e não depois. O nome do mercado sai de **uma** consulta por
   liquidação (todas as apostas do lote são do mesmo mercado), com fallback genérico: título faltando
-  nunca pode quebrar o pagamento. **Depois** do commit (fora do `tx`), o worker publica o ping ao
+  nunca pode quebrar o pagamento. Numa enquete o que nomeia o mercado é a **pergunta** (`polls.question`),
+  que é justamente o que a linha da caixa de entrada deve dizer. **Depois** do commit (fora do `tx`), o worker publica o ping ao
   vivo (`pushLiveUpdates`); a lista de destinatários é **rezerada a cada tentativa** porque o
   `inMoneyTransaction` re-executa o callback inteiro num conflito de escrita.
 
@@ -770,6 +824,12 @@ reage:
   única por onde login/refresh/logout passam) **avisa** os interessados via `onAccessTokenChange`, e
   o stream se reabre sozinho quando o token gira. **Nada de retry manual** no cliente: fechar o
   `EventSource` é justamente o que quebraria a reconexão nativa.
+- O worker também consome a fila **`poll-close`**: `CreatePoll`/`ReschedulePoll` agendam um job
+  **atrasado** (delay = `closesAt − agora`) via porta `PollCloseQueue`; quando dispara, o worker roda
+  `PollFacade.autoClosePoll` (`AutoClosePoll`, idempotente), fechando as apostas da enquete. Fila e
+  porta são **próprias**, não um reuso do `match-lock`/`MatchLockQueue` — são jobs diferentes, e
+  compartilhar a interface só acoplaria dois contextos que nunca se falam. Os literais precisam bater
+  entre produtor e consumidor, como sempre.
 - Além do settlement, o worker consome a fila `match-lock`: `CreateMatch` agenda um job **atrasado**
   (delay = `scheduledAt − agora`) via porta `MatchLockQueue`; quando dispara, o worker roda
   `MatchFacade.autoLockMatch` (`AutoLockMatch`), travando as apostas no horário da partida.
@@ -795,6 +855,9 @@ reage:
 - Upload de **foto de participante é admin-only**, mesmo padrão do de match: `POST
   /upload/participants` (`UploadController`, mesma classe do de match — só mais um `@Post`), devolve
   `{ url: '/uploads/participants/<arquivo>' }`, guardado em `Participant.imageUrl`.
+- Upload de **imagem de enquete é admin-only**, mesmo padrão do de match: `POST /upload/polls`
+  (`UploadController`, só mais um `@Post`), devolve `{ url: '/uploads/polls/<arquivo>' }`, guardado
+  em `Poll.imageUrl`.
 - Novo tema = nova subpasta em `UPLOADS_SUBDIRS` (+ constante `<TEMA>_UPLOAD_DIR`) + controller (decidir
   se é admin-only ou do próprio usuário autenticado, caso a caso).
 - **Recorte no cliente antes de subir (cropper)**: todo upload de IMAGEM (partida, torneio, avatar,
@@ -805,8 +868,8 @@ reage:
   parte pura (presets + canvas) e `components/{image-cropper,image-picker}/` a UI — o `ImagePicker`
   substituiu o `<Field type="file">` nos formulários, e o campo do form virou `File | null`
   (alimentado por `form.setValue`, mesmo padrão do `CategoryPicker`/`ParticipantPicker`). Dois presets:
-  `square` (1:1, saída máx 512×512 — avatar e participante) e `banner` (16:9, máx 1600×900 — partida e
-  torneio). Saída sempre **JPEG q=0.9 chamado `crop.jpg`**: o nome importa porque o backend salva como
+  `square` (1:1, saída máx 512×512 — avatar e participante) e `banner` (16:9, máx 1600×900 — partida,
+  torneio e enquete). Saída sempre **JPEG q=0.9 chamado `crop.jpg`**: o nome importa porque o backend salva como
   `randomUUID() + extname(originalname)`, então um nome sem `.jpg` gravaria extensão mentirosa. Antes
   de desenhar, o canvas pinta o fundo de `#150d26` (`arcade-surface`) pra transparência de PNG não
   virar preto. O zoom mínimo é travado no "cobrir a janela", então **não existe recorte com faixa
@@ -888,6 +951,13 @@ centraliza cada uma dentro da própria metade**, abrindo um vão errado entre o 
   ⚠️ **Dado igual em duas rotas é sempre bug esperando acontecer**: `ROUND_LABELS` e
   `GROUP_STAGE_THRESHOLD` estavam copiados entre `tournaments` e `tournaments/[id]`, e
   `MATCH_DRAW_SELECTION_ID` entre `matches/[id]` e o combo — os três foram pro `src/data/` global.
+  O caso mais recente é o **`MARKET_ROUTES`** (`src/data/market-routes.ts`): cada mercado tem sua
+  rota de API sob `/bet`, sua página, suas chaves de cache de odds/histórico e seu substantivo
+  ("partida"/"torneio"/"enquete"). Antes disso, o bet-slip, a lista de apostas e a de múltiplas
+  repetiam **cadeias de ternário** (`marketType === 'tournament_outright' ? … : …`) que, além de
+  copiadas, tratavam "não é outright" como "é partida" — o dia em que existiu um terceiro mercado,
+  cada uma teria errado de um jeito diferente (o cancelamento de aposta chegava a invalidar as
+  chaves de partida E de outright "por garantia"). Mercado novo é **uma linha** nesse mapa.
 - **Tipo união que enumera um dado mora JUNTO do dado, no `data/`** — `ButtonVariant` com
   `BUTTON_VARIANT_CLASSES`, `MatchFilter` com `MATCH_FILTERS`, `SlipMode` com `MODES`, `InboxFilter`
   com `FILTERS`. O `types/` é pra **modelo de dado** que não é o tipo de nenhuma constante (ainda não
