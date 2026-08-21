@@ -476,6 +476,59 @@ model TournamentGroupMatch {
   @@map("tournament_group_matches")
 }
 
+// --- poll ----------------------------------------------------------------------
+
+// An open question friends bet on ("quando o fulano vai ser demitido?"). It is a
+// betting MARKET like any other — bets carry marketType "poll", marketId the
+// poll's id and selectionId one of its options — but it is NOT a match: no
+// participants, no units, no bestOf, no draw, and its result is declared by a
+// human reading the world rather than observed on a scoreboard.
+//
+// question/resolution_criteria/options are written once and never edited: they
+// are the contract the bettors accepted. Getting the question wrong is fixed by
+// cancelling the poll (which refunds everyone) and asking again — hence no
+// updatable text here, only the lifecycle columns and the deadline.
+model Poll {
+  id                 String       @id @default(uuid())
+  creatorId          String       @map("creator_id")
+  question           String
+  // How this poll gets judged, and by which source. Required — an unjudgeable
+  // poll is what turns a settlement into an argument (see ResolutionCriteria).
+  resolutionCriteria String       @map("resolution_criteria")
+  categoryId         String       @map("category_id")
+  imageUrl           String?      @map("image_url")
+  status             String       @default("open")
+  rakeBasisPoints    Int          @default(0) @map("rake_basis_points")
+  // The option that turned out to be right (logical FK to PollOption, set on
+  // resolve — it is also the winning SELECTION of the parimutuel payout).
+  winningOptionId    String?      @map("winning_option_id")
+  // When betting shuts. The worker closes the poll at this instant; the answer
+  // itself may only arrive weeks later.
+  closesAt           DateTime     @map("closes_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  closedAt           DateTime?    @map("closed_at")
+  settledAt          DateTime?    @map("settled_at")
+  options            PollOption[]
+
+  @@index([creatorId])
+  @@index([categoryId])
+  @@map("polls")
+}
+
+// One answer of a poll. Its id is the betting SELECTION id, exactly as a match
+// participant's id is. Free text ("Sim", "Até dezembro/2026") rather than a
+// catalog entry: answers are not competitors worth reusing across polls.
+model PollOption {
+  id     String @id @default(uuid())
+  pollId String @map("poll_id")
+  label  String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
+  @@map("poll_options")
+}
+
 // --- comment -------------------------------------------------------------------
 
 // A comment on a match or a tournament (Facebook-style thread). `subjectId` and
