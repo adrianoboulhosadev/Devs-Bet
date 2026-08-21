@@ -207,7 +207,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
 `INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
 `STAKE_LIMIT_EXCEEDED`, `NOTIFICATION_NOT_FOUND`, `COMMENT_NOT_FOUND`, `COMMENT_TOO_LONG`,
-`COMMENT_SUBJECT_NOT_FOUND`, `INVALID_COMMENT_PARENT`, `NOT_COMMENT_AUTHOR`.
+`COMMENT_SUBJECT_NOT_FOUND`, `INVALID_COMMENT_PARENT`, `NOT_COMMENT_AUTHOR`, `COMMENT_DELETED`.
 
 ## Contextos
 
@@ -539,10 +539,24 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   o texto antigo enquanto o novo entra não pode acontecer.
   Comentário de terceiro responde **403 `NOT_COMMENT_AUTHOR`** (e não 404): o comentário é público, todo
   mundo já vê que ele existe — esconder seria teatro, ao contrário de uma notificação, que é privada.
-  **Excluir é ADMIN** (`DeleteComment` estende `AdminUseCase`; ícone de lixeira **vermelha** em toda linha,
-  com `ConfirmDialog`): moderação de uma sala fechada tem um moderador só, que é o dono. Excluir um raiz
+  **Excluir tem DOIS caminhos, e é de propósito.** O **autor** exclui o próprio comentário
+  (`DeleteMyComment`, `DELETE /comment/:id`) e isso é **SOFT DELETE** (`Comment.softDelete` carimba
+  `deletedAt`): apagar a linha levaria junto **as respostas dos outros**, que existem por causa do que foi
+  dito ali e não pertencem a quem abriu a thread — e o que alguém escreveu e depois tirou do ar é
+  justamente o que um moderador pode precisar ver depois. A linha fica, vira **lápide** ("Comentário
+  excluído pelo autor"), as respostas continuam, e **quem lê o texto é só o admin** (pela rota de
+  histórico) — a mesma divisão que a edição já fazia. **A redação acontece no `ListCommentsQuery`**
+  (`body: null`), não no front nem no adapter: mandar o texto junto de um flag `deleted` deixaria ele a
+  uma aba de devtools de distância, e fazer isso no repositório obrigaria os dois adapters (Prisma e fake)
+  a repetir a regra. Comentário excluído **não pode ser editado nem respondido** (`COMMENT_DELETED`) — o
+  que já estava respondido continua na tela. Excluir de novo é **idempotente** (mantém o primeiro
+  timestamp, igual `Notification.markAsRead`).
+  O **admin** tem a lixeira **vermelha** em toda linha (`DeleteComment` estende `AdminUseCase`,
+  `DELETE /comment/:id/permanent`, rótulo "EXCLUIR DE VEZ"): essa apaga a linha **de verdade**, e um raiz
   leva junto as respostas (`deleteWithReplies`, `deleteMany` + `delete` numa transação — a cascade do
-  schema fica como rede de segurança, mas o comportamento está explícito no adapter).
+  schema fica como rede de segurança, mas o comportamento está explícito no adapter). Moderação de uma
+  sala fechada tem um moderador só, que é o dono, e remover conteúdo abusivo tem que remover mesmo.
+  **Rotas separadas** justamente pra que as duas exclusões não possam ser confundidas uma com a outra.
   **Responder vira notificação** (`comment_reply`): `PostComment` monta o evento `CommentReplied` (evento de
   CRIAÇÃO → montado no caso de uso, nunca pela entidade) e o publica **depois** de gravar, pelo
   `EventPublisher` opcional de sempre; o `DomainEventListener` traduz. Responder a **si mesmo** não publica
@@ -581,8 +595,10 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
   `comment` (`GET /match/:id` e `GET /tournament/:id` [thread pronta: raízes + respostas],
-  `POST /` [comenta ou responde], `PATCH /:id` [só o autor], `DELETE /:id` [admin],
-  `GET /:id/history` [admin — o texto antes das edições]),
+  `POST /` [comenta ou responde], `PATCH /:id` [só o autor],
+  `DELETE /:id` [só o autor — **soft delete**, vira lápide e preserva as respostas],
+  `DELETE /:id/permanent` [admin — apaga a linha e as respostas de vez],
+  `GET /:id/history` [admin — o texto antes das edições E o que foi excluído]),
   `notification` (`GET /` [caixa de entrada própria, `?limit=`; devolve `{ unreadCount, items }` — serve
   o sininho e a tela], `POST /read-all`, `POST /:id/read`, `GET /stream` [**SSE**, ver abaixo — é a
   ÚNICA rota autenticada por token na **query string**, porque `EventSource` não manda header]),
@@ -669,7 +685,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas),
   `Notification`(notifications; `@@unique([userId, type, referenceId])` — é o que dá idempotência de
   entrega; `user_id` FK lógica), `Comment`(comments; `subject_id`/`author_id` FKs lógicas, self-relation
-  `parent_id` intra-contexto com cascade) e `CommentRevision`(comment_revisions; append-only, relation
+  `parent_id` intra-contexto com cascade; `deleted_at` = soft delete do autor — a linha e o `body` ficam,
+  o read model é que para de servir o texto) e `CommentRevision`(comment_revisions; append-only, relation
   Prisma intra-contexto pro `Comment`). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`, `match_participants.participant_id`,
   `tournament_participants.participant_id`); a self-relation da `Category` é intra-contexto, então tem
