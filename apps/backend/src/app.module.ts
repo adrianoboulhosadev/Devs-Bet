@@ -11,6 +11,7 @@ import { ParticipantModule } from './participant/participant.module'
 import { TournamentModule } from './tournament/tournament.module'
 import { UploadModule } from './upload/upload.module'
 import { NotificationModule } from './notification/notification.module'
+import { CommentModule } from './comment/comment.module'
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { NotificationModule } from './notification/notification.module'
     TournamentModule,
     UploadModule,
     NotificationModule,
+    CommentModule,
   ],
 })
 export class AppModule {}

@@ -9,6 +9,7 @@ import {
   WithdrawalPaid,
   PaymentRejected,
 } from '@wallet/adapters'
+import { CommentReplied } from '@comment/adapters'
 import { PrismaNotificationRepository } from './prisma-notification-repository'
 import { NotificationAudience } from './notification-audience'
 import { LiveUpdates } from './live-updates'
@@ -105,6 +106,27 @@ export class DomainEventListener implements EventPublisher {
       // in, which is exactly when it is useful. Rejection raises no event at all
       // (see User.reject) — being barred must look like a wrong password.
       return [{ userId: event.userId, type: 'account_approved', referenceId: event.userId }]
+    }
+
+    // The only notification raised by another PERSON instead of by money or the
+    // gate. PostComment never raises it for a self-reply, so there is nothing to
+    // filter here.
+    if (event instanceof CommentReplied) {
+      const label = await this.audience.labelFor(event.authorId)
+      return [
+        {
+          userId: event.parentAuthorId,
+          type: 'comment_reply',
+          authorLabel: label,
+          subjectKind: event.subjectType,
+          subjectId: event.subjectId,
+          excerpt: event.excerpt,
+          // The REPLY is the reference: a second answer to the same comment is a
+          // new event and deserves its own line, while a retried delivery of
+          // this one stays a no-op (see the repository's idempotency contract).
+          referenceId: event.commentId,
+        },
+      ]
     }
 
     if (event instanceof DepositConfirmed) {
