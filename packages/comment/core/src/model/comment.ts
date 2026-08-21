@@ -3,15 +3,15 @@ import { CommentBody } from './comment-body'
 import { CommentRevision } from './comment-revision'
 
 /** What can be commented on. A tiny union of its own instead of importing
- * match/tournament — comment touches no other context (same choice as
+ * match/tournament/poll — comment touches no other context (same choice as
  * notification's NotificationMarketKind). */
-export const COMMENT_SUBJECT_TYPES = ['match', 'tournament'] as const
+export const COMMENT_SUBJECT_TYPES = ['match', 'tournament', 'poll'] as const
 
 export type CommentSubjectType = (typeof COMMENT_SUBJECT_TYPES)[number]
 
 export interface CommentProps extends EntityProps {
   subjectType?: CommentSubjectType
-  /** The match/tournament id — a LOGICAL FK; comment never loads either. */
+  /** The match/tournament/poll id — a LOGICAL FK; comment never loads any of them. */
   subjectId?: string
   authorId?: string
   /** The ROOT comment this one answers. Null = it is itself a root. */
@@ -25,7 +25,7 @@ export interface CommentProps extends EntityProps {
 }
 
 /**
- * One comment on a match or a tournament (rich entity).
+ * One comment on a match, a tournament or a poll (rich entity).
  *
  * The thread is TWO levels deep on purpose (a root and its replies, like
  * Facebook's): `parentId` always points at a root, and the use case rejects a

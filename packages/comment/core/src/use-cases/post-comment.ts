@@ -11,8 +11,8 @@ interface Input {
   parentId?: string | null
   body: string
   /**
-   * Does the match/tournament exist? Resolved CROSS-CONTEXT by the backend and
-   * handed over as plain data — comment never imports match/tournament, the
+   * Does the match/tournament/poll exist? Resolved CROSS-CONTEXT by the backend and
+   * handed over as plain data — comment never imports those contexts, the
    * same shape as `categoryIsLeaf` in CreateMatch.
    */
   subjectExists: boolean
