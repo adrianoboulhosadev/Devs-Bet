@@ -28,7 +28,7 @@ por bounded context**, com **modelagem RICA** (entidades com comportamento e inv
 objects; regras de negócio moram no modelo, não nos casos de uso).
 
 Contextos de domínio: `auth`, `wallet`, `match`, `betting`, `category`, `participant`, `tournament`,
-`notification`. O `auth` é a **referência canônica**
+`notification`, `comment`. O `auth` é a **referência canônica**
 de fiação (core → adapters → backend). Fluxo do produto: usuário deposita saldo (Pix, manual) →
 cria/entra numa partida (`match`) entre jogadores → aposta (`bet`) em quem vence → quando o
 resultado sai, o settlement paga os vencedores (parimutuel).
@@ -53,7 +53,7 @@ apps/
 ```
 
 Contextos e scopes: `@auth/*`, `@wallet/*`, `@match/*`, `@betting/*`, `@category/*`, `@participant/*`,
-`@tournament/*`, `@notification/*`. `core` e
+`@tournament/*`, `@notification/*`, `@comment/*`. `core` e
 `adapters` são **pacotes separados**. Workspaces: `["apps/*","packages/shared","packages/database","packages/*/core","packages/*/adapters"]`.
 
 ## Modelagem rica (TRAVADA) — a diferença central
@@ -145,7 +145,8 @@ O `model/` NÃO é anêmico. Regras vivem no modelo:
   Limites: `auth`=identidade/credencial/role; `wallet`=saldo/ledger/depósito/saque;
   `match`=partidas/participantes/resultado; `betting`=apostas/odds/settlement/stats;
   `category`=árvore de categorias das partidas; `tournament`=chaveamento eliminatório que orquestra matches;
-  `notification`=caixa de entrada do usuário (não conhece nenhum outro contexto — quem dispara é a camada de app).
+  `notification`=caixa de entrada do usuário (não conhece nenhum outro contexto — quem dispara é a camada de app);
+  `comment`=conversa dos apostadores embaixo de uma partida/torneio (não conhece nem o assunto nem quem é o autor).
 - **Categoria da partida (cross-context)**: o `match` guarda `categoryId` (folha da árvore) como
   dado puro; a validação "existe + é folha" segue o padrão do `PlaceBet` — o **backend resolve** via
   `category` (`findByIdQuery` → `isLeaf`) e passa `categoryIsLeaf` pro use-case do match (que lança
@@ -205,7 +206,8 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
 `NOT_ENOUGH_TOURNAMENT_PARTICIPANTS`, `DUPLICATE_PARTICIPANT_NAME`, `TOURNAMENT_NOT_OPEN`,
 `TOURNAMENT_ALREADY_FINISHED`, `BRACKET_SLOT_NOT_FOUND`, `INVALID_COMBO_LEGS`, `DUPLICATE_COMBO_MARKET`,
 `INVALID_COMBO_ODD`, `DEPOSIT_LIMIT_EXCEEDED`, `SELF_EXCLUDED`, `ALREADY_SELF_EXCLUDED`,
-`STAKE_LIMIT_EXCEEDED`, `NOTIFICATION_NOT_FOUND`.
+`STAKE_LIMIT_EXCEEDED`, `NOTIFICATION_NOT_FOUND`, `COMMENT_NOT_FOUND`, `COMMENT_TOO_LONG`,
+`COMMENT_SUBJECT_NOT_FOUND`, `INVALID_COMMENT_PARENT`, `NOT_COMMENT_AUTHOR`.
 
 ## Contextos
 
@@ -440,6 +442,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   | `combo_won`/`combo_lost`/`combo_refunded` | apostador | worker, idem (só quando o bilhete de fato liquida) |
   | `deposit_confirmed`/`deposit_rejected`/`withdrawal_paid`/`withdrawal_rejected` | apostador | `AdminWalletController` |
   | `account_approved` | apostador | `AdminUserController` (approve) |
+  | `comment_reply` | autor do comentário respondido | `CommentController` (post) |
   | `admin_signup_pending` | admins | `AuthController` (register) |
   | `admin_deposit_pending`/`admin_withdrawal_pending` | admins | `WalletController` |
   **Rejeitar cadastro NÃO notifica** — de propósito: ser barrado tem que parecer senha errada (ver a
@@ -517,6 +520,45 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   **vazio** (`phase: 'group'`; vira `'knockout'` quando o bracket é montado) — sem linhas de bracket
   persistidas ainda, por isso o `update()` do repositório Prisma faz **upsert** nos slots (podem nascer só
   depois da criação do torneio, ao contrário do grupo, sempre criado por inteiro já na criação).
+- **comment** — conversa dos apostadores embaixo de uma partida/torneio (estilo Facebook), **sempre a
+  ÚLTIMA seção** das telas `matches/[id]` e `tournaments/[id]`. `Comment` (entidade rica: `subjectType`
+  `match`/`tournament` + `subjectId` — FK lógica —, `authorId` — FK lógica —, `parentId`, VO
+  `CommentBody`, `createdAt`, `editedAt`) e `CommentRevision` (**append-only**, mesmo espírito do ledger:
+  guarda o texto ANTERIOR a cada edição). O contexto **não conhece nem o assunto nem quem é o autor** —
+  quem resolve as duas coisas é a camada de app (ver abaixo).
+  **Thread de DOIS níveis, como o Facebook**: `parentId` sempre aponta pra um comentário RAIZ; responder
+  uma resposta pendura no MESMO raiz (`Comment.canBeRepliedFrom`; `INVALID_COMMENT_PARENT` se alguém
+  forçar por fora — o front já manda o raiz). Aninhar mais fundo fica ilegível no celular e exigiria uma
+  árvore pra renderizar uma conversa que ninguém acompanha até lá.
+  **Editar é do AUTOR, e nunca é silencioso**: `Comment.edit(novoTexto)` devolve o `CommentRevision` do
+  texto que saiu (ou `null` se o texto não mudou — reenviar o mesmo não vira "editado" nem cria revisão) e
+  carimba `editedAt`. Todo mundo vê o selo **"editado há X"** (com a hora exata no `title`); só o **admin**
+  lê o que estava escrito antes (`GET /comment/:id/history`, `GetCommentHistoryQuery` estende
+  `AdminUseCase`) — é essa metade que impede uma edição de apagar o que a pessoa realmente escreveu. A porta
+  de escrita recebe `update(comment, revision)` e o adapter grava as duas linhas na MESMA transação: perder
+  o texto antigo enquanto o novo entra não pode acontecer.
+  Comentário de terceiro responde **403 `NOT_COMMENT_AUTHOR`** (e não 404): o comentário é público, todo
+  mundo já vê que ele existe — esconder seria teatro, ao contrário de uma notificação, que é privada.
+  **Excluir é ADMIN** (`DeleteComment` estende `AdminUseCase`; ícone de lixeira **vermelha** em toda linha,
+  com `ConfirmDialog`): moderação de uma sala fechada tem um moderador só, que é o dono. Excluir um raiz
+  leva junto as respostas (`deleteWithReplies`, `deleteMany` + `delete` numa transação — a cascade do
+  schema fica como rede de segurança, mas o comportamento está explícito no adapter).
+  **Responder vira notificação** (`comment_reply`): `PostComment` monta o evento `CommentReplied` (evento de
+  CRIAÇÃO → montado no caso de uso, nunca pela entidade) e o publica **depois** de gravar, pelo
+  `EventPublisher` opcional de sempre; o `DomainEventListener` traduz. Responder a **si mesmo** não publica
+  nada — o evento existe pra avisar alguém, e ninguém precisa de linha na caixa de entrada sobre o que
+  acabou de digitar. `referenceId` = id da RESPOSTA (uma segunda resposta é evento novo; reentrega da mesma
+  continua idempotente).
+  **Cross-context resolvido na camada de app**, como sempre: o backend (`CommentController`) passa
+  `subjectExists` pro use-case (existe essa partida/torneio? senão `COMMENT_SUBJECT_NOT_FOUND`, mesmo padrão
+  do `categoryIsLeaf`) e monta o read model composto **comment + auth** (`CommentAuthors` lê `users`
+  direto, mesma justificativa do `NotificationAudience`), rotulando o autor por **apelido ou id truncado —
+  nunca e-mail**, porque a thread é visível a qualquer apostador. Esse shape composto não pertence a nenhum
+  `@ctx/adapters` (é local ao controller) e o front espelha o tipo à mão, igual ao `ProfileDTO`.
+  Front: `components/comment-section/` (a seção, com o hook que concentra TODAS as escritas),
+  `components/comment-item/` (uma linha — recursivo pros dois níveis, com o painel de histórico do admin) e
+  `components/comment-composer/` (a caixa de texto, usada pra comentar, responder e editar). O ping do SSE
+  também invalida `['comments']`, então uma resposta aparece na thread aberta sem F5.
 
 ## Rotas HTTP
 
@@ -538,6 +580,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `participant` (`/` [GET aberto — alimenta o picker; POST admin], `/:id` [PATCH e DELETE admin]),
   `tournament` (`/` [GET aberto; POST admin], `/:id` [GET], `/:id/cancel` [admin],
   `/:id/matches/:matchId/result` [admin — declara o vencedor do confronto]),
+  `comment` (`GET /match/:id` e `GET /tournament/:id` [thread pronta: raízes + respostas],
+  `POST /` [comenta ou responde], `PATCH /:id` [só o autor], `DELETE /:id` [admin],
+  `GET /:id/history` [admin — o texto antes das edições]),
   `notification` (`GET /` [caixa de entrada própria, `?limit=`; devolve `{ unreadCount, items }` — serve
   o sininho e a tela], `POST /read-all`, `POST /:id/read`, `GET /stream` [**SSE**, ver abaixo — é a
   ÚNICA rota autenticada por token na **query string**, porque `EventSource` não manda header]),
@@ -623,7 +668,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   `player_b_id` são FKs lógicas), `TournamentGroupMatch`(tournament_group_matches; fase de grupos —
   `match_id`/`player_a_id`/`player_b_id`/`winner_participant_id` são FKs lógicas),
   `Notification`(notifications; `@@unique([userId, type, referenceId])` — é o que dá idempotência de
-  entrega; `user_id` FK lógica). FKs entre contextos são **lógicas**
+  entrega; `user_id` FK lógica), `Comment`(comments; `subject_id`/`author_id` FKs lógicas, self-relation
+  `parent_id` intra-contexto com cascade) e `CommentRevision`(comment_revisions; append-only, relation
+  Prisma intra-contexto pro `Comment`). FKs entre contextos são **lógicas**
   (sem relation Prisma cruzando contexto — ex.: `matches.category_id`, `match_participants.participant_id`,
   `tournament_participants.participant_id`); a self-relation da `Category` é intra-contexto, então tem
   relation Prisma. Dinheiro em `Int` (centavos). Colunas snake_case via `@map`.

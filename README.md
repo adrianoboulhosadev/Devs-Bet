@@ -41,7 +41,7 @@ pode ser trocado por um PSP real (Mercado Pago, Efí, Asaas…) sem mexer no dom
 Monorepo Turborepo + npm workspaces, TypeScript, **hexagonal (ports & adapters) por
 bounded context**, com **modelagem rica** (entidades com comportamento + value objects;
 invariantes no modelo). Contextos: `auth`, `wallet`, `match`, `betting`, `category`,
-`participant`, `tournament`.
+`participant`, `tournament`, `notification`, `comment`.
 
 Deployables de produção: **backend** (API NestJS) e **worker** (settlement assíncrono
 via BullMQ). O **web** é o front (Next.js). `database` (Postgres + Redis) sobe via docker
