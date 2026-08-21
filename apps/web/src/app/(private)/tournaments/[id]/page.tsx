@@ -10,6 +10,7 @@ import { BracketSlotCard } from './components/bracket-slot-card'
 import { GroupStage } from './components/group-stage'
 import { OutrightCard } from './components/outright-card'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { CommentSection } from '@/components/comment-section'
 
 export default function TournamentDetailPage({ params }: { params: { id: string } }) {
   const tournamentId = params.id
@@ -109,6 +110,9 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
           </Button>
         </div>
       )}
+
+      {/* Always the LAST section of the page (see the match page too). */}
+      <CommentSection subjectType="tournament" subjectId={tournament.id} />
 
       <ConfirmDialog
         open={confirmingCancel}

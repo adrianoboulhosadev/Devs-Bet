@@ -26,7 +26,8 @@
     "qrcode": "^1.5.4",
     "sonner": "^1.7.4",
     "shared": "*",
-    "@notification/adapters": "*"
+    "@notification/adapters": "*",
+    "@comment/adapters": "*"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",

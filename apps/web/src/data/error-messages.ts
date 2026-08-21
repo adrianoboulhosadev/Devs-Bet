@@ -71,4 +71,10 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [Errors.TOURNAMENT_NOT_OPEN]: 'O torneio não está em andamento.',
   [Errors.TOURNAMENT_ALREADY_FINISHED]: 'O torneio já foi finalizado.',
   [Errors.BRACKET_SLOT_NOT_FOUND]: 'Confronto não encontrado no chaveamento.',
+  // comment
+  [Errors.COMMENT_NOT_FOUND]: 'Comentário não encontrado.',
+  [Errors.COMMENT_TOO_LONG]: 'Comentário muito longo. Escreva algo mais curto.',
+  [Errors.COMMENT_SUBJECT_NOT_FOUND]: 'A partida ou torneio deste comentário não existe mais.',
+  [Errors.INVALID_COMMENT_PARENT]: 'Não foi possível responder a este comentário.',
+  [Errors.NOT_COMMENT_AUTHOR]: 'Só dá pra editar os seus próprios comentários.',
 }

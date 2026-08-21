@@ -13,6 +13,7 @@ import { CategoryPicker } from '@/components/category-picker'
 import { OddsHistoryChart } from '@/components/odds-history-chart'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ParticipantAvatar } from '@/components/participant-avatar'
+import { CommentSection } from '@/components/comment-section'
 import { useSelfExclusion } from '@/hooks/use-self-exclusion'
 import { useBetSlip } from '@/contexts/bet-slip-context'
 import { useMatchDetail } from './hooks/use-match-detail'
@@ -382,6 +383,9 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
           )}
         </div>
       )}
+
+      {/* Always the LAST section of the page (see the tournament page too). */}
+      <CommentSection subjectType="match" subjectId={match.id} />
 
       <ConfirmDialog
         open={confirmingCancel}

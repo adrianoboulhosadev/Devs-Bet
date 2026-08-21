@@ -24,6 +24,8 @@ const ACCENTS: Record<NotificationType, string> = {
   bet_refunded: '#22e6ff', // arcade-cyan — neutral, money came back
   combo_refunded: '#22e6ff',
 
+  comment_reply: '#c77dff', // arcade-purple — someone talking to you, not money
+
   admin_signup_pending: '#ffb020', // arcade-amber — waiting on the admin
   admin_deposit_pending: '#ffb020',
   admin_withdrawal_pending: '#ffb020',

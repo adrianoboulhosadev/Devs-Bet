@@ -33,6 +33,26 @@ export function formatRelativeTime(value: Date | string): string {
 }
 
 /**
+ * When a comment was rewritten, as the edit badge shows it: the CLOCK TIME,
+ * not a "há 3 min". The badge exists to say what changed and when, and on a
+ * phone there is no hover to reveal a tooltip — so the hour is on screen.
+ * Same-day edits drop the date, which is the common case in a live thread.
+ */
+export function formatEditedAt(value: Date | string): string {
+  const edited = new Date(value)
+  const clock = edited.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const today = new Date()
+  const sameDay =
+    edited.getDate() === today.getDate() &&
+    edited.getMonth() === today.getMonth() &&
+    edited.getFullYear() === today.getFullYear()
+
+  if (sameDay) return `às ${clock}`
+  const day = edited.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  return `em ${day} às ${clock}`
+}
+
+/**
  * Converts a date (Date or ISO string) into the value a
  * <input type="datetime-local"> expects: local "YYYY-MM-DDTHH:mm".
  */

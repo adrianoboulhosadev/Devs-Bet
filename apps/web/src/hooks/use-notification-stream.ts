@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { API_URL, getAccessToken, onAccessTokenChange } from '@/lib/api'
 import { NOTIFICATIONS_KEY } from './use-notifications'
+import { COMMENTS_KEY } from '@/components/comment-section/hooks/use-comment-section'
 
 /**
  * Keeps the inbox AND the money on screen live. Replaced the bell's 60s
@@ -51,6 +52,10 @@ export function useNotificationStream() {
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
       queryClient.invalidateQueries({ queryKey: ['wallet'] })
       queryClient.invalidateQueries({ queryKey: ['payments'] })
+      // The one ping that is not about money: somebody answered a comment. If
+      // the thread is on screen, this is what makes the answer show up in it
+      // instead of only in the bell.
+      queryClient.invalidateQueries({ queryKey: COMMENTS_KEY })
     }
 
     // No manual retry here on purpose: EventSource already reconnects on its
