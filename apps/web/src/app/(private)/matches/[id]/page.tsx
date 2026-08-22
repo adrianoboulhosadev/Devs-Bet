@@ -341,6 +341,10 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
+      <CommentSection subjectType="match" subjectId={match.id} />
+
+      {/* A sala de controle é SEMPRE a última seção da página — nada fica
+          abaixo dela (decisão do dono). Os comentários vêm antes. */}
       {isAdmin && match.status !== 'settled' && match.status !== 'cancelled' && (
         <div className="space-y-4 border-3 border-arcade-amber bg-arcade-surface p-5 shadow-pixel-lg">
           <h2 className="font-pixel text-xs tracking-widest text-arcade-amber">SALA DE CONTROLE</h2>
@@ -405,9 +409,6 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
           )}
         </div>
       )}
-
-      {/* Always the LAST section of the page (see the tournament page too). */}
-      <CommentSection subjectType="match" subjectId={match.id} />
 
       <ConfirmDialog
         open={confirmingCancel}

@@ -134,27 +134,36 @@ export default function WalletPage() {
           <p className="px-5 py-4 font-arcade text-lg text-arcade-text-muted">Nenhum pagamento ainda.</p>
         ) : (
           payments.map((payment) => (
-            <div key={payment.id} className="space-y-1.5 border-b border-arcade-border-strong px-5 py-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xl text-arcade-text">{formatBRL(payment.amount)}</span>
-                <StatusBadge status={payment.status} />
+            <div
+              key={payment.id}
+              className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1.5 border-b border-arcade-border-strong px-5 py-3"
+            >
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xl text-arcade-text">{formatBRL(payment.amount)}</span>
+                  <StatusBadge status={payment.status} />
+                </div>
+                <p className="font-arcade text-lg text-arcade-text-soft">
+                  {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
+                  <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
+                </p>
+                {payment.status === 'rejected' && payment.rejectionReason && (
+                  <p className="font-arcade text-base text-arcade-danger">Motivo: {payment.rejectionReason}</p>
+                )}
               </div>
-              <p className="font-arcade text-lg text-arcade-text-soft">
-                {payment.direction === 'deposit' ? 'Depósito Pix' : 'Saque'}{' '}
-                <span className="text-arcade-text-muted">· ref {payment.referenceCode}</span>
-              </p>
+              {/* Fora do bloco de texto e como irmão dele: é o `items-center` da
+                  linha que o centraliza na altura, encostado à direita. No
+                  celular o `w-full` o joga pra uma linha só dele — sem isso ele
+                  disputava a largura e picotava o "ref" em três linhas. */}
               {payment.receiptUrl && (
                 <a
                   href={mediaUrl(payment.receiptUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block font-arcade text-base text-arcade-cyan underline"
+                  className="whitespace-nowrap font-arcade text-base text-arcade-cyan underline max-sm:w-full"
                 >
                   Ver comprovante
                 </a>
-              )}
-              {payment.status === 'rejected' && payment.rejectionReason && (
-                <p className="font-arcade text-base text-arcade-danger">Motivo: {payment.rejectionReason}</p>
               )}
             </div>
           ))

@@ -69,12 +69,15 @@ export default function ProfilePage() {
 
         <div className="min-w-0 flex-1">
           {editingNickname ? (
-            <form onSubmit={onSubmitNickname} className="flex flex-wrap items-center gap-2.5">
+            <form onSubmit={onSubmitNickname} className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+              {/* `w-full min-w-0`: um <input> tem largura própria (o `size`
+                  padrão), e sem isso ele não encolhia — no celular passava da
+                  borda da tela levando o card junto. */}
               <input
                 autoFocus
                 {...form.register('nickname')}
                 placeholder="seu apelido"
-                className="border-3 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-2xl text-arcade-lime outline-none focus:border-arcade-cyan"
+                className="w-full min-w-0 border-3 border-arcade-border bg-[#0b0714] px-3 py-2 font-arcade text-2xl text-arcade-lime outline-none focus:border-arcade-cyan sm:w-auto sm:flex-1"
               />
               <Button type="submit" variant="success" disabled={savingNickname}>
                 Salvar

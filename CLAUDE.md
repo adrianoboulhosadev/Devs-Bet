@@ -468,7 +468,7 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   listar/ver é aberto. Categoria: aponta pra uma **folha**, com `categoryIsLeaf` resolvido pelo
   backend (mesmo padrão do match). Imagem opcional via `POST /upload/polls` (admin, preset `banner`).
   Front: `app/(private)/polls` (lobby + formulário de abertura) e `polls/[id]` (odds ao vivo,
-  gráfico, book, sala de controle e **seção de comentários**, sempre a última seção).
+  gráfico, book, seção de comentários e a **sala de controle**, sempre a última seção).
 - **notification** — caixa de entrada do usuário (sininho no header + tela `/notifications`). Resolve o
   problema de o usuário só descobrir o que aconteceu **indo procurar** (abrir `/bets` pra ver se
   liquidou, `/wallet` pra ver se o Pix entrou) e de o admin só ver a fila entrando na sala de controle.
@@ -567,7 +567,9 @@ body de erro `{ statusCode, errors: [{ code }] }`. Códigos previstos (ampliar c
   persistidas ainda, por isso o `update()` do repositório Prisma faz **upsert** nos slots (podem nascer só
   depois da criação do torneio, ao contrário do grupo, sempre criado por inteiro já na criação).
 - **comment** — conversa dos apostadores embaixo de uma partida/torneio/enquete (estilo Facebook),
-  **sempre a ÚLTIMA seção** das telas `matches/[id]`, `tournaments/[id]` e `polls/[id]`. `Comment`
+  a última seção de conteúdo das telas `matches/[id]`, `tournaments/[id]` e `polls/[id]` — **só a
+  sala de controle (admin) fica abaixo dela**, e ela é sempre o último bloco da página, nada vem
+  depois (decisão do dono; antes os comentários é que fechavam a tela). `Comment`
   (entidade rica: `subjectType` `match`/`tournament`/`poll` + `subjectId` — FK lógica —, `authorId` — FK lógica —, `parentId`, VO
   `CommentBody`, `createdAt`, `editedAt`) e `CommentRevision` (**append-only**, mesmo espírito do ledger:
   guarda o texto ANTERIOR a cada edição). O contexto **não conhece nem o assunto nem quem é o autor** —

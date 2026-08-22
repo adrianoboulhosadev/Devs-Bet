@@ -93,6 +93,10 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
         />
       )}
 
+      <CommentSection subjectType="tournament" subjectId={tournament.id} />
+
+      {/* A sala de controle é SEMPRE a última seção da página — nada fica
+          abaixo dela (decisão do dono). Os comentários vêm antes. */}
       {canCancel && (
         <div className="border-3 border-arcade-amber bg-arcade-surface p-5 shadow-pixel">
           <h2 className="mb-3 font-pixel text-xs tracking-wide text-arcade-amber">SALA DE CONTROLE</h2>
@@ -101,9 +105,6 @@ export default function TournamentDetailPage({ params }: { params: { id: string 
           </Button>
         </div>
       )}
-
-      {/* Always the LAST section of the page (see the match page too). */}
-      <CommentSection subjectType="tournament" subjectId={tournament.id} />
 
       <ConfirmDialog
         open={confirmingCancel}

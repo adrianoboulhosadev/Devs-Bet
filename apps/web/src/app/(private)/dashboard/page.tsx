@@ -36,14 +36,17 @@ export default function DashboardPage() {
             você tem {formatBRL(summary.held)} em jogo · {summary.openCount} aposta
             {summary.openCount === 1 ? '' : 's'} em aberto
           </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/matches">
-              <button className="bg-arcade-amber px-5 py-3.5 font-pixel text-[11px] text-arcade-bg shadow-pixel-sm transition-transform hover:translate-x-0.5 hover:translate-y-0.5">
+          {/* Duas colunas iguais + `h-full` nos botões: a largura vem do grid
+              e a altura, do item mais alto. Antes um tinha borda e o outro não
+              (e paddings diferentes), então saíam de tamanhos diferentes. */}
+          <div className="mt-5 grid max-w-md gap-3 sm:grid-cols-2">
+            <Link href="/matches" className="block">
+              <button className="h-full w-full border-3 border-arcade-amber bg-arcade-amber px-5 py-3 font-pixel text-[11px] text-arcade-bg shadow-pixel-sm transition-transform hover:translate-x-0.5 hover:translate-y-0.5">
                 ▸ APOSTAR AGORA
               </button>
             </Link>
-            <Link href="/wallet">
-              <button className="border-3 border-arcade-border px-5 py-3 font-pixel text-[11px] text-arcade-text hover:border-arcade-cyan hover:text-arcade-cyan">
+            <Link href="/wallet" className="block">
+              <button className="h-full w-full border-3 border-arcade-border px-5 py-3 font-pixel text-[11px] text-arcade-text hover:border-arcade-cyan hover:text-arcade-cyan">
                 DEPOSITAR PIX
               </button>
             </Link>
@@ -83,30 +86,35 @@ export default function DashboardPage() {
       </div>
 
       {nextMatch && (
-        <div className="flex flex-wrap items-center gap-4 border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">
-          <span className="animate-blink whitespace-nowrap font-pixel text-[10px] tracking-widest text-arcade-magenta">
+        <div className="border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">
+          {/* Linha própria, no topo: como item de um flex ele disputava a
+              altura com o confronto e acabava no meio do card. */}
+          <span className="block animate-blink font-pixel text-[10px] tracking-widest text-arcade-magenta">
             PRÓXIMA PARTIDA
           </span>
-          {/* Era uma linha só com `truncate`, então no celular o confronto
-              sumia num "…" bem no meio dos nomes. Empilhado (nome / VS / nome)
-              ninguém é cortado; de `sm` pra cima os três voltam pra mesma
-              linha, onde há largura de sobra. */}
-          <span className="min-w-[200px] flex-1 font-arcade text-xl text-arcade-text">
-            <span className="block break-words text-arcade-text-soft">{nextMatch.title}</span>
-            <span className="mt-1 flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
-              {nextMatch.participants.map((participant, index) => (
-                <Fragment key={participant.id}>
-                  {index > 0 && (
-                    <span className="font-pixel text-[9px] text-arcade-magenta">VS</span>
-                  )}
-                  <span className="break-words">{participant.displayName}</span>
-                </Fragment>
-              ))}
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5">
+            <span className="min-w-[200px] flex-1 font-arcade text-xl text-arcade-text">
+              <span className="block break-words text-arcade-text-soft">{nextMatch.title}</span>
+              {/* Coluna de largura `fit` com `items-center`: o VS fica sempre
+                  ENTRE os dois nomes e centralizado em relação a eles. Uma
+                  linha com `flex-wrap` (o que havia aqui) quebrava em largura
+                  intermediária e colava o VS no primeiro nome. */}
+              <span className="mt-1 flex w-fit max-w-full flex-col items-center gap-0.5">
+                {nextMatch.participants.map((participant, index) => (
+                  <Fragment key={participant.id}>
+                    {index > 0 && (
+                      <span className="font-pixel text-[9px] text-arcade-magenta">VS</span>
+                    )}
+                    <span className="break-words text-center">{participant.displayName}</span>
+                  </Fragment>
+                ))}
+              </span>
             </span>
-          </span>
-          <span className="whitespace-nowrap font-pixel text-sm text-arcade-amber [text-shadow:0_0_14px_rgba(255,176,32,.5)]">
-            {formatDateTime(nextMatch.scheduledAt)}
-          </span>
+            <span className="whitespace-nowrap font-pixel text-sm text-arcade-amber [text-shadow:0_0_14px_rgba(255,176,32,.5)]">
+              {formatDateTime(nextMatch.scheduledAt)}
+            </span>
+          </div>
         </div>
       )}
 
