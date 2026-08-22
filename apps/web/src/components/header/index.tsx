@@ -46,26 +46,28 @@ export function Header() {
       </div>
       <NotificationBell />
 
-      {/* Quebra de linha E divisória, no mesmo elemento: um item de largura
-          total num container `flex-wrap` empurra tudo o que vem depois pra
-          linha de baixo, e a borda de cima dele vira o traço entre as duas
-          faixas. As margens negativas levam o traço até as bordas do header,
-          por baixo do padding lateral. */}
-      <span
-        aria-hidden
-        className="-mx-4 w-[calc(100%+2rem)] border-t-3 border-arcade-border-strong sm:-mx-6 sm:w-[calc(100%+3rem)] lg:hidden"
-      />
+      {/* Só quebra de linha, sem desenho nenhum: um item de largura total num
+          container `flex-wrap` empurra pra linha de baixo tudo o que vem depois
+          dele. É o que separa as duas faixas no celular — o espaço entre elas é
+          o `gap-y` do header. */}
+      <span aria-hidden className="w-full lg:hidden" />
 
-      {/* Faixa de baixo no celular/tablet: o saldo em corpo grande, com o
-          rótulo em cima, ocupando a linha até o botão. No desktop volta a ser a
-          caixinha de sempre, ao lado dos outros itens. */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1 lg:flex-none lg:flex-row lg:items-center lg:gap-3 lg:border-3 lg:border-arcade-border lg:bg-arcade-surface lg:px-4 lg:py-2">
-        <span className="font-pixel text-[9px] tracking-wide text-arcade-text-muted">CRÉDITOS</span>
-        <span className="text-3xl leading-none text-arcade-amber lg:text-2xl">{formatBRL(available)}</span>
+      {/* Saldo e "+ fichas" andam juntos: são a faixa de baixo no celular
+          (rótulo em cima do valor, botão na outra ponta) e, no desktop, duas
+          colunas de MESMA largura — é o `grid-cols-2` que iguala as duas, e a
+          altura de 46px é a mesma do sino, então os três blocos da direita
+          fecham na mesma linha. */}
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-4 lg:grid lg:flex-none lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-1 lg:h-[46px] lg:flex-row lg:items-center lg:justify-center lg:gap-3 lg:border-3 lg:border-arcade-border lg:bg-arcade-surface lg:px-4">
+          <span className="font-pixel text-[9px] tracking-wide text-arcade-text-muted">CRÉDITOS</span>
+          <span className="text-3xl leading-none text-arcade-amber lg:text-2xl">{formatBRL(available)}</span>
+        </div>
+        <Link href="/wallet" className="flex-none lg:w-full">
+          <Button variant="success" className="lg:h-[46px] lg:w-full">
+            + Fichas
+          </Button>
+        </Link>
       </div>
-      <Link href="/wallet" className="flex-none">
-        <Button variant="success">+ Fichas</Button>
-      </Link>
     </header>
   )
 }
