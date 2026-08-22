@@ -86,35 +86,38 @@ export default function DashboardPage() {
       </div>
 
       {nextMatch && (
+        // Um cartaz de confronto, não uma linha de dados: o rótulo e a data
+        // ocupam a faixa de cima (cada um numa ponta) e o confronto fica
+        // centralizado no meio, com o VS entre os dois nomes — em pé no
+        // celular, deitado a partir de `sm`. É simétrico nas duas larguras, que
+        // é o que faltava quando o bloco vivia encostado à esquerda com o VS
+        // solto no meio do card.
         <div className="border-3 border-arcade-border bg-arcade-surface px-5 py-4 shadow-pixel">
-          {/* Linha própria, no topo: como item de um flex ele disputava a
-              altura com o confronto e acabava no meio do card. */}
-          <span className="block animate-blink font-pixel text-[10px] tracking-widest text-arcade-magenta">
-            PRÓXIMA PARTIDA
-          </span>
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5">
-            <span className="min-w-[200px] flex-1 font-arcade text-xl text-arcade-text">
-              <span className="block break-words text-arcade-text-soft">{nextMatch.title}</span>
-              {/* Coluna de largura `fit` com `items-center`: o VS fica sempre
-                  ENTRE os dois nomes e centralizado em relação a eles. Uma
-                  linha com `flex-wrap` (o que havia aqui) quebrava em largura
-                  intermediária e colava o VS no primeiro nome. */}
-              <span className="mt-1 flex w-fit max-w-full flex-col items-center gap-0.5">
-                {nextMatch.participants.map((participant, index) => (
-                  <Fragment key={participant.id}>
-                    {index > 0 && (
-                      <span className="font-pixel text-[9px] text-arcade-magenta">VS</span>
-                    )}
-                    <span className="break-words text-center">{participant.displayName}</span>
-                  </Fragment>
-                ))}
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+            <span className="animate-blink font-pixel text-[10px] tracking-widest text-arcade-magenta">
+              PRÓXIMA PARTIDA
             </span>
-            <span className="whitespace-nowrap font-pixel text-sm text-arcade-amber [text-shadow:0_0_14px_rgba(255,176,32,.5)]">
+            <span className="font-pixel text-sm text-arcade-amber [text-shadow:0_0_14px_rgba(255,176,32,.5)]">
               {formatDateTime(nextMatch.scheduledAt)}
             </span>
           </div>
+
+          <div className="mt-4 flex flex-col items-center justify-center gap-x-4 gap-y-1 text-center sm:flex-row">
+            {nextMatch.participants.map((participant, index) => (
+              <Fragment key={participant.id}>
+                {index > 0 && (
+                  <span className="font-pixel text-[10px] text-arcade-magenta">VS</span>
+                )}
+                <span className="min-w-0 break-words font-arcade text-2xl leading-tight text-arcade-text">
+                  {participant.displayName}
+                </span>
+              </Fragment>
+            ))}
+          </div>
+
+          <p className="mt-1.5 text-center font-arcade text-lg text-arcade-text-muted">
+            {nextMatch.title}
+          </p>
         </div>
       )}
 

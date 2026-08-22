@@ -117,21 +117,21 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
-        {/* `flex-col` até `sm` e linha a partir dali, em vez de deixar o
-            `flex-wrap` decidir: quando a quebra era automática o nome de cima
-            continuava alinhado à DIREITA e o de baixo à ESQUERDA — ou seja,
-            cada nome caía do lado CONTRÁRIO ao do próprio avatar. Empilhado, o
-            primeiro participante alinha à esquerda (o avatar dele é o da
-            esquerda) e o segundo à direita. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-5">
-          <div className="min-w-0 text-left sm:flex-1 sm:basis-40 sm:text-right">
+        {/* Dois estados e SÓ dois: empilhado, ou os três lado a lado. Nada de
+            `flex-wrap` — era ele que produzia o meio-termo torto (nome + fotos
+            numa linha e o segundo nome sozinho embaixo, cada um alinhado pro
+            lado errado). O corte é em `lg` porque a linha precisa de ~590px só
+            de conteúdo: abaixo disso ela cabe apertada, não bem. Empilhado,
+            cada nome alinha pro lado do próprio avatar. */}
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4 lg:max-w-none lg:flex-row lg:items-center lg:justify-center lg:gap-5">
+          <div className="min-w-0 text-left lg:flex-1 lg:basis-40 lg:text-right">
             <p className="text-3xl leading-tight text-arcade-text">{p1?.displayName}</p>
             <p className="font-arcade text-lg text-arcade-text-muted">
               {unitWinsOf(p1?.id ?? '')} unidade{unitWinsOf(p1?.id ?? '') === 1 ? '' : 's'} vencida
               {unitWinsOf(p1?.id ?? '') === 1 ? '' : 's'}
             </p>
           </div>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-none items-center justify-center gap-4">
             {p1 ? (
               <ParticipantAvatar
                 id={p1.participantId}
@@ -156,7 +156,7 @@ export default function MatchDetailPage({ params }: { params: { id: string } }) 
               <span className="h-[86px] w-[86px] flex-none bg-[#8b7bb8] shadow-pixel" />
             )}
           </div>
-          <div className="min-w-0 text-right sm:flex-1 sm:basis-40 sm:text-left">
+          <div className="min-w-0 text-right lg:flex-1 lg:basis-40 lg:text-left">
             <p className="text-3xl leading-tight text-arcade-text">{p2?.displayName}</p>
             <p className="font-arcade text-lg text-arcade-text-muted">
               {unitWinsOf(p2?.id ?? '')} unidade{unitWinsOf(p2?.id ?? '') === 1 ? '' : 's'} vencida
